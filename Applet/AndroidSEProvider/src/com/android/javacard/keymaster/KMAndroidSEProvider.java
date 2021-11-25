@@ -1350,4 +1350,22 @@ public class KMAndroidSEProvider implements KMSEProvider {
   public KMComputedHmacKey getComputedHmacKey() {
     return computedHmacKey;
   }
+  
+  @Override  
+  public short messageDigest256(byte[] inBuff, short inOffset,
+								short inLength, byte[] outBuff, short outOffset) {
+	MessageDigest.OneShot mDigest = null;
+	short len = 0;
+	try {
+		mDigest = MessageDigest.OneShot.open(MessageDigest.ALG_SHA_256);
+		len = mDigest.doFinal(inBuff, inOffset, inLength, outBuff, outOffset);
+	} finally {
+		if (mDigest != null) {
+			mDigest.close();
+			mDigest = null;
+		}
+	}
+	return len;
+  }
+  
 }

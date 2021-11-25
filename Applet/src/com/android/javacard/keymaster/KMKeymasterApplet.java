@@ -3233,6 +3233,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     // update the key parameters list
     updateKeyParameters(scratchPad, tmpVariables[4]);
     // Read Minimum Mac length - it must not be present
+    //Added this error check based on default reference implementation.
     tmpVariables[0] =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[KEY_PARAMETERS]);
     if (tmpVariables[0] != KMType.INVALID_VALUE) {
@@ -3990,11 +3991,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
   private static void makeAuthData(byte[] scratchPad) {
    
-	final byte[] oneBuffer = { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
-			(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
-			(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
-			(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF };
-
 	short arrayLen = 3;
 	if (KMArray.cast(data[KEY_BLOB]).length() == 5) {
 		arrayLen = 4;
@@ -4017,7 +4013,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 		len = encoder.encode(tag, repository.getHeap(), (short) (authIndex + 32));
 		Util.arrayCopyNonAtomic(repository.getHeap(), (short) authIndex, repository.getHeap(),
 				(short) (authIndex + len + 32), (short) 32);
-		len = seProvider.hmacSign(oneBuffer, (short) 0, (short) oneBuffer.length, repository.getHeap(),
+		len = seProvider.messageDigest256(repository.getHeap(),
 				(short) (authIndex + 32), (short) (len + 32), repository.getHeap(), (short) authIndex);
 		if (len != 32) {
 			KMException.throwIt(KMError.UNKNOWN_ERROR);
@@ -4029,60 +4025,29 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 	data[AUTH_DATA_LENGTH] = len;
   }
 
-  private static short addPtrToAAD(short dataArrPtr, byte[] aadBuf, short offset) {
-    short index = (short) (offset * 2);
-    short tagInd = 0;
-    short tagPtr;
-    short arrLen = KMArray.cast(dataArrPtr).length();
-    while (tagInd < arrLen) {
-      tagPtr = KMArray.cast(dataArrPtr).get(tagInd);
-      Util.setShort(aadBuf, index, tagPtr);
-      index += 2;
-      tagInd++;
-    }
-    return tagInd;
-  }
-
   private static short deriveKey(byte[] scratchPad) {
-	
-    tmpVariables[0] = KMKeyParameters.cast(data[HW_PARAMETERS]).getVals();
-    tmpVariables[1] = repository.alloc(DERIVE_KEY_INPUT_SIZE);
-    // generate derivation material from hidden parameters
-    tmpVariables[2] = encoder.encode(tmpVariables[0], repository.getHeap(), tmpVariables[1]);
-	if (DERIVE_KEY_INPUT_SIZE > tmpVariables[2]) {
-		// Copy KeyCharacteristics in the remaining space of DERIVE_KEY_INPUT_SIZE
-		if ((short) (tmpVariables[2] + data[AUTH_DATA_LENGTH]) < DERIVE_KEY_INPUT_SIZE) {
-			tmpVariables[2] = (short) (tmpVariables[2] + data[AUTH_DATA_LENGTH]);
-			Util.arrayCopyNonAtomic(repository.getHeap(), data[AUTH_DATA], repository.getHeap(),
-					(short) (tmpVariables[1] + tmpVariables[2]), data[AUTH_DATA_LENGTH]);
-		}
-	} else {
-		tmpVariables[2] = DERIVE_KEY_INPUT_SIZE;
-	}
+
     // KeyDerivation:
-    // 1. Do HMAC Sign, with below input parameters.
-    //    Key - 128 bit master key
-    //    Input data - HIDDEN_PARAMETERS + KeyCharacateristics
-    //               - Truncate beyond 256 bytes.
+    // 1. Do HMAC Sign, Auth data.
     // 2. HMAC Sign generates an output of 32 bytes length.
-    //    Consume only first 16 bytes as derived key.
+	//    Consume only first 16 bytes as derived key.
     // Hmac sign.
-    tmpVariables[3] = seProvider.hmacKDF(
+    short len = seProvider.hmacKDF(
         seProvider.getMasterKey(),
         repository.getHeap(),
-        tmpVariables[1],
-        tmpVariables[2],
+        data[AUTH_DATA],
+        data[AUTH_DATA_LENGTH],
         scratchPad,
         (short) 0);
-    if (tmpVariables[3] < 16) {
+    if (len < 16) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    tmpVariables[3] = 16;
+    len = 16;
+    data[DERIVED_KEY] = repository.alloc(len);
     // store the derived secret in data dictionary
-    data[DERIVED_KEY] = tmpVariables[1];
     Util.arrayCopyNonAtomic(
-        scratchPad, (short) 0, repository.getHeap(), data[DERIVED_KEY], tmpVariables[3]);
-    return tmpVariables[3];
+        scratchPad, (short) 0, repository.getHeap(), data[DERIVED_KEY], len);
+    return len;
   }
 
   // This function masks the error code with POWER_RESET_MASK_FLAG

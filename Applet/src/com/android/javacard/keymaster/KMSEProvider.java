@@ -15,8 +15,6 @@
  */
 package com.android.javacard.keymaster;
 
-import org.globalplatform.upgrade.Element;
-
 /**
  * KMSEProvider is facade to use SE specific methods. The main intention of this interface is to
  * abstract the cipher, signature and backup and restore related functions. The instance of this
@@ -590,5 +588,10 @@ public interface KMSEProvider extends KMUpgradable {
    * Releases all the instance back to pool. Generally this is used when card is reset.
    */
   void releaseAllOperations();
+  
+  /**
+   * Digest message
+   */
+  short messageDigest256(byte[] inBuff, short inOffset, short inLength, byte[] outBuff, short outOffset);
 
 }
