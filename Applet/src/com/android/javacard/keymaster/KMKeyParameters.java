@@ -114,7 +114,6 @@ public class KMKeyParameters extends KMType {
     final short[] tagArr = {
         // Unsupported tags.
         KMType.BOOL_TAG, KMType.TRUSTED_USER_PRESENCE_REQUIRED,
-        KMType.BOOL_TAG, KMType.ALLOW_WHILE_ON_BODY,
         KMType.UINT_TAG, KMType.MIN_SEC_BETWEEN_OPS
     };
     byte index = 0;
