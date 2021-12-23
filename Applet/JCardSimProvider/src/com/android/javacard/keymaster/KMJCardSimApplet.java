@@ -185,10 +185,10 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
 
     // key params should have os patch, os version and verified root of trust
     short keyParams = KMArray.cast(args).get((short) 0);
-    short keyFormat = KMArray.cast(args).get((short) 1);
+    keyFormatPtr = KMArray.cast(args).get((short) 1);
     short rawBlob = KMArray.cast(args).get((short) 2);
     // Key format must be RAW format
-    keyFormat = KMEnum.cast(tmpVariables[0]).getVal();
+    short keyFormat = KMEnum.cast(keyFormatPtr).getVal();
     if (keyFormat != KMType.RAW) {
       KMException.throwIt(KMError.UNIMPLEMENTED);
     }
