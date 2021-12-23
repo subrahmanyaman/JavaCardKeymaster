@@ -29,11 +29,22 @@ import javacard.framework.Util;
 public class KMKeyCharacteristics extends KMType {
 
   public static final byte STRONGBOX_ENFORCED = 0x00;
-  public static final byte TEE_ENFORCED = 0x01;
-  public static final byte KEYSTORE_ENFORCED = 0x02;
+  public static final byte KEYSTORE_ENFORCED = 0x01;
+  public static final byte TEE_ENFORCED = 0x02;
   private static KMKeyCharacteristics prototype;
 
   private KMKeyCharacteristics() {
+  }
+
+  public static short exp2() {
+    short sb = KMKeyParameters.exp();
+    short keystore = KMKeyParameters.exp();
+    short arrPtr = KMArray.instance((short) 2);
+
+    KMArray arr = KMArray.cast(arrPtr);
+    arr.add(STRONGBOX_ENFORCED, sb);
+    arr.add(KEYSTORE_ENFORCED, keystore);
+    return instance(arrPtr);
   }
 
   public static short exp() {
@@ -57,14 +68,20 @@ public class KMKeyCharacteristics extends KMType {
     return prototype;
   }
 
+  public static short instance2() {
+    short arrPtr = KMArray.instance((short) 2);
+    return instance(arrPtr);
+  }
+
   public static short instance() {
     short arrPtr = KMArray.instance((short) 3);
     return instance(arrPtr);
   }
 
   public static short instance(short vals) {
-    short ptr = KMType.instance(KEY_CHAR_TYPE, (short) 3);
-    if (KMArray.cast(vals).length() != 3) {
+    short length = KMArray.cast(vals).length();
+    short ptr = KMType.instance(KEY_CHAR_TYPE, length);
+    if (length != 3 && length != 2) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE), vals);
@@ -98,6 +115,9 @@ public class KMKeyCharacteristics extends KMType {
 
   public short getTeeEnforced() {
     short arrPtr = getVals();
+    if (length() <= TEE_ENFORCED) {
+      return KMType.INVALID_VALUE;
+    }
     return KMArray.cast(arrPtr).get(TEE_ENFORCED);
   }
 

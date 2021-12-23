@@ -22,6 +22,10 @@ package com.android.javacard.seprovider;
  * can be only one provider in the applet package.
  */
 public interface KMSEProvider extends KMUpgradable {
+  // Provision related constants.
+  public static final byte CERTIFICATE_CHAIN = 0;
+  public static final byte CERTIFICATE_EXPIRY = 1;
+  public static final byte CERTIFICATE_ISSUER = 2;
 
   /**
    * Create a symmetric key instance. If the algorithm and/or keysize are not supported then it
@@ -687,5 +691,47 @@ public interface KMSEProvider extends KMUpgradable {
   byte[] getBootCertificateChain();
 
   public boolean isProvisionLocked();
+  /**
+   * This function creates an ECKey and initializes the ECPrivateKey with the provided input key
+   * data. The initialized Key is maintained by the SEProvider. This function should be called only
+   * while provisioning the attestation key.
+   *
+   * @param keyData buffer containing the ec private key.
+   * @param offset start of the buffer.
+   * @param length length of the buffer.
+   * @return An instance of KMAttestationKey.
+   */
+  KMAttestationKey createAttestationKey(byte[] keyData, short offset, short length);
+  /**
+   * This operation persists the provision data in the persistent memory.
+   *
+   * @param buf buffer which contains all the provision data.
+   * @param certChainOff is the start of the cert chain.
+   * @param certChainLen is the length of the cert chain.
+   * @param certIssuerOff is the start of the cert issuer.
+   * @param certIssuerLen is the length of the cert issuer.
+   * @param certExpiryOff is the start of the cert expiry.
+   * @param certExpiryLen is the length of the cert expiry.
+   */
+  void persistProvisionData(byte[] buf, short certChainOff, short certChainLen,
+      short certIssuerOff, short certIssuerLen, short certExpiryOff, short certExpiryLen);
+
+  /**
+   * The operation reads the provisioned data from persistent memory.
+   *
+   * @param dataType type of the provision data to read.
+   * @param buf is the start of data buffer.
+   * @param offset is the start of the data.
+   * @return the length of the data buffer in bytes.
+   */
+  short readProvisionedData(byte dataType, byte[] buf, short offset);
+
+  /**
+   * This function returns the provisioned data length.
+   *
+   * @param dataType type of the provision data to read.
+   * @return length of the certificate chain.
+   */
+  short getProvisionedDataLength(byte dataType);
 
 }
