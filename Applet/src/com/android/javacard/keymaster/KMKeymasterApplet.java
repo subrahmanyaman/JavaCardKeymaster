@@ -381,16 +381,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   protected short validateApduHeader(APDU apdu) {
     // Read the apdu header and buffer.
     byte[] apduBuffer = apdu.getBuffer();
-    byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
-    short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
-    // Validate APDU Header.
-    if ((apduClass != CLA_ISO7816_NO_SM_NO_CHAN)) {
-      ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
-    }
-    // Validate P1P2.
-    if (P1P2 != KMKeymasterApplet.KM_HAL_VERSION) {
-      ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
-    }
     byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
     // Validate whether INS can be supported
     if (!(apduIns > KEYMINT_CMD_APDU_START && apduIns < KEYMINT_CMD_APDU_END)) {
@@ -702,7 +692,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     checkVersionAndPatchLevel(scratchPad);
     // Remove custom tags from key characteristics
     short teeParams = KMKeyCharacteristics.cast(data[KEY_CHARACTERISTICS]).getTeeEnforced();
-    KMKeyParameters.cast(teeParams).deleteCustomTags();
+    if (teeParams != KMType.INVALID_VALUE) {
+      KMKeyParameters.cast(teeParams).deleteCustomTags();
+    }
     // make response.
     short resp = KMArray.instance((short) 2);
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
@@ -4018,14 +4010,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_NONCE, data[NONCE]);
 
     //TODO remove the following temporary creation of keyblob.
-    short tempChar = KMKeyCharacteristics.instance();
+   /* short tempChar = KMKeyCharacteristics.instance();
     short emptyParam = KMArray.instance((short) 0);
     emptyParam = KMKeyParameters.instance(emptyParam);
     KMKeyCharacteristics.cast(tempChar).setStrongboxEnforced(data[SB_PARAMETERS]);
     KMKeyCharacteristics.cast(tempChar).setKeystoreEnforced(emptyParam);
     KMKeyCharacteristics.cast(tempChar).setTeeEnforced(data[TEE_PARAMETERS]);
-    KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PARAMS, tempChar);
-    //KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PARAMS, data[KEY_CHARACTERISTICS]);
+    KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PARAMS, tempChar);*/
+    KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PARAMS, data[KEY_CHARACTERISTICS]);
 
     // allocate reclaimable memory.
     short buffer = repository.alloc((short) 1024);
@@ -4061,7 +4053,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       data[TEE_PARAMETERS] = KMKeyCharacteristics.cast(data[KEY_CHARACTERISTICS]).getTeeEnforced();
       data[SB_PARAMETERS] = KMKeyCharacteristics.cast(data[KEY_CHARACTERISTICS]).getStrongboxEnforced();
       data[SW_PARAMETERS] = KMKeyCharacteristics.cast(data[KEY_CHARACTERISTICS]).getKeystoreEnforced();
-      data[HW_PARAMETERS] = KMKeyParameters.makeHwEnforced(data[SB_PARAMETERS], data[TEE_PARAMETERS]);
+      data[HW_PARAMETERS] = specification.getHardwareParamters( data[SB_PARAMETERS], data[TEE_PARAMETERS]);
 
       data[HIDDEN_PARAMETERS] = KMKeyParameters.makeHidden(appId, appData, rot, scratchPad);
       data[KEY_BLOB] = parsedBlob;
@@ -4159,7 +4151,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private static void makeAuthData(byte[] scratchPad) {
-    short arrayLen = 2;
+    /*short arrayLen = 2;
     if (KMArray.cast(data[KEY_BLOB]).length() == 5) {
       arrayLen = 3;
     }
@@ -4169,7 +4161,10 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(params).add((short) 1, KMKeyParameters.cast(data[HIDDEN_PARAMETERS]).getVals());
     if (3 == arrayLen) {
       KMArray.cast(params).add((short) 2, data[PUB_KEY]);
-    }
+    }*/
+    short params =
+        specification.concatParamsForAuthData(data[KEY_BLOB], data[HW_PARAMETERS],
+            data[SW_PARAMETERS], data[HIDDEN_PARAMETERS], data[PUB_KEY]);
 
     short authIndex = repository.alloc(MAX_AUTH_DATA_SIZE);
     short index = 0;

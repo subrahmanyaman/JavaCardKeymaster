@@ -12,4 +12,8 @@ public interface KMSpecification {
   boolean isProvisionedAttestKeysSupported();
 
   boolean canCreateEarlyBootKeys();
+
+  short getHardwareParamters(short sbParams, short teeParams);
+
+  short concatParamsForAuthData(short arrPtr, short hwParams, short swParams, short hiddenParams, short pubKey);
 }

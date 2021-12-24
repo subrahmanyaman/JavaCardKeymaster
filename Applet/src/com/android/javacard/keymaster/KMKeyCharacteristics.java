@@ -28,8 +28,8 @@ import javacard.framework.Util;
  */
 public class KMKeyCharacteristics extends KMType {
 
-  public static final byte STRONGBOX_ENFORCED = 0x00;
-  public static final byte KEYSTORE_ENFORCED = 0x01;
+  public static final byte KEYSTORE_ENFORCED = 0x00;
+  public static final byte STRONGBOX_ENFORCED = 0x01;
   public static final byte TEE_ENFORCED = 0x02;
   private static KMKeyCharacteristics prototype;
 

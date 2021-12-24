@@ -34,9 +34,11 @@ public class KMKeymintSpecification implements KMSpecification {
         keyParams, (byte) origin, osVersion, osPatch, vendorPatch, bootPatch, scratchPad);
     short teeParams = KMKeyParameters.makeTeeEnforced(keyParams, scratchPad);
     short swParams = KMKeyParameters.makeKeystoreEnforced(keyParams, scratchPad);
+    short emptyParam = KMArray.instance((short) 0);
     short keyCharacteristics = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.cast(keyCharacteristics).setStrongboxEnforced(strongboxParams);
-    KMKeyCharacteristics.cast(keyCharacteristics).setKeystoreEnforced(swParams);
+    // TODO
+    KMKeyCharacteristics.cast(keyCharacteristics).setKeystoreEnforced(emptyParam);
     KMKeyCharacteristics.cast(keyCharacteristics).setTeeEnforced(teeParams);
     return keyCharacteristics;
   }
@@ -54,5 +56,26 @@ public class KMKeymintSpecification implements KMSpecification {
   @Override
   public boolean canCreateEarlyBootKeys() {
     return false;
+  }
+
+  @Override
+  public short getHardwareParamters(short sbParams, short teeParams) {
+    return KMKeyParameters.makeHwEnforced(sbParams, teeParams);
+  }
+
+  @Override
+  public short concatParamsForAuthData(short keyBlobPtr, short hwParams, short swParams,
+      short hiddenParams, short pubKey) {
+    short arrayLen = 2;
+    if (KMArray.cast(keyBlobPtr).length() == 5) {
+      arrayLen = 3;
+    }
+    short params = KMArray.instance((short) arrayLen);
+    KMArray.cast(params).add((short) 0, KMKeyParameters.cast(hwParams).getVals());
+    KMArray.cast(params).add((short) 1, KMKeyParameters.cast(hiddenParams).getVals());
+    if (3 == arrayLen) {
+      KMArray.cast(params).add((short) 2, pubKey);
+    }
+    return params;
   }
 }

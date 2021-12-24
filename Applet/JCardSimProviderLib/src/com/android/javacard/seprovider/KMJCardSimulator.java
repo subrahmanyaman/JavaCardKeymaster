@@ -156,6 +156,12 @@ public class KMJCardSimulator implements KMSEProvider {
     provisionData = new byte[totalLen];
     additionalCertChain = new byte[ADDITIONAL_CERT_CHAIN_MAX_SIZE];
     bcc = new byte[BCC_MAX_SIZE];
+    byte[] tmpArray = new byte[32];
+    createAttestationKey(tmpArray, (short) 0, (short) 32);
+    // Pre-shared secret key length is 32 bytes.
+    createPresharedKey(tmpArray, (short) 0, (short) 32);
+    // Initialize the Computed Hmac Key object.
+    createComputedHmacKey(tmpArray, (short)0, (short) 32);
     jCardSimulator = this;
     resetFlag = new byte[1];
     resetFlag[0] = (byte) POWER_RESET_FALSE;

@@ -51,4 +51,25 @@ public class KMKeymasterSpecification implements KMSpecification {
     return false;
   }
 
+  @Override
+  public short getHardwareParamters(short sbParams, short teeParams) {
+    return sbParams;
+  }
+
+  @Override
+  public short concatParamsForAuthData(short keyBlobPtr, short hwParams, short swParams,
+      short hiddenParams, short pubKey) {
+    short arrayLen = 2;
+    if (KMArray.cast(keyBlobPtr).length() == 5) {
+      arrayLen = 4;
+    }
+    short params = KMArray.instance((short) arrayLen);
+    KMArray.cast(params).add((short) 0, KMKeyParameters.cast(hwParams).getVals());
+    KMArray.cast(params).add((short) 1, KMKeyParameters.cast(swParams).getVals());
+    KMArray.cast(params).add((short) 2, KMKeyParameters.cast(hiddenParams).getVals());
+    if (4 == arrayLen) {
+      KMArray.cast(params).add((short) 3, pubKey);
+    }
+    return params;
+  }
 }
