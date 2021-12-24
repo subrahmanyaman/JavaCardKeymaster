@@ -37,6 +37,14 @@ public class KMKeymasterSpecification implements KMSpecification {
   }
 
   @Override
+  public short makeKeyCharacteristicsForKeyblob(short swParams, short sbParams, short teeParams) {
+    short keyChars = KMKeyCharacteristics.instance2();
+    KMKeyCharacteristics.cast(keyChars).setStrongboxEnforced(sbParams);
+    KMKeyCharacteristics.cast(keyChars).setKeystoreEnforced(swParams);
+    return keyChars;
+  }
+
+  @Override
   public short getKeyCharacteristicsExp() {
     return KMKeyCharacteristics.exp2();
   }
@@ -71,5 +79,25 @@ public class KMKeymasterSpecification implements KMSpecification {
       KMArray.cast(params).add((short) 3, pubKey);
     }
     return params;
+  }
+
+  @Override
+  public boolean isFactoryAttestationSupported() {
+    return true;
+  }
+
+  @Override
+  public short getNotAfter(short params) {
+    return 0;
+  }
+
+  @Override
+  public short getNotBefore(short params) {
+    return 0;
+  }
+
+  @Override
+  public short getIssuer() {
+    return 0;
   }
 }

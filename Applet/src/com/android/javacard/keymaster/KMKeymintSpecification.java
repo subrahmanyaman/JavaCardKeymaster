@@ -34,13 +34,23 @@ public class KMKeymintSpecification implements KMSpecification {
         keyParams, (byte) origin, osVersion, osPatch, vendorPatch, bootPatch, scratchPad);
     short teeParams = KMKeyParameters.makeTeeEnforced(keyParams, scratchPad);
     short swParams = KMKeyParameters.makeKeystoreEnforced(keyParams, scratchPad);
-    short emptyParam = KMArray.instance((short) 0);
+    //short emptyParam = KMArray.instance((short) 0);
     short keyCharacteristics = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.cast(keyCharacteristics).setStrongboxEnforced(strongboxParams);
-    // TODO
-    KMKeyCharacteristics.cast(keyCharacteristics).setKeystoreEnforced(emptyParam);
+    KMKeyCharacteristics.cast(keyCharacteristics).setKeystoreEnforced(swParams);
     KMKeyCharacteristics.cast(keyCharacteristics).setTeeEnforced(teeParams);
     return keyCharacteristics;
+  }
+
+  @Override
+  public short makeKeyCharacteristicsForKeyblob(short swParams, short sbParams, short teeParams) {
+    short keyChars = KMKeyCharacteristics.instance();
+    short emptyParam = KMArray.instance((short) 0);
+    emptyParam = KMKeyParameters.instance(emptyParam);
+    KMKeyCharacteristics.cast(keyChars).setStrongboxEnforced(sbParams);
+    KMKeyCharacteristics.cast(keyChars).setKeystoreEnforced(emptyParam);
+    KMKeyCharacteristics.cast(keyChars).setTeeEnforced(teeParams);
+    return keyChars;
   }
 
   @Override
@@ -77,5 +87,25 @@ public class KMKeymintSpecification implements KMSpecification {
       KMArray.cast(params).add((short) 2, pubKey);
     }
     return params;
+  }
+
+  @Override
+  public boolean isFactoryAttestationSupported() {
+    return false;
+  }
+
+  @Override
+  public short getNotAfter(short params) {
+    return 0;
+  }
+
+  @Override
+  public short getNotBefore(short params) {
+    return 0;
+  }
+
+  @Override
+  public short getIssuer() {
+    return 0;
   }
 }
