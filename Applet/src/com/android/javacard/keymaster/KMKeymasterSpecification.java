@@ -100,4 +100,9 @@ public class KMKeymasterSpecification implements KMSpecification {
   public short getIssuer() {
     return 0;
   }
+
+  @Override
+  public boolean isKeyAgreementSupported() {
+	return false;
+  }
 }

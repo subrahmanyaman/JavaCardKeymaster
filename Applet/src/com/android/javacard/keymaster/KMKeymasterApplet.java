@@ -1704,15 +1704,17 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private short finishOperationCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 6);
+    short cmd = KMArray.instance((short) 7);
     KMArray.cast(cmd).add((short) 0, KMInteger.exp());//op handle
-    KMArray.cast(cmd).add((short) 1, KMByteBlob.exp());// input data
-    KMArray.cast(cmd).add((short) 2, KMByteBlob.exp()); // signature
+    short keyParam = KMKeyParameters.exp();
+    KMArray.cast(cmd).add((short) 1, keyParam);// Key Parameters
+    KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());// input data
+    KMArray.cast(cmd).add((short) 3, KMByteBlob.exp()); // signature
     short authToken = KMHardwareAuthToken.exp();
-    KMArray.cast(cmd).add((short) 3, authToken); // auth token
+    KMArray.cast(cmd).add((short) 4, authToken); // auth token
     short verToken = KMVerificationToken.exp();
-    KMArray.cast(cmd).add((short) 4, verToken); // time stamp token
-    KMArray.cast(cmd).add((short) 5, KMByteBlob.exp()); //confirmation token
+    KMArray.cast(cmd).add((short) 5, verToken); // time stamp token
+    KMArray.cast(cmd).add((short) 6, KMByteBlob.exp()); //confirmation token
     return receiveIncoming(apdu, cmd);
   }
 
@@ -1720,11 +1722,13 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     short cmd = finishOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
     data[OP_HANDLE] = KMArray.cast(cmd).get((short) 0);
-    data[INPUT_DATA] = KMArray.cast(cmd).get((short) 1);
-    data[SIGNATURE] = KMArray.cast(cmd).get((short) 2);
-    data[HW_TOKEN] = KMArray.cast(cmd).get((short) 3);
-    data[VERIFICATION_TOKEN] = KMArray.cast(cmd).get((short) 4);
-    data[CONFIRMATION_TOKEN] = KMArray.cast(cmd).get((short) 5);
+    data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 1);
+    data[INPUT_DATA] = KMArray.cast(cmd).get((short) 2);
+    data[SIGNATURE] = KMArray.cast(cmd).get((short) 3);
+    data[HW_TOKEN] = KMArray.cast(cmd).get((short) 4);
+    data[VERIFICATION_TOKEN] = KMArray.cast(cmd).get((short) 5);
+    data[CONFIRMATION_TOKEN] = KMArray.cast(cmd).get((short) 6);
+    
     // Check Operation Handle
     KMOperationState op = findOperation(data[OP_HANDLE]);
     if (op == null) {
@@ -1745,7 +1749,11 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         finishDecryptOperation(op, scratchPad);
         break;
       case KMType.AGREE_KEY:
-        finishKeyAgreementOperation(op, scratchPad);
+	    if(specification.isKeyAgreementSupported()) {
+		  finishKeyAgreementOperation(op, scratchPad);  
+    	} else {
+    	  KMException.throwIt(KMError.UNIMPLEMENTED);
+    	}
         break;
     }
     if (data[OUTPUT_DATA] == KMType.INVALID_VALUE) {
@@ -1755,9 +1763,12 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     releaseOperation(op);
 
     // make response
+    short keyParam = KMArray.instance((short) 0);
+    keyParam = KMKeyParameters.instance(keyParam);
     short resp = KMArray.instance((short) 2);
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.cast(resp).add((short) 1, data[OUTPUT_DATA]);
+    KMArray.cast(resp).add((short) 1, keyParam);
+    KMArray.cast(resp).add((short) 2, data[OUTPUT_DATA]);
     sendOutgoing(apdu, resp);
   }
 
@@ -2099,14 +2110,15 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private short updateOperationCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 4);
+    short cmd = KMArray.instance((short) 5);
     // Arguments
     KMArray.cast(cmd).add((short) 0, KMInteger.exp());
-    KMArray.cast(cmd).add((short) 1, KMByteBlob.exp());
+    KMArray.cast(cmd).add((short) 1, KMKeyParameters.exp());
+    KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());
     short authToken = KMHardwareAuthToken.exp();
-    KMArray.cast(cmd).add((short) 2, authToken);
+    KMArray.cast(cmd).add((short) 3, authToken);
     short verToken = KMVerificationToken.exp();
-    KMArray.cast(cmd).add((short) 3, verToken);
+    KMArray.cast(cmd).add((short) 4, verToken);
     return receiveIncoming(apdu, cmd);
   }
 
@@ -2114,9 +2126,10 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     short cmd = updateOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
     data[OP_HANDLE] = KMArray.cast(cmd).get((short) 0);
-    data[INPUT_DATA] = KMArray.cast(cmd).get((short) 1);
-    data[HW_TOKEN] = KMArray.cast(cmd).get((short) 2);
-    data[VERIFICATION_TOKEN] = KMArray.cast(cmd).get((short) 3);
+    data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 1); //will be passed as INVALID_VALUE from keymint HAL
+    data[INPUT_DATA] = KMArray.cast(cmd).get((short) 2);
+    data[HW_TOKEN] = KMArray.cast(cmd).get((short) 3);
+    data[VERIFICATION_TOKEN] = KMArray.cast(cmd).get((short) 4);
 
     // Input data must be present even if it is zero length.
     if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
@@ -2131,7 +2144,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
     // authorize the update operation
     authorizeUpdateFinishOperation(op, scratchPad);
-
+    short inputConsumed = 0;
     if (op.getPurpose() == KMType.SIGN || op.getPurpose() == KMType.VERIFY) {
       // update the data.
       op.getOperation()
@@ -2154,6 +2167,10 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       if (op.getAlgorithm() == KMType.AES) {
           blockSize = AES_BLOCK_SIZE;
           if (op.getBlockMode() == KMType.GCM) {
+        	// data[KEY_PARAMETERS] will be invalid for keymint
+        	if(data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
+        	  updateAAD(op, KMType.INVALID_VALUE, (byte) 0x00);
+        	}
             // if input data present
             if (len > 0) {
               // no more future updateAAD allowed if input data present.
@@ -2168,6 +2185,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       // Otherwise just update the data.
       // HAL consumes all the input and maintains a buffered data inside it. So the
       // applet sends the inputConsumed length as same as the input length.
+      inputConsumed = len;
       try {
         len =
             op.getOperation()
@@ -2192,9 +2210,13 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     // Persist if there are any updates.
     //op.persist();
     // make response
-    short resp = KMArray.instance((short) 2);
+    short resp = KMArray.instance((short) 4);   
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
     KMArray.cast(resp).add((short) 1, data[OUTPUT_DATA]);
+    short keyParm = KMKeyParameters.instance(KMArray.instance((short) 0));
+    KMArray.cast(resp).add((short) 2, keyParm); // will be ignored in keymint HAL
+    KMArray.cast(resp).add((short) 3, KMInteger.uint_16(inputConsumed)); // will be ignored in keymint HAL
+     
     sendOutgoing(apdu, resp);
   }
 
@@ -2209,6 +2231,49 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     return receiveIncoming(apdu, cmd);
   }
 
+  //update operation should send 0x00 for finish variable, where as finish operation
+  // should send 0x01 for finish variable.
+  private void updateAAD(KMOperationState op, short associatedData, byte finish) {
+	
+	short aData = associatedData;  
+  	if(associatedData == KMType.INVALID_VALUE) {
+  	  // Is input data absent
+  	  if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
+  	    KMException.throwIt(KMError.INVALID_ARGUMENT);
+  	  }
+  	  // Update can be called either to update auth data, update input data or both.
+  	  // But if it is called for neither then return error.
+  	  short len = KMByteBlob.cast(data[INPUT_DATA]).length();
+  	  short tag =
+  	       KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ASSOCIATED_DATA, data[KEY_PARAMETERS]);
+  	   // For Finish operation the input data can be zero length and associated data can be
+  	   // INVALID_VALUE
+  	   // For update operation either input data or associated data should be present.
+  	  if (tag == KMType.INVALID_VALUE && len <= 0 && finish == 0x00) {
+  	     KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+  	  }
+  	  // Check if associated data is present and update aad still allowed by the operation.
+  	  if (tag != KMType.INVALID_VALUE) {
+  		 // If allowed the update the aad
+  		 if (!op.isAesGcmUpdateAllowed()) {
+  	        KMException.throwIt(KMError.INVALID_TAG);
+  	     }
+  	     aData = KMByteTag.cast(tmpVariables[1]).getValue();
+  	  }
+  	}
+  	try {
+  	  if(aData != KMType.INVALID_VALUE) {     
+        op.getOperation()
+           .updateAAD(
+             KMByteBlob.cast(aData).getBuffer(),
+             KMByteBlob.cast(aData).getStartOff(),
+             KMByteBlob.cast(aData).length());
+      }
+  	} catch(CryptoException exp){
+        KMException.throwIt(KMError.UNKNOWN_ERROR);
+    }
+  }
+  
   private void processUpdateAadOperationCmd(APDU apdu) {
     short cmd = updateAadOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
@@ -2241,15 +2306,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
     // authorize the update operation
     authorizeUpdateFinishOperation(op, scratchPad);
-    try {
-      op.getOperation()
-          .updateAAD(
-              KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
-              KMByteBlob.cast(data[INPUT_DATA]).getStartOff(),
-              KMByteBlob.cast(data[INPUT_DATA]).length());
-    }catch(CryptoException exp){
-      KMException.throwIt(KMError.UNKNOWN_ERROR);
-    }
+    updateAAD(op, data[INPUT_DATA], (byte)0x00);
+    
     // make response
     short resp = KMArray.instance((short) 1);
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
@@ -2329,7 +2387,11 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         beginCipherOperation(op);
         break;
       case KMType.AGREE_KEY:
-        beginKeyAgreementOperation(op);
+    	if(specification.isKeyAgreementSupported()) {
+          beginKeyAgreementOperation(op);  
+    	} else {
+    	  KMException.throwIt(KMError.UNIMPLEMENTED);
+    	}
         break;
       default:
         KMException.throwIt(KMError.UNIMPLEMENTED);
@@ -4550,27 +4612,36 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private void updateTrustedConfirmationOperation(KMOperationState op) {
-	if (op.isTrustedConfirmationRequired()) {
-		op.getTrustedConfirmationSigner().update(KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
-				KMByteBlob.cast(data[INPUT_DATA]).getStartOff(), KMByteBlob.cast(data[INPUT_DATA]).length());
-	}
+    if (op.isTrustedConfirmationRequired()) {
+      op.getTrustedConfirmationSigner().update(KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
+	KMByteBlob.cast(data[INPUT_DATA]).getStartOff(), KMByteBlob.cast(data[INPUT_DATA]).length());
+    }
   }
 
   private void finishTrustedConfirmationOperation(KMOperationState op) {
-	// Perform trusted confirmation if required
-	if (op.isTrustedConfirmationRequired()) {
-  	  if (0 == KMByteBlob.cast(data[CONFIRMATION_TOKEN]).length()) {
-		  KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-	  }
-
-	  boolean verified = op.getTrustedConfirmationSigner().verify(KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
-	    KMByteBlob.cast(data[INPUT_DATA]).getStartOff(), KMByteBlob.cast(data[INPUT_DATA]).length(),
-		KMByteBlob.cast(data[CONFIRMATION_TOKEN]).getBuffer(),
-		KMByteBlob.cast(data[CONFIRMATION_TOKEN]).getStartOff(),
-		KMByteBlob.cast(data[CONFIRMATION_TOKEN]).length());
-	  if (!verified) {
-		KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-	  }
-	}
+    // Perform trusted confirmation if required 
+    if (op.isTrustedConfirmationRequired()) {
+		
+      //data[KEY_PARAMETERS] will be invalid for keymint HAL
+      if(data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
+        data[CONFIRMATION_TOKEN] =
+          KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.CONFIRMATION_TOKEN, data[KEY_PARAMETERS]);
+        if (data[CONFIRMATION_TOKEN] == KMType.INVALID_VALUE) {
+          KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+        }
+        data[CONFIRMATION_TOKEN] = KMByteTag.cast(data[CONFIRMATION_TOKEN]).getValue();
+      }
+      if (0 == KMByteBlob.cast(data[CONFIRMATION_TOKEN]).length()) {
+        KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+      }
+      boolean verified = op.getTrustedConfirmationSigner().verify(KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
+        KMByteBlob.cast(data[INPUT_DATA]).getStartOff(), KMByteBlob.cast(data[INPUT_DATA]).length(),
+        KMByteBlob.cast(data[CONFIRMATION_TOKEN]).getBuffer(),
+        KMByteBlob.cast(data[CONFIRMATION_TOKEN]).getStartOff(),
+        KMByteBlob.cast(data[CONFIRMATION_TOKEN]).length());
+        if (!verified) {
+	  KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+        }
+    }
   }
 }

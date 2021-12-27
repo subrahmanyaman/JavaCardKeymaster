@@ -108,4 +108,9 @@ public class KMKeymintSpecification implements KMSpecification {
   public short getIssuer() {
     return 0;
   }
+
+  @Override
+  public boolean isKeyAgreementSupported() {
+	return true;
+  }
 }

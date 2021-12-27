@@ -26,4 +26,6 @@ public interface KMSpecification {
   short getNotBefore(short params);
 
   short getIssuer();
+  
+  boolean isKeyAgreementSupported();
 }
