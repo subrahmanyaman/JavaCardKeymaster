@@ -77,7 +77,7 @@ public class KMKeymintSpecification implements KMSpecification {
   public short concatParamsForAuthData(short keyBlobPtr, short hwParams, short swParams,
       short hiddenParams, short pubKey) {
     short arrayLen = 2;
-    if (KMArray.cast(keyBlobPtr).length() == 5) {
+    if (pubKey != KMType.INVALID_VALUE) {
       arrayLen = 3;
     }
     short params = KMArray.instance((short) arrayLen);
