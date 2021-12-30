@@ -32,4 +32,14 @@ public interface KMSpecification {
   short getNotBefore(short params);
 
   short getIssuer();
+  
+  boolean isKeyAgreementSupported();
+  
+  short getConfirmationToken(short confToken, short keyParams);
+  
+  short getKMVerificationTokenExp();
+  
+  short getMacFromVerificationToken(short verToken);
+  
+  boolean isAttestSupportedInImport();
 }
