@@ -94,15 +94,16 @@ public class KMEncoder {
   }
 
   // array{KMError.OK,Array{KMByteBlobs}}
-  public void encodeCertChain(byte[] buffer, short offset, short length, short errInt32Ptr) {
+  public void encodeCertChain(byte[] buffer, short offset, short length, short errInt32Ptr,
+      short certChainOff, short certChainLen) {
     bufferRef[0] = buffer;
     scratchBuf[START_OFFSET] = offset;
-    scratchBuf[LEN_OFFSET] = (short) (offset + 1);
-    //Total length is ArrayHeader + [UIntHeader + length(errInt32Ptr)]
-    scratchBuf[LEN_OFFSET] += (short) (1 + getEncodedIntegerLength(errInt32Ptr));
+    scratchBuf[LEN_OFFSET] = (short) (offset + length + 1);
 
     writeMajorTypeWithLength(ARRAY_TYPE, (short) 2); // Array of 2 elements
     encodeUnsignedInteger(errInt32Ptr);
+    writeMajorTypeWithLength(BYTES_TYPE, certChainLen);
+    writeBytes(buffer, certChainOff, certChainLen);
   }
 
   //array{KMError.OK,Array{KMByteBlobs}}

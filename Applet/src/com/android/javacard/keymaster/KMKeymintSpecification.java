@@ -1,5 +1,10 @@
 package com.android.javacard.keymaster;
 
+import com.android.javacard.seprovider.KMAttestationCert;
+import com.android.javacard.seprovider.KMException;
+import com.android.javacard.seprovider.KMSEProvider;
+import javacard.framework.Util;
+
 public class KMKeymintSpecification implements KMSpecification {
 
   public static final byte[] JAVACARD_KEYMINT_DEVICE = {
@@ -8,6 +13,19 @@ public class KMKeymintSpecification implements KMSpecification {
       0x44, 0x65, 0x76, 0x69, 0x63, 0x65,
   };
   private static final byte[] GOOGLE = {0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
+
+  private static final byte[] dec319999Ms ={(byte)0, (byte)0, (byte)0xE6, (byte)0x77,
+      (byte)0xD2, (byte)0x1F, (byte)0xD8, (byte)0x18};
+
+  private static final byte[] dec319999 = {
+      0x39, 0x39, 0x39, 0x39, 0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35,
+      0x39, 0x35, 0x39, 0x5a,
+  };
+
+  private static final byte[] jan01970 = {
+      0x37, 0x30, 0x30, 0x31, 0x30, 0x31, 0x30, 0x30, 0x30,
+      0x30, 0x30, 0x30, 0x5a,
+  };
 
   @Override
   public short getHardwareInfo() {
@@ -92,6 +110,54 @@ public class KMKeymintSpecification implements KMSpecification {
   @Override
   public boolean isFactoryAttestationSupported() {
     return false;
+  }
+
+  @Override
+  public KMAttestationCert makeCommonCert(short swParams, short hwParams, short keyParams,
+      byte[] scratchPad, KMSEProvider seProvider) {
+    short alg = KMKeyParameters.findTag(KMType.ENUM_TAG, KMType.ALGORITHM, keyParams);
+    boolean rsaCert = KMEnumTag.cast(alg).getValue() == KMType.RSA;
+    KMAttestationCert cert = KMAttestationCertImpl.instance(rsaCert, seProvider);
+
+    // Validity period must be specified
+    short notBefore = KMKeyParameters.findTag(KMType.DATE_TAG, KMType.CERTIFICATE_NOT_BEFORE, keyParams);
+    if(notBefore == KMType.INVALID_VALUE){
+      KMException.throwIt(KMError.MISSING_NOT_BEFORE);
+    }
+    notBefore = KMIntegerTag.cast(notBefore).getValue();
+    short notAfter = KMKeyParameters.findTag(KMType.DATE_TAG, KMType.CERTIFICATE_NOT_AFTER, keyParams);
+    if(notAfter == KMType.INVALID_VALUE ){
+      KMException.throwIt(KMError.MISSING_NOT_AFTER);
+    }
+    notAfter = KMIntegerTag.cast(notAfter).getValue();
+    // VTS sends notBefore == Epoch.
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 8, (byte) 0);
+    short epoch = KMInteger.instance(scratchPad, (short)0, (short)8);
+    short end = KMInteger.instance(dec319999Ms, (short)0, (short)dec319999Ms.length);
+    if(KMInteger.compare(notBefore, epoch) == 0){
+      cert.notBefore(KMByteBlob.instance(jan01970, (short)0, (short)jan01970.length),
+          true, scratchPad);
+    }else {
+      cert.notBefore(notBefore, false, scratchPad);
+    }
+    // VTS sends notAfter == Dec 31st 9999
+    if(KMInteger.compare(notAfter, end) == 0){
+      cert.notAfter(KMByteBlob.instance(dec319999, (short)0, (short)dec319999.length),
+          true, scratchPad);
+    }else {
+      cert.notAfter(notAfter, false, scratchPad);
+    }
+    // Serial number
+    short serialNum =
+        KMKeyParameters.findTag(KMType.BIGNUM_TAG, KMType.CERTIFICATE_SERIAL_NUM, keyParams);
+    if (serialNum != KMType.INVALID_VALUE) {
+      serialNum = KMBignumTag.cast(serialNum).getValue();
+    }else{
+      serialNum= KMByteBlob.instance((short)1);
+      KMByteBlob.cast(serialNum).add((short)0, (byte)1);
+    }
+    cert.serialNumber(serialNum);
+    return cert;
   }
 
   @Override

@@ -768,6 +768,12 @@ public interface KMSEProvider extends KMUpgradable {
    * @return length of the certificate chain.
    */
   short getProvisionedDataLength(byte dataType);
+  /**
+   * Returns the attestation key.
+   *
+   * @return Instance of the  KMAttestationKey.
+   */
+  KMAttestationKey getAttestationKey();
 
 
 }
