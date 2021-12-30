@@ -67,8 +67,8 @@ public class KMKeymasterSpecification implements KMSpecification {
   @Override
   public short concatParamsForAuthData(short keyBlobPtr, short hwParams, short swParams,
       short hiddenParams, short pubKey) {
-    short arrayLen = 2;
-    if (KMArray.cast(keyBlobPtr).length() == 5) {
+    short arrayLen = 3;
+    if (pubKey != KMType.INVALID_VALUE) {
       arrayLen = 4;
     }
     short params = KMArray.instance((short) arrayLen);
