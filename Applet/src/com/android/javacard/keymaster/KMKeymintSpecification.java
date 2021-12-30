@@ -197,4 +197,9 @@ public class KMKeymintSpecification implements KMSpecification {
   public short getMacFromVerificationToken(short verToken) {
 	return KMVerificationToken.cast(verToken).getMac((short)0x02);
   }
+
+  @Override
+  public boolean isAttestSupportedInImport() {
+	return true;
+  }
 }

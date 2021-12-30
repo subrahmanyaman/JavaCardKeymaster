@@ -193,4 +193,9 @@ public class KMKeymasterSpecification implements KMSpecification {
   public short getMacFromVerificationToken(short verToken) {
 	return KMVerificationToken.cast(verToken).getMac((short)0x04);
   }
+
+  @Override
+  public boolean isAttestSupportedInImport() {
+	return false;
+  }
 }

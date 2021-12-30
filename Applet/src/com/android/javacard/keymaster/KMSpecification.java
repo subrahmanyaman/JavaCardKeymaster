@@ -40,4 +40,6 @@ public interface KMSpecification {
   short getKMVerificationTokenExp();
   
   short getMacFromVerificationToken(short verToken);
+  
+  boolean isAttestSupportedInImport();
 }

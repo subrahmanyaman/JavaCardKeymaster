@@ -649,6 +649,7 @@ Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& k
     std::vector<uint8_t> cborOutData;
     ErrorCode errorCode = ErrorCode::UNKNOWN_ERROR;
     KeyCharacteristics keyCharacteristics;
+    std::vector<KeyParameter> emptyParameters;
     cppbor::Array subArray;
     // Send earlyBootEnded if there is any pending earlybootEnded event.
     handleSendEarlyBootEndedEvent();
@@ -662,6 +663,9 @@ Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& k
     array.add(static_cast<uint32_t>(keyFormat)); //javacard accepts only RAW.
   
     array.add(std::vector<uint8_t>(keyData));
+    array.add(std::vector<uint8_t>()); //dummy attest key blob
+    cborConverter_.addKeyparameters(array, emptyParameters); //empty attest key param
+    array.add(std::vector<uint8_t>()); //dummy issuer
     std::vector<uint8_t> cborData = array.encode();
 
     errorCode = sendData(Instruction::INS_IMPORT_KEY_CMD, cborData, cborOutData);
