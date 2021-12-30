@@ -179,4 +179,22 @@ public class KMKeymintSpecification implements KMSpecification {
   public boolean isKeyAgreementSupported() {
 	return true;
   }
+
+  @Override
+  public short getConfirmationToken(short confToken, short keyParams) {
+  if (0 == KMByteBlob.cast(confToken).length()) {
+	  KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+	}
+	return confToken;
+  }
+
+  @Override
+  public short getKMVerificationTokenExp() {
+	return KMVerificationToken.exp1();
+  }
+
+  @Override
+  public short getMacFromVerificationToken(short verToken) {
+	return KMVerificationToken.cast(verToken).getMac((short)0x02);
+  }
 }

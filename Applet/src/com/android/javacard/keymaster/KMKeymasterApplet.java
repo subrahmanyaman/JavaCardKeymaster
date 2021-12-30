@@ -524,7 +524,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     // passwordOnly
     KMArray.cast(cmd).add((short) 0, KMInteger.exp());
     // verification token
-    KMArray.cast(cmd).add((short) 1, KMVerificationToken.exp());
+    KMArray.cast(cmd).add((short) 1, specification.getKMVerificationTokenExp());
     return receiveIncoming(apdu, cmd);
   }
 
@@ -1656,7 +1656,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(cmd).add((short) 3, KMByteBlob.exp()); // signature
     short authToken = KMHardwareAuthToken.exp();
     KMArray.cast(cmd).add((short) 4, authToken); // auth token
-    short verToken = KMVerificationToken.exp();
+    short verToken = specification.getKMVerificationTokenExp();
     KMArray.cast(cmd).add((short) 5, verToken); // time stamp token
     KMArray.cast(cmd).add((short) 6, KMByteBlob.exp()); //confirmation token
     return receiveIncoming(apdu, cmd);
@@ -1709,7 +1709,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     // make response
     short keyParam = KMArray.instance((short) 0);
     keyParam = KMKeyParameters.instance(keyParam);
-    short resp = KMArray.instance((short) 2);
+    short resp = KMArray.instance((short) 3);
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
     KMArray.cast(resp).add((short) 1, keyParam);
     KMArray.cast(resp).add((short) 2, data[OUTPUT_DATA]);
@@ -2029,7 +2029,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     scratchPad[(short) (len + 3)] = TRUSTED_ENVIRONMENT;
     len += 4;
     // hmac the data
-    ptr = KMVerificationToken.cast(verToken).getMac();
+    ptr = specification.getMacFromVerificationToken(verToken);
 
     return seProvider.hmacVerify(
         seProvider.getComputedHmacKey(),
@@ -2042,7 +2042,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private void validateVerificationToken(short verToken, byte[] scratchPad) {
-    short ptr = KMVerificationToken.cast(verToken).getMac();
+    short ptr = specification.getMacFromVerificationToken(verToken);
     // If mac length is zero then token is empty.
     if (KMByteBlob.cast(ptr).length() == 0) {
       KMException.throwIt(KMError.INVALID_MAC_LENGTH);
@@ -2056,12 +2056,13 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   private short updateOperationCmd(APDU apdu){
     short cmd = KMArray.instance((short) 5);
     // Arguments
+    short keyParams = KMKeyParameters.exp();
     KMArray.cast(cmd).add((short) 0, KMInteger.exp());
-    KMArray.cast(cmd).add((short) 1, KMKeyParameters.exp());
+    KMArray.cast(cmd).add((short) 1, keyParams);
     KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());
     short authToken = KMHardwareAuthToken.exp();
     KMArray.cast(cmd).add((short) 3, authToken);
-    short verToken = KMVerificationToken.exp();
+    short verToken = specification.getKMVerificationTokenExp();
     KMArray.cast(cmd).add((short) 4, verToken);
     return receiveIncoming(apdu, cmd);
   }
@@ -2170,7 +2171,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(cmd).add((short) 1, KMByteBlob.exp());
     short authToken = KMHardwareAuthToken.exp();
     KMArray.cast(cmd).add((short) 2, authToken);
-    short verToken = KMVerificationToken.exp();
+    short verToken = specification.getKMVerificationTokenExp();
     KMArray.cast(cmd).add((short) 3, verToken);
     return receiveIncoming(apdu, cmd);
   }
@@ -2294,6 +2295,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
     KMTag.assertPresence(data[SB_PARAMETERS],KMType.ENUM_TAG,KMType.ALGORITHM,KMError.UNSUPPORTED_ALGORITHM);
     short algorithm = KMEnumTag.getValue(KMType.ALGORITHM,data[SB_PARAMETERS]);
+    
+    //TODO should be removed for keymint
     // If Blob usage tag is present in key characteristics then it should be standalone.
     if(KMTag.isPresent(data[SB_PARAMETERS],KMType.ENUM_TAG, KMType.BLOB_USAGE_REQ)){
       if(KMEnumTag.getValue(KMType.BLOB_USAGE_REQ, data[SB_PARAMETERS]) != KMType.STANDALONE){
@@ -4602,29 +4605,17 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private void finishTrustedConfirmationOperation(KMOperationState op) {
-    // Perform trusted confirmation if required 
-    if (op.isTrustedConfirmationRequired()) {
-		
-      //data[KEY_PARAMETERS] will be invalid for keymint HAL
-      if(data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
-        data[CONFIRMATION_TOKEN] =
-          KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.CONFIRMATION_TOKEN, data[KEY_PARAMETERS]);
-        if (data[CONFIRMATION_TOKEN] == KMType.INVALID_VALUE) {
-          KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-        }
-        data[CONFIRMATION_TOKEN] = KMByteTag.cast(data[CONFIRMATION_TOKEN]).getValue();
-      }
-      if (0 == KMByteBlob.cast(data[CONFIRMATION_TOKEN]).length()) {
-        KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-      }
-      boolean verified = op.getTrustedConfirmationSigner().verify(KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
-        KMByteBlob.cast(data[INPUT_DATA]).getStartOff(), KMByteBlob.cast(data[INPUT_DATA]).length(),
-        KMByteBlob.cast(data[CONFIRMATION_TOKEN]).getBuffer(),
-        KMByteBlob.cast(data[CONFIRMATION_TOKEN]).getStartOff(),
-        KMByteBlob.cast(data[CONFIRMATION_TOKEN]).length());
-        if (!verified) {
-	  KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-        }
-    }
+	// Perform trusted confirmation if required
+	if (op.isTrustedConfirmationRequired()) {	
+	  short confToken = specification.getConfirmationToken(data[CONFIRMATION_TOKEN], data[KEY_PARAMETERS]);	
+	  boolean verified = op.getTrustedConfirmationSigner().verify(KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
+	    KMByteBlob.cast(data[INPUT_DATA]).getStartOff(), KMByteBlob.cast(data[INPUT_DATA]).length(),
+		KMByteBlob.cast(confToken).getBuffer(),
+		KMByteBlob.cast(confToken).getStartOff(),
+		KMByteBlob.cast(confToken).length());
+	  if (!verified) {
+		KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+	  }
+	}
   }
 }

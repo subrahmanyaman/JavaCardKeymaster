@@ -59,16 +59,10 @@ class CborConverter
             std::tie(item, pos, message) = parse(response);
 
             if(item != nullptr && hasErrorCode) {
-                if(MajorType::ARRAY == getType(item)) {
-                    if(!getErrorCode(item, 0, errorCode))
-                        item = nullptr;
-                } else if (MajorType::UINT == getType(item)) {
-                    uint64_t err;
-                    if(getUint64(item, err)) {
-                        errorCode = static_cast<T>(err);
-                    }
-                    item = nullptr; /*Already read the errorCode. So no need of sending item to client */
-                }
+		if(MajorType::ARRAY == getType(item)) {
+		    if(!getErrorCode(item, 0, errorCode))
+		       return {nullptr, T::UNKNOWN_ERROR};
+		}        
             }
             return {std::move(item), errorCode};
         }

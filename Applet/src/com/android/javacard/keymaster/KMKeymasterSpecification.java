@@ -174,4 +174,23 @@ public class KMKeymasterSpecification implements KMSpecification {
     return ptr;
   }
 
+  @Override
+  public short getConfirmationToken(short confToken, short keyParams) {
+    short cToken =
+	    KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.CONFIRMATION_TOKEN, keyParams);
+    if (cToken == KMType.INVALID_VALUE) {
+      KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+    }
+    return KMByteTag.cast(cToken).getValue();
+  }
+
+  @Override
+  public short getKMVerificationTokenExp() {
+	return KMVerificationToken.exp2();
+  }
+
+  @Override
+  public short getMacFromVerificationToken(short verToken) {
+	return KMVerificationToken.cast(verToken).getMac((short)0x04);
+  }
 }

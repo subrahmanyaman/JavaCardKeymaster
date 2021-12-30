@@ -34,4 +34,10 @@ public interface KMSpecification {
   short getIssuer();
   
   boolean isKeyAgreementSupported();
+  
+  short getConfirmationToken(short confToken, short keyParams);
+  
+  short getKMVerificationTokenExp();
+  
+  short getMacFromVerificationToken(short verToken);
 }
