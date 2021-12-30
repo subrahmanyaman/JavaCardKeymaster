@@ -819,10 +819,14 @@ Return<void> JavacardKeymaster4Device::attestKey(const hidl_vec<uint8_t>& keyToA
     hidl_vec<uint8_t> keyBlob;
     std::vector<uint8_t> cborOutData;
     hidl_vec<hidl_vec<uint8_t>> certChain;
+    std::vector<KeyParameter> emptyParameters;
     ErrorCode errorCode = ErrorCode::UNKNOWN_ERROR;
 
     array.add(std::vector<uint8_t>(keyToAttest));
     cborConverter_.addKeyparameters(array, attestParams);
+    array.add(std::vector<uint8_t>()); // Empty attest keyblob
+    cborConverter_.addKeyparameters(array, emptyParameters); // Empty paramters.
+    array.add(std::vector<uint8_t>()); // Empty attest issuer.
     std::vector<uint8_t> cborData = array.encode();
     errorCode = sendData(Instruction::INS_ATTEST_KEY_CMD, cborData, cborOutData);
 

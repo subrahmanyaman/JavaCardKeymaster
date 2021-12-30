@@ -1,5 +1,8 @@
 package com.android.javacard.keymaster;
 
+import com.android.javacard.seprovider.KMAttestationCert;
+import com.android.javacard.seprovider.KMSEProvider;
+
 public interface KMSpecification {
 
   short getHardwareInfo();
@@ -20,6 +23,9 @@ public interface KMSpecification {
   short concatParamsForAuthData(short arrPtr, short hwParams, short swParams, short hiddenParams, short pubKey);
 
   boolean isFactoryAttestationSupported();
+
+  KMAttestationCert makeCommonCert(short swParams, short hwParams, short keyParams,
+      byte[] scratchPad, KMSEProvider seProvider);
 
   short getNotAfter(short params);
 

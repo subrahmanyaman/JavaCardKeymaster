@@ -17,6 +17,7 @@ package com.android.javacard.keymaster;
 
 import com.android.javacard.seprovider.KMAESKey;
 import com.android.javacard.seprovider.KMAttestationCert;
+import com.android.javacard.seprovider.KMAttestationKey;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import com.android.javacard.seprovider.KMMasterKey;
@@ -147,6 +148,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
   private static byte   certMode;
   private static short certAttestKeySecret;
   private static short certAttestKeyRsaPubModulus;
+  private static KMAttestationKey factoryAttestKey;
   private static boolean certRsaSign;
   private static final byte SERIAL_NUM_MAX_LEN = 20;
   private static final byte SUBJECT_NAME_MAX_LEN = 32;
@@ -200,6 +202,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
     issuer = KMType.INVALID_VALUE;
     subjectName = KMType.INVALID_VALUE;
     serialNum = KMType.INVALID_VALUE;
+    factoryAttestKey = null;
   }
 
   @Override
@@ -238,8 +241,9 @@ public class KMAttestationCertImpl implements KMAttestationCert {
   }
 
   @Override
-  public KMAttestationCert notAfter(short usageExpiryTimeObj, boolean derEncoded, byte[] scratchPad) {
-    if(!derEncoded) {
+  public KMAttestationCert notAfter(short usageExpiryTimeObj, boolean derEncoded,
+      byte[] scratchPad) {
+    if (!derEncoded) {
       if (usageExpiryTimeObj != KMType.INVALID_VALUE) {
         // compare if the expiry time is greater then 2051 then use generalized
         // time format else use utc time format.
@@ -255,10 +259,11 @@ public class KMAttestationCertImpl implements KMAttestationCert {
       } else {
         //notAfter = certExpirtyTimeObj;
       }
-    }else{
-      notAfter = KMByteBlob.instance(KMByteBlob.cast(usageExpiryTimeObj).getBuffer(),
-          KMByteBlob.cast(usageExpiryTimeObj).getStartOff(),
-          KMByteBlob.cast(usageExpiryTimeObj).length());
+    } else {
+      // notAfter = KMByteBlob.instance(KMByteBlob.cast(usageExpiryTimeObj).getBuffer(),
+      //     KMByteBlob.cast(usageExpiryTimeObj).getStartOff(),
+      //     KMByteBlob.cast(usageExpiryTimeObj).length());
+      notAfter = usageExpiryTimeObj;
     }
     return this;
   }
@@ -873,7 +878,8 @@ public class KMAttestationCertImpl implements KMAttestationCert {
   }
 
 
-  public void build(short attSecret, short attMod, boolean rsaSign, boolean fakeCert) {
+  public void build(KMAttestationKey factoryAttestKey, short attSecret, short attMod,
+      boolean rsaSign, boolean fakeCert) {
     stackPtr = (short)(bufStart + bufLength);
     short last = stackPtr;
     short sigLen = 0;
@@ -901,7 +907,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
     tbsStart = stackPtr;
     tbsLength = (short) (tbsLength - tbsStart);
     KMJCardSimulator provider = KMJCardSimulator.getInstance();
-    if(attSecret != KMType.INVALID_VALUE){
+    if(attSecret != KMType.INVALID_VALUE || factoryAttestKey != null) {
       // Sign with the attestation key
       // The pubKey is the modulus.
       if (rsaSign) {
@@ -919,6 +925,16 @@ public class KMAttestationCertImpl implements KMAttestationCert {
                 stack,
                 signatureOffset);
         if(sigLen > RSA_SIG_LEN) KMException.throwIt(KMError.UNKNOWN_ERROR);
+      } else if (factoryAttestKey != null) {
+        sigLen = provider
+            .ecSign256(
+                factoryAttestKey,
+                stack,
+                tbsStart,
+                tbsLength,
+                stack,
+                signatureOffset);
+        if (sigLen > ECDSA_MAX_SIG_LEN) KMException.throwIt(KMError.UNKNOWN_ERROR);
       } else {
         sigLen = provider
             .ecSign256(
@@ -935,7 +951,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
       // Adjust signature length
       stackPtr = signatureOffset;
       pushBitStringHeader((byte) 0, sigLen);
-    }else if(!fakeCert){ // no attestation key provisioned in the factory
+    } else if(!fakeCert) { // no attestation key provisioned in the factory
         KMException.throwIt(KMError.ATTESTATION_KEYS_NOT_PROVISIONED);
     }
     last = (short)(signatureOffset+sigLen);
@@ -950,10 +966,12 @@ public class KMAttestationCertImpl implements KMAttestationCert {
 
   @Override
   public void build() {
-    if(certMode == KMType.FAKE_CERT) {
-      build(KMType.INVALID_VALUE, KMType.INVALID_VALUE, true, true);
-    }else {
-      build(certAttestKeySecret, certAttestKeyRsaPubModulus, certRsaSign, false);
+    if (certMode == KMType.FAKE_CERT) {
+      build(null, KMType.INVALID_VALUE, KMType.INVALID_VALUE, true, true);
+    } else if (certMode == KMType.FACTORY_PROVISIONED_ATTEST_CERT) {
+      build(factoryAttestKey, KMType.INVALID_VALUE, KMType.INVALID_VALUE, false, false);
+    } else {
+      build(null, certAttestKeySecret, certAttestKeyRsaPubModulus, certRsaSign, false);
     }
   }
 
@@ -1046,6 +1064,12 @@ public class KMAttestationCertImpl implements KMAttestationCert {
     certAttestKeySecret = attestPrivExp;
     certAttestKeyRsaPubModulus = attestMod;
     certRsaSign = true;
+    return this;
+  }
+
+  public KMAttestationCert factoryAttestKey(KMAttestationKey key, byte mode) {
+    certMode = mode;
+    factoryAttestKey = key;
     return this;
   }
 

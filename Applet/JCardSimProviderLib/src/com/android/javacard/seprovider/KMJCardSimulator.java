@@ -1573,6 +1573,7 @@ public class KMJCardSimulator implements KMSEProvider {
    *
    * @return Instance of the  KMAttestationKey.
    */
+  @Override
   public KMAttestationKey getAttestationKey() {
     return (KMAttestationKey) attestationKey;
   }
