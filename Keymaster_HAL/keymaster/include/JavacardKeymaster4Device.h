@@ -91,6 +91,8 @@ enum class Instruction {
     INS_DEVICE_LOCKED_CMD = INS_END_KM_PROVISION_CMD+20,
     INS_EARLY_BOOT_ENDED_CMD = INS_END_KM_PROVISION_CMD+21,
     INS_GET_CERT_CHAIN_CMD = INS_END_KM_PROVISION_CMD+22,
+    INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = INS_END_KM_PROVISION_CMD+24,
+    INS_FINISH_IMPORT_WRAPPED_KEY_CMD = INS_END_KM_PROVISION_CMD+25,
     INS_GET_PROVISION_STATUS_CMD = INS_BEGIN_KM_CMD+7,
     INS_SET_VERSION_PATCHLEVEL_CMD = INS_END_KM_PROVISION_CMD+26,
 };
@@ -127,6 +129,17 @@ class JavacardKeymaster4Device : public IKeymasterDevice {
     Return<V41ErrorCode> earlyBootEnded() override;
 
   private:
+  std::tuple<std::unique_ptr<Item>, ErrorCode> sendFinishImportWrappedKeyCmd(
+    const std::vector<KeyParameter>& keyParams, KeyFormat keyFormat,
+    const std::vector<uint8_t>& secureKey, const std::vector<uint8_t>& tag,
+    const std::vector<uint8_t>& iv, const std::vector<uint8_t>& wrappedKeyDescription,
+    int64_t passwordSid, int64_t biometricSid);
+
+    std::tuple<std::unique_ptr<Item>, ErrorCode> sendBeginImportWrappedKeyCmd(const std::vector<uint8_t>& transitKey,
+                                                    const std::vector<uint8_t>& wrappingKeyBlob,
+                                                    const std::vector<uint8_t>& maskingKey,
+                                                    const std::vector<KeyParameter>& unwrappingParams);
+
     ErrorCode handleBeginPublicKeyOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
                                             const hidl_vec<KeyParameter>& inParams,
                                             hidl_vec<KeyParameter>& outParams,

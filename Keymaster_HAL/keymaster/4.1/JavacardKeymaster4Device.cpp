@@ -690,6 +690,61 @@ Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& k
     return Void();
 }
 
+std::tuple<std::unique_ptr<Item>, ErrorCode>
+JavacardKeymaster4Device::sendBeginImportWrappedKeyCmd(const std::vector<uint8_t>& transitKey,
+                                                    const std::vector<uint8_t>& wrappingKeyBlob,
+                                                    const std::vector<uint8_t>& maskingKey,
+                                                    const std::vector<KeyParameter>& unwrappingParams) {
+    Array request;
+    std::unique_ptr<Item> item;
+    ErrorCode errorCode;
+    std::vector<uint8_t> cborOutData;
+    std::vector<uint8_t> cborInputData;
+    request.add(std::vector<uint8_t>(transitKey));
+    request.add(std::vector<uint8_t>(wrappingKeyBlob));
+    request.add(std::vector<uint8_t>(maskingKey));
+    cborConverter_.addKeyparameters(request, unwrappingParams);
+    cborInputData = request.encode();
+    errorCode = sendData(Instruction::INS_BEGIN_IMPORT_WRAPPED_KEY_CMD, cborInputData, cborOutData);
+    if (errorCode != ErrorCode::OK) {
+        return {nullptr, ErrorCode::UNKNOWN_ERROR};
+    }
+     //Skip last 2 bytes in cborData, it contains status.
+    return decodeData(cborConverter_, std::vector<uint8_t>(cborOutData.begin(), cborOutData.end()-2),
+            true, oprCtx_);
+    //return card_->sendRequest(Instruction::INS_BEGIN_IMPORT_WRAPPED_KEY_CMD, request);
+}
+
+std::tuple<std::unique_ptr<Item>, ErrorCode>
+JavacardKeymaster4Device::sendFinishImportWrappedKeyCmd(
+    const std::vector<KeyParameter>& keyParams, KeyFormat keyFormat,
+    const std::vector<uint8_t>& secureKey, const std::vector<uint8_t>& tag,
+    const std::vector<uint8_t>& iv, const std::vector<uint8_t>& wrappedKeyDescription,
+    int64_t passwordSid, int64_t biometricSid) {
+    Array request;
+    ErrorCode errorCode;
+    std::vector<uint8_t> cborOutData;
+    std::vector<uint8_t> cborInputData;
+    cborConverter_.addKeyparameters(request, keyParams);
+    request.add(static_cast<uint64_t>(keyFormat));
+    request.add(std::vector<uint8_t>(secureKey));
+    request.add(std::vector<uint8_t>(tag));
+    request.add(std::vector<uint8_t>(iv));
+    request.add(std::vector<uint8_t>(wrappedKeyDescription));
+    request.add(Uint(passwordSid));
+    request.add(Uint(biometricSid));
+    cborInputData = request.encode();
+    errorCode = sendData(Instruction::INS_FINISH_IMPORT_WRAPPED_KEY_CMD, cborInputData, cborOutData);
+    if (errorCode != ErrorCode::OK) {
+        return {nullptr, ErrorCode::UNKNOWN_ERROR};
+    }
+     //Skip last 2 bytes in cborData, it contains status.
+    return decodeData(cborConverter_, std::vector<uint8_t>(cborOutData.begin(), cborOutData.end()-2),
+            true, oprCtx_);
+    //return card_->sendRequest(Instruction::INS_FINISH_IMPORT_WRAPPED_KEY_CMD, request);
+}
+
+
 Return<void> JavacardKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t>& wrappedKeyData, const hidl_vec<uint8_t>& wrappingKeyBlob, const hidl_vec<uint8_t>& maskingKey, const hidl_vec<KeyParameter>& unwrappingParams, uint64_t passwordSid, uint64_t biometricSid, importWrappedKey_cb _hidl_cb) {
     cppbor::Array array;
     std::unique_ptr<Item> item;
@@ -712,6 +767,32 @@ Return<void> JavacardKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t>&
         _hidl_cb(errorCode, keyBlob, keyCharacteristics);
         return Void();
     }
+    // begin import
+    std::tie(item, errorCode) =
+        sendBeginImportWrappedKeyCmd(transitKey, wrappingKeyBlob, maskingKey, unwrappingParams);
+    if (errorCode != ErrorCode::OK) {
+        LOG(ERROR) << "Error in send begin import wrapped key in importWrappedKey.";
+        _hidl_cb(errorCode, keyBlob, keyCharacteristics);
+        return Void();
+    }
+    // Finish the import
+    std::tie(item, errorCode) = sendFinishImportWrappedKeyCmd(
+        authList, keyFormat, secureKey, tag, iv, wrappedKeyDescription, passwordSid, biometricSid);
+    if (errorCode != ErrorCode::OK) {
+        LOG(ERROR) << "Error in send finish import wrapped key in importWrappedKey.";
+        _hidl_cb(errorCode, keyBlob, keyCharacteristics);
+        return Void();
+    }
+    if (!cborConverter_.getBinaryArray(item, 1, keyBlob) ||
+        !cborConverter_.getKeyCharacteristics(item, 2, keyCharacteristics)) {
+        LOG(ERROR) << "Error in decoding the response in importWrappedKey.";
+        keyBlob.setToExternal(nullptr, 0);
+        keyCharacteristics.softwareEnforced.setToExternal(nullptr, 0);
+        keyCharacteristics.hardwareEnforced.setToExternal(nullptr, 0);
+        _hidl_cb(ErrorCode::UNKNOWN_ERROR, keyBlob, keyCharacteristics);
+        return Void();
+    }
+#if 0
     cborConverter_.addKeyparameters(array, authList);
     array.add(static_cast<uint64_t>(keyFormat));
     array.add(secureKey);
@@ -744,6 +825,7 @@ Return<void> JavacardKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t>&
             }
         }
     }
+#endif
     _hidl_cb(errorCode, keyBlob, keyCharacteristics);
     return Void();
 }
