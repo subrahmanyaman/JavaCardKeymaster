@@ -66,11 +66,6 @@ public class KMKeymasterSpecification implements KMSpecification {
   }
 
   @Override
-  public boolean isProvisionedAttestKeysSupported() {
-    return false;
-  }
-
-  @Override
   public boolean canCreateEarlyBootKeys() {
     return false;
   }
@@ -105,8 +100,7 @@ public class KMKeymasterSpecification implements KMSpecification {
   @Override
   public KMAttestationCert makeCommonCert(short swParams, short hwParams, short keyParams,
       byte[] scratchPad, KMSEProvider seProvider) {
-    short alg = KMKeyParameters.findTag(KMType.ENUM_TAG, KMType.ALGORITHM, hwParams);
-    boolean rsaCert = KMEnumTag.cast(alg).getValue() == KMType.RSA;
+    boolean rsaCert = (KMEnumTag.getValue(KMType.ALGORITHM, hwParams) == KMType.RSA);
     KMAttestationCert cert = KMAttestationCertImpl.instance(rsaCert, seProvider);
     // notBefore
     short notBefore =
@@ -142,23 +136,8 @@ public class KMKeymasterSpecification implements KMSpecification {
   }
 
   @Override
-  public short getNotAfter(short params) {
-    return 0;
-  }
-
-  @Override
-  public short getNotBefore(short params) {
-    return 0;
-  }
-
-  @Override
-  public short getIssuer() {
-    return 0;
-  }
-
-  @Override
   public boolean isKeyAgreementSupported() {
-	return false;
+    return false;
   }
 
   private short getProvisionedCertificateData(KMSEProvider kmseProvider, byte dataType) {
@@ -177,7 +156,7 @@ public class KMKeymasterSpecification implements KMSpecification {
   @Override
   public short getConfirmationToken(short confToken, short keyParams) {
     short cToken =
-	    KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.CONFIRMATION_TOKEN, keyParams);
+        KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.CONFIRMATION_TOKEN, keyParams);
     if (cToken == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.NO_USER_CONFIRMATION);
     }
@@ -186,16 +165,16 @@ public class KMKeymasterSpecification implements KMSpecification {
 
   @Override
   public short getKMVerificationTokenExp() {
-	return KMVerificationToken.exp2();
+    return KMVerificationToken.exp2();
   }
 
   @Override
   public short getMacFromVerificationToken(short verToken) {
-	return KMVerificationToken.cast(verToken).getMac((short)0x04);
+    return KMVerificationToken.cast(verToken).getMac((short) 0x04);
   }
 
   @Override
-  public boolean isAttestSupportedInImport() {
-	return false;
+  public short getMgf1Digest(short keyParams, short hwParams) {
+    return KMType.SHA1;
   }
 }

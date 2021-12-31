@@ -2507,28 +2507,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
             && op.getDigest() == KMType.DIGEST_NONE) {
           KMException.throwIt(KMError.INCOMPATIBLE_DIGEST);
         }
-        //TODO d to verify whether javacard support MGF1 = SHA1 or is it equal to the OAEP scheme
-        // digest. There is no way to define any other digest.
-        if(param == KMType.RSA_OAEP){
-          short mgfDigest = KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG,
-              KMType.RSA_OAEP_MGF_DIGEST, data[KEY_PARAMETERS]);
-          if(mgfDigest != KMType.INVALID_VALUE) {
-            if(KMEnumArrayTag.cast(mgfDigest).length() != 1) {
-              KMException.throwIt(KMError.INVALID_ARGUMENT);
-            }
-            mgfDigest = KMEnumArrayTag.cast(mgfDigest).get((short) 0);
-            if (mgfDigest == KMType.DIGEST_NONE) {
-              KMException.throwIt(KMError.UNSUPPORTED_MGF_DIGEST);
-            }
-            if (!KMEnumArrayTag
-                .contains(KMType.RSA_OAEP_MGF_DIGEST, mgfDigest, data[HW_PARAMETERS])) {
-              KMException.throwIt(KMError.INCOMPATIBLE_MGF_DIGEST);
-            }
-            if (mgfDigest != KMType.SHA1 && mgfDigest != KMType.SHA2_256) {
-              KMException.throwIt(KMError.UNSUPPORTED_MGF_DIGEST);
-            }
-            op.setMgfDigest((byte) mgfDigest);
-          }
+        if(param == KMType.RSA_OAEP) {
+          op.setMgfDigest(
+              (byte) specification.getMgf1Digest(data[KEY_PARAMETERS], data[HW_PARAMETERS]));
         }
         op.setPadding((byte) param);
         break;
@@ -3306,16 +3287,12 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         break;
     }
     makeKeyCharacteristics( scratchPad);
-    if(specification.isAttestSupportedInImport()) {
-      generateAttestation(data[ATTEST_KEY_BLOB], data[ATTEST_KEY_PARAMS],scratchPad);
-    }
     createEncryptedKeyBlob(scratchPad);
     // prepare the response
-    short resp = KMArray.instance((short) 4);
+    short resp = KMArray.instance((short) 3);
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
     KMArray.cast(resp).add((short) 1, data[KEY_BLOB]);
     KMArray.cast(resp).add((short) 2, data[KEY_CHARACTERISTICS]);
-    KMArray.cast(resp).add((short) 3, data[CERTIFICATE]);
     sendOutgoing(apdu, resp);
   }
 
@@ -3855,9 +3832,13 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     if (data[APP_DATA] != KMTag.INVALID_VALUE) {
       data[APP_DATA] = KMByteTag.cast(data[APP_DATA]).getValue();
     }
-
     // parse key blob
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
+    // The key which is being attested should be asymmetric i.e. RSA or EC
+    short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]);
+    if (alg != KMType.RSA && alg != KMType.EC) {
+      KMException.throwIt(KMError.INCOMPATIBLE_ALGORITHM);
+    }
     // Build certificate
     generateAttestation(data[ATTEST_KEY_BLOB], data[ATTEST_KEY_PARAMS], scratchPad);
 

@@ -14,8 +14,8 @@ public class KMKeymintSpecification implements KMSpecification {
   };
   private static final byte[] GOOGLE = {0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
 
-  private static final byte[] dec319999Ms ={(byte)0, (byte)0, (byte)0xE6, (byte)0x77,
-      (byte)0xD2, (byte)0x1F, (byte)0xD8, (byte)0x18};
+  private static final byte[] dec319999Ms = {(byte) 0, (byte) 0, (byte) 0xE6, (byte) 0x77,
+      (byte) 0xD2, (byte) 0x1F, (byte) 0xD8, (byte) 0x18};
 
   private static final byte[] dec319999 = {
       0x39, 0x39, 0x39, 0x39, 0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35,
@@ -77,11 +77,6 @@ public class KMKeymintSpecification implements KMSpecification {
   }
 
   @Override
-  public boolean isProvisionedAttestKeysSupported() {
-    return false;
-  }
-
-  @Override
   public boolean canCreateEarlyBootKeys() {
     return false;
   }
@@ -120,31 +115,33 @@ public class KMKeymintSpecification implements KMSpecification {
     KMAttestationCert cert = KMAttestationCertImpl.instance(rsaCert, seProvider);
 
     // Validity period must be specified
-    short notBefore = KMKeyParameters.findTag(KMType.DATE_TAG, KMType.CERTIFICATE_NOT_BEFORE, keyParams);
-    if(notBefore == KMType.INVALID_VALUE){
+    short notBefore = KMKeyParameters.findTag(KMType.DATE_TAG, KMType.CERTIFICATE_NOT_BEFORE,
+        keyParams);
+    if (notBefore == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.MISSING_NOT_BEFORE);
     }
     notBefore = KMIntegerTag.cast(notBefore).getValue();
-    short notAfter = KMKeyParameters.findTag(KMType.DATE_TAG, KMType.CERTIFICATE_NOT_AFTER, keyParams);
-    if(notAfter == KMType.INVALID_VALUE ){
+    short notAfter = KMKeyParameters.findTag(KMType.DATE_TAG, KMType.CERTIFICATE_NOT_AFTER,
+        keyParams);
+    if (notAfter == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.MISSING_NOT_AFTER);
     }
     notAfter = KMIntegerTag.cast(notAfter).getValue();
     // VTS sends notBefore == Epoch.
     Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 8, (byte) 0);
-    short epoch = KMInteger.instance(scratchPad, (short)0, (short)8);
-    short end = KMInteger.instance(dec319999Ms, (short)0, (short)dec319999Ms.length);
-    if(KMInteger.compare(notBefore, epoch) == 0){
-      cert.notBefore(KMByteBlob.instance(jan01970, (short)0, (short)jan01970.length),
+    short epoch = KMInteger.instance(scratchPad, (short) 0, (short) 8);
+    short end = KMInteger.instance(dec319999Ms, (short) 0, (short) dec319999Ms.length);
+    if (KMInteger.compare(notBefore, epoch) == 0) {
+      cert.notBefore(KMByteBlob.instance(jan01970, (short) 0, (short) jan01970.length),
           true, scratchPad);
-    }else {
+    } else {
       cert.notBefore(notBefore, false, scratchPad);
     }
     // VTS sends notAfter == Dec 31st 9999
-    if(KMInteger.compare(notAfter, end) == 0){
-      cert.notAfter(KMByteBlob.instance(dec319999, (short)0, (short)dec319999.length),
+    if (KMInteger.compare(notAfter, end) == 0) {
+      cert.notAfter(KMByteBlob.instance(dec319999, (short) 0, (short) dec319999.length),
           true, scratchPad);
-    }else {
+    } else {
       cert.notAfter(notAfter, false, scratchPad);
     }
     // Serial number
@@ -152,54 +149,57 @@ public class KMKeymintSpecification implements KMSpecification {
         KMKeyParameters.findTag(KMType.BIGNUM_TAG, KMType.CERTIFICATE_SERIAL_NUM, keyParams);
     if (serialNum != KMType.INVALID_VALUE) {
       serialNum = KMBignumTag.cast(serialNum).getValue();
-    }else{
-      serialNum= KMByteBlob.instance((short)1);
-      KMByteBlob.cast(serialNum).add((short)0, (byte)1);
+    } else {
+      serialNum = KMByteBlob.instance((short) 1);
+      KMByteBlob.cast(serialNum).add((short) 0, (byte) 1);
     }
     cert.serialNumber(serialNum);
     return cert;
   }
 
   @Override
-  public short getNotAfter(short params) {
-    return 0;
-  }
-
-  @Override
-  public short getNotBefore(short params) {
-    return 0;
-  }
-
-  @Override
-  public short getIssuer() {
-    return 0;
+  public short getMgf1Digest(short keyParams, short hwParams) {
+    short mgfDigest = KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG,
+        KMType.RSA_OAEP_MGF_DIGEST, keyParams);
+    if (mgfDigest != KMType.INVALID_VALUE) {
+      if (KMEnumArrayTag.cast(mgfDigest).length() != 1) {
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
+      }
+      mgfDigest = KMEnumArrayTag.cast(mgfDigest).get((short) 0);
+      if (mgfDigest == KMType.DIGEST_NONE) {
+        KMException.throwIt(KMError.UNSUPPORTED_MGF_DIGEST);
+      }
+      if (!KMEnumArrayTag
+          .contains(KMType.RSA_OAEP_MGF_DIGEST, mgfDigest, hwParams)) {
+        KMException.throwIt(KMError.INCOMPATIBLE_MGF_DIGEST);
+      }
+      if (mgfDigest != KMType.SHA1 && mgfDigest != KMType.SHA2_256) {
+        KMException.throwIt(KMError.UNSUPPORTED_MGF_DIGEST);
+      }
+    }
+    return mgfDigest;
   }
 
   @Override
   public boolean isKeyAgreementSupported() {
-	return true;
+    return true;
   }
 
   @Override
   public short getConfirmationToken(short confToken, short keyParams) {
-  if (0 == KMByteBlob.cast(confToken).length()) {
-	  KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-	}
-	return confToken;
+    if (0 == KMByteBlob.cast(confToken).length()) {
+      KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+    }
+    return confToken;
   }
 
   @Override
   public short getKMVerificationTokenExp() {
-	return KMVerificationToken.exp1();
+    return KMVerificationToken.exp1();
   }
 
   @Override
   public short getMacFromVerificationToken(short verToken) {
-	return KMVerificationToken.cast(verToken).getMac((short)0x02);
-  }
-
-  @Override
-  public boolean isAttestSupportedInImport() {
-	return true;
+    return KMVerificationToken.cast(verToken).getMac((short) 0x02);
   }
 }

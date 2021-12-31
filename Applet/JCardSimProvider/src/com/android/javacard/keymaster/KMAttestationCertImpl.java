@@ -338,7 +338,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
 //TODO Serial number, X509Version needa to be passed as parameter
   private static void pushTbsCert(boolean rsaCert, boolean rsa) {
     short last = stackPtr;
-    if(certMode == KMType.ATTESTATION_CERT) {
+    if(certMode == KMType.ATTESTATION_CERT || certMode == KMType.FACTORY_PROVISIONED_ATTEST_CERT) {
       pushExtensions();
     }
     // subject public key info

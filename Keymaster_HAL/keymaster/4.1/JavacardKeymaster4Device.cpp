@@ -1351,6 +1351,9 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
                 cborConverter_.addKeyparameters(array, finishParams);
                 array.add(data);
                 array.add(std::vector<uint8_t>(signature));
+                cborConverter_.addHardwareAuthToken(array, authToken);
+                cborConverter_.addVerificationToken(array, verificationToken, asn1ParamsVerified);
+                array.add(std::vector<uint8_t>(confToken));
                 ins = Instruction::INS_FINISH_OPERATION_CMD;
                 keyParamPos = 1;
                 outputPos = 2;
@@ -1361,13 +1364,12 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
                 }
                 cborConverter_.addKeyparameters(array, inParams);
                 array.add(data);
+                cborConverter_.addHardwareAuthToken(array, authToken);
+                cborConverter_.addVerificationToken(array, verificationToken, asn1ParamsVerified);
                 ins = Instruction::INS_UPDATE_OPERATION_CMD;
                 keyParamPos = 2;
                 outputPos = 1;
             }
-            cborConverter_.addHardwareAuthToken(array, authToken);
-            cborConverter_.addVerificationToken(array, verificationToken, asn1ParamsVerified);
-            array.add(std::vector<uint8_t>(confToken));
             std::vector<uint8_t> cborData = array.encode();
             errorCode = sendData(ins, cborData, cborOutData);
 

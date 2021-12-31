@@ -14,8 +14,6 @@ public interface KMSpecification {
 
   short getKeyCharacteristicsExp();
 
-  boolean isProvisionedAttestKeysSupported();
-
   boolean canCreateEarlyBootKeys();
 
   short getHardwareParamters(short sbParams, short teeParams);
@@ -27,12 +25,6 @@ public interface KMSpecification {
   KMAttestationCert makeCommonCert(short swParams, short hwParams, short keyParams,
       byte[] scratchPad, KMSEProvider seProvider);
 
-  short getNotAfter(short params);
-
-  short getNotBefore(short params);
-
-  short getIssuer();
-  
   boolean isKeyAgreementSupported();
   
   short getConfirmationToken(short confToken, short keyParams);
@@ -40,6 +32,6 @@ public interface KMSpecification {
   short getKMVerificationTokenExp();
   
   short getMacFromVerificationToken(short verToken);
-  
-  boolean isAttestSupportedInImport();
+
+  short getMgf1Digest(short keyParams, short hwParams);
 }
