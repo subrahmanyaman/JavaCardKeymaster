@@ -1766,6 +1766,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       if (op.getPurpose() == KMType.DECRYPT && (len < (short) (op.getMacLength() / 8))) {
         KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
       }
+      // update aad if there is any
+      updateAAD(op, KMType.INVALID_VALUE, (byte) 0x01);
       if(op.isAesGcmUpdateAllowed()){
         op.setAesGcmUpdateComplete();
       }
@@ -2206,7 +2208,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   		 if (!op.isAesGcmUpdateAllowed()) {
   	        KMException.throwIt(KMError.INVALID_TAG);
   	     }
-  	     aData = KMByteTag.cast(tmpVariables[1]).getValue();
+  	     aData = KMByteTag.cast(tag).getValue();
   	  }
   	}
   	try {
