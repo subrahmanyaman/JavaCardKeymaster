@@ -191,4 +191,6 @@ public interface KMAttestationCert {
    */
   KMAttestationCert rsaAttestKey(short attestPrivExp, short attestMod, byte mode);
 
+  KMAttestationCert factoryAttestKey(KMAttestationKey key, byte mode);
+
 }

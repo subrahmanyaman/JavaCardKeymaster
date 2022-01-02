@@ -22,6 +22,10 @@ package com.android.javacard.seprovider;
  * can be only one provider in the applet package.
  */
 public interface KMSEProvider extends KMUpgradable {
+  // Provision related constants.
+  public static final byte CERTIFICATE_CHAIN = 0;
+  public static final byte CERTIFICATE_EXPIRY = 1;
+  public static final byte CERTIFICATE_ISSUER = 2;
 
   /**
    * Create a symmetric key instance. If the algorithm and/or keysize are not supported then it
@@ -297,9 +301,7 @@ public interface KMSEProvider extends KMUpgradable {
   /**
    * This is a oneshot operation that verifies the signature using hmac algorithm.
    *
-   * @param keyBuf is the buffer with hmac key.
-   * @param keyStart is the start of the buffer.
-   * @param keyLength is the length of the buffer which will be in bytes from 8 to 64.
+   * @param hmacKey is the computed hmac key.
    * @param data is the buffer containing data.
    * @param dataStart is the start of the data.
    * @param dataLength is the length of the data.
@@ -555,32 +557,11 @@ public interface KMSEProvider extends KMUpgradable {
       short pubModLength);
 
   /**
-   * This operation creates the empty instance of KMAttestationCert for rsa or ec public key
-   * attestation certificate. It corresponds to attestKEy command from keymaster hal specifications.
-   * The attestation certificate implementation will comply keymaster hal specifications.
-   *
-   * @param rsaCert if true indicates that certificate will attest a rsa public key else if false it
-   * is for ec public key.
-   * @return An empty instance of KMAttestationCert implementation.
-   */
-  //KMAttestationCert getAttestationCert(boolean rsaCert);
-
-  /**
    * This function tells if applet is upgrading or not.
    *
    * @return true if upgrading, otherwise false.
    */
   boolean isUpgrading();
-
-  /**
-   * This function generates an AES Key of keySizeBits, which is used as an master key. This
-   * generated key is maintained by the SEProvider. This function should be called only once at the
-   * time of installation.
-   *
-   * @param keySizeBits key size in bits.
-   * @return An instance of KMMasterKey.
-   */
-  KMMasterKey createMasterKey(short keySizeBits);
 
   /**
    * This function creates an HMACKey and initializes the key with the provided input key data.
@@ -592,6 +573,16 @@ public interface KMSEProvider extends KMUpgradable {
    */
   KMComputedHmacKey createComputedHmacKey(byte[] keyData, short offset, short length);
   
+  /**
+   * This function generates an AES Key of keySizeBits, which is used as an master key. This
+   * generated key is maintained by the SEProvider. This function should be called only once at the
+   * time of installation.
+   *
+   * @param keySizeBits key size in bits.
+   * @return An instance of KMMasterKey.
+   */
+  KMMasterKey createMasterKey(short keySizeBits);
+
   /**
    * Returns the master key.
    *
@@ -732,8 +723,57 @@ public interface KMSEProvider extends KMUpgradable {
    */
   short messageDigest256(byte[] inBuff, short inOffset, short inLength, byte[] outBuff,
       short outOffset);
-  
+
   public boolean isProvisionLocked();
+
+/**
+   * This function creates an ECKey and initializes the ECPrivateKey with the provided input key
+   * data. The initialized Key is maintained by the SEProvider. This function should be called only
+   * while provisioning the attestation key.
+   *
+   * @param keyData buffer containing the ec private key.
+   * @param offset start of the buffer.
+   * @param length length of the buffer.
+   * @return An instance of KMAttestationKey.
+   */
+  KMAttestationKey createAttestationKey(byte[] keyData, short offset, short length);
+  /**
+   * This operation persists the provision data in the persistent memory.
+   *
+   * @param buf buffer which contains all the provision data.
+   * @param certChainOff is the start of the cert chain.
+   * @param certChainLen is the length of the cert chain.
+   * @param certIssuerOff is the start of the cert issuer.
+   * @param certIssuerLen is the length of the cert issuer.
+   * @param certExpiryOff is the start of the cert expiry.
+   * @param certExpiryLen is the length of the cert expiry.
+   */
+  void persistProvisionData(byte[] buf, short certChainOff, short certChainLen,
+      short certIssuerOff, short certIssuerLen, short certExpiryOff, short certExpiryLen);
+
+  /**
+   * The operation reads the provisioned data from persistent memory.
+   *
+   * @param dataType type of the provision data to read.
+   * @param buf is the start of data buffer.
+   * @param offset is the start of the data.
+   * @return the length of the data buffer in bytes.
+   */
+  short readProvisionedData(byte dataType, byte[] buf, short offset);
+
+  /**
+   * This function returns the provisioned data length.
+   *
+   * @param dataType type of the provision data to read.
+   * @return length of the certificate chain.
+   */
+  short getProvisionedDataLength(byte dataType);
+  /**
+   * Returns the attestation key.
+   *
+   * @return Instance of the  KMAttestationKey.
+   */
+  KMAttestationKey getAttestationKey();
 
 
 }

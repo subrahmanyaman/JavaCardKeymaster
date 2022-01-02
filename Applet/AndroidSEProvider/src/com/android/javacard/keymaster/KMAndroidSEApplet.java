@@ -27,6 +27,7 @@ import com.android.javacard.seprovider.KMType;
 
 import javacard.framework.APDU;
 import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeListener {
@@ -37,24 +38,28 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
 
   // Provider specific Commands
   private static final byte INS_KEYMINT_PROVIDER_APDU_START = 0x00;
-  private static final byte INS_PROVISION_ATTEST_IDS_CMD = INS_KEYMINT_PROVIDER_APDU_START + 1;
+  private static final byte INS_PROVISION_ATTESTATION_KEY_CMD = INS_KEYMINT_PROVIDER_APDU_START + 1; //0x01
+  private static final byte INS_PROVISION_ATTESTATION_CERT_DATA_CMD = INS_KEYMINT_PROVIDER_APDU_START + 2; //0x02
+  private static final byte INS_PROVISION_ATTEST_IDS_CMD = INS_KEYMINT_PROVIDER_APDU_START + 3;
   private static final byte INS_PROVISION_PRESHARED_SECRET_CMD =
-      INS_KEYMINT_PROVIDER_APDU_START + 2;
-  private static final byte INS_LOCK_PROVISIONING_CMD = INS_KEYMINT_PROVIDER_APDU_START + 3;
-  private static final byte INS_GET_PROVISION_STATUS_CMD = INS_KEYMINT_PROVIDER_APDU_START + 4;
+      INS_KEYMINT_PROVIDER_APDU_START + 4;
   private static final byte INS_SET_BOOT_PARAMS_CMD = INS_KEYMINT_PROVIDER_APDU_START + 5;
+  private static final byte INS_LOCK_PROVISIONING_CMD = INS_KEYMINT_PROVIDER_APDU_START + 6;
+  private static final byte INS_GET_PROVISION_STATUS_CMD = INS_KEYMINT_PROVIDER_APDU_START + 7;
+  private static final byte INS_SET_VERSION_PATCHLEVEL_CMD =
+      INS_KEYMINT_PROVIDER_APDU_START + 8; //0x08
+  private static final byte INS_SET_BOOT_ENDED_CMD = INS_KEYMINT_PROVIDER_APDU_START + 9; //0x09
   private static final byte INS_PROVISION_DEVICE_UNIQUE_KEY_CMD =
-      INS_KEYMINT_PROVIDER_APDU_START + 6;
+      INS_KEYMINT_PROVIDER_APDU_START + 10;
   private static final byte INS_PROVISION_ADDITIONAL_CERT_CHAIN_CMD =
-      INS_KEYMINT_PROVIDER_APDU_START + 7;
-  private static final byte INS_SET_BOOT_ENDED_CMD = 
-		  INS_KEYMINT_PROVIDER_APDU_START + 8;
+      INS_KEYMINT_PROVIDER_APDU_START + 11;
 
   private static final byte INS_KEYMINT_PROVIDER_APDU_END = 0x1F;
   public static final byte BOOT_KEY_MAX_SIZE = 32;
   public static final byte BOOT_HASH_MAX_SIZE = 32;
 
   // Provision reporting status
+//Provision reporting status
   private static final byte NOT_PROVISIONED = 0x00;
   private static final byte PROVISION_STATUS_ATTESTATION_KEY = 0x01;
   private static final byte PROVISION_STATUS_ATTESTATION_CERT_CHAIN = 0x02;
@@ -62,14 +67,17 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
   private static final byte PROVISION_STATUS_ATTEST_IDS = 0x08;
   private static final byte PROVISION_STATUS_PRESHARED_SECRET = 0x10;
   private static final byte PROVISION_STATUS_PROVISIONING_LOCKED = 0x20;
+  private static final byte PROVISION_STATUS_DEVICE_UNIQUE_KEY = 0x40;
+  private static final byte PROVISION_STATUS_ADDITIONAL_CERT_CHAIN = (byte) 0x80;
 
   public static final short SHARED_SECRET_KEY_SIZE = 32;
 
   private static byte keymasterState = ILLEGAL_STATE;
   private static byte provisionStatus = NOT_PROVISIONED;
+  private static byte kmSpecification;
 
   KMAndroidSEApplet() {
-    super(new KMAndroidSEProvider());
+    super(new KMAndroidSEProvider(), kmSpecification);
   }
 
   /**
@@ -80,6 +88,14 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
    * @param bLength the length in bytes of the parameter data in bArray
    */
   public static void install(byte[] bArray, short bOffset, byte bLength) {
+    // TODO Get the specification correctly.
+    byte Li = bArray[bOffset]; // Length of AID
+    byte Lc = bArray[(short) (bOffset + Li + 1)]; // Length of ControlInfo
+    byte La = bArray[(short) (bOffset + Li + Lc + 2)]; // Length of application data
+    if (La != 1) {
+      ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+    }
+    kmSpecification = bArray[(short) (bOffset + Li + Lc + 3)];
     new KMAndroidSEApplet().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
   }
 
@@ -120,6 +136,17 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
         return;
       }
       switch (apduIns) {
+      case INS_PROVISION_ATTESTATION_KEY_CMD:
+        processProvisionAttestationKey(apdu);
+        provisionStatus |= PROVISION_STATUS_ATTESTATION_KEY;
+        sendError(apdu, KMError.OK);
+        break;
+      case INS_PROVISION_ATTESTATION_CERT_DATA_CMD:
+        processProvisionAttestationCertDataCmd(apdu);
+        provisionStatus |= (PROVISION_STATUS_ATTESTATION_CERT_CHAIN |
+            PROVISION_STATUS_ATTESTATION_CERT_PARAMS);
+        sendError(apdu, KMError.OK);
+        break;
         case INS_PROVISION_ATTEST_IDS_CMD:
           processProvisionAttestIdsCmd(apdu);
           provisionStatus |= PROVISION_STATUS_ATTEST_IDS;
@@ -264,6 +291,88 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
       index++;
     }
   }
+  
+  private void processProvisionAttestationCertDataCmd(APDU apdu) {
+    // TODO Handle this function properly
+    processAttestationCertDataCmd(apdu);
+  }
+
+  private void processProvisionAttestationKey(APDU apdu) {
+    // Arguments
+    short keyparams = KMKeyParameters.exp();
+    short keyFormatPtr = KMEnum.instance(KMType.KEY_FORMAT);
+    short blob = KMByteBlob.exp();
+    short argsProto = KMArray.instance((short) 3);
+    KMArray.cast(argsProto).add((short) 0, keyparams);
+    KMArray.cast(argsProto).add((short) 1, keyFormatPtr);
+    KMArray.cast(argsProto).add((short) 2, blob);
+
+    short args = receiveIncoming(apdu, argsProto);
+    // Re-purpose the apdu buffer as scratch pad.
+    byte[] scratchPad = apdu.getBuffer();
+
+    // key params should have os patch, os version and verified root of trust
+    short keyParams = KMArray.cast(args).get((short) 0);
+    keyFormatPtr = KMArray.cast(args).get((short) 1);
+    short rawBlob = KMArray.cast(args).get((short) 2);
+    // Key format must be RAW format
+    short keyFormat = KMEnum.cast(keyFormatPtr).getVal();
+    if (keyFormat != KMType.RAW) {
+      KMException.throwIt(KMError.UNIMPLEMENTED);
+    }
+    //byte origin = KMType.IMPORTED;
+
+    // get algorithm - only EC keys expected
+    KMTag.assertPresence(keyParams, KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
+    short alg = KMEnumTag.getValue(KMType.ALGORITHM, keyParams);
+    if (alg != KMType.EC) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    // get digest - only SHA256 supported
+    KMTag.assertPresence(keyParams, KMType.ENUM_ARRAY_TAG, KMType.DIGEST, KMError.INVALID_ARGUMENT);
+    short len = KMEnumArrayTag.getValues(KMType.DIGEST, keyParams, scratchPad, (short) 0);
+    if (len != 1) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    if (scratchPad[0] != KMType.SHA2_256) {
+      KMException.throwIt(KMError.INCOMPATIBLE_DIGEST);
+    }
+    // Purpose should be ATTEST_KEY
+    KMTag.assertPresence(keyParams, KMType.ENUM_ARRAY_TAG, KMType.PURPOSE,
+        KMError.INVALID_ARGUMENT);
+    len = KMEnumArrayTag.getValues(KMType.PURPOSE, keyParams, scratchPad, (short) 0);
+    if (len != 1) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    if (scratchPad[0] != KMType.ATTEST_KEY) {
+      KMException.throwIt(KMError.INCOMPATIBLE_PURPOSE);
+    }
+    // validate Curve
+    KMTag.assertPresence(keyParams, KMType.ENUM_TAG, KMType.ECCURVE, KMError.INVALID_ARGUMENT);
+    short curve = KMEnumTag.getValue(KMType.ECCURVE, keyParams);
+    if (curve != KMType.P_256) {
+      KMException.throwIt(KMError.UNSUPPORTED_EC_CURVE);
+    }
+    // Decode EC Key
+    short arrPtr = decodeRawECKey(rawBlob);
+    short secret = KMArray.cast(arrPtr).get((short) 0);
+    short pubKey = KMArray.cast(arrPtr).get((short) 1);
+    // Check whether key can be created
+    seProvider.importAsymmetricKey(
+        KMType.EC,
+        KMByteBlob.cast(secret).getBuffer(),
+        KMByteBlob.cast(secret).getStartOff(),
+        KMByteBlob.cast(secret).length(),
+        KMByteBlob.cast(pubKey).getBuffer(),
+        KMByteBlob.cast(pubKey).getStartOff(),
+        KMByteBlob.cast(pubKey).length());
+
+    // persist key
+    seProvider.createAttestationKey(
+        KMByteBlob.cast(secret).getBuffer(),
+        KMByteBlob.cast(secret).getStartOff(),
+        KMByteBlob.cast(secret).length());
+  }  
 
   private void processProvisionPreSharedSecretCmd(APDU apdu) {
     short blob = KMByteBlob.exp();
@@ -437,8 +546,14 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
       return KMType.INVALID_VALUE;
     }
 
+    if (kmSpecification == KMKeymasterApplet.KEYMASTER_SPECIFICATION &&
+        P1P2 != KMKeymasterApplet.KEYMASTER_HAL_VERSION) {
+      sendError(apdu, KMError.INVALID_P1P2);
+      return KMType.INVALID_VALUE;
+    }
     // Validate P1P2.
-    if (P1P2 != KMKeymasterApplet.KM_HAL_VERSION) {
+    if (kmSpecification == KMKeymasterApplet.KEYMINT_SPECIFICATION &&
+        P1P2 != KMKeymasterApplet.KM_HAL_VERSION) {
       sendError(apdu, KMError.INVALID_P1P2);
       return KMType.INVALID_VALUE;
     }
