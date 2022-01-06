@@ -81,11 +81,7 @@ public:
                                         AuthorizationSet* hwEnforced,
                                         AuthorizationSet* teeEnforced);
     
-    keymaster_error_t exportKey(keymaster_key_format_t exportFormat,
-                                const vector<uint8_t>& keyBlob,
-                                const vector<uint8_t>& clientId,
-                                const vector<uint8_t>& appData,
-                                vector<uint8_t>* retKeyblob);
+
 #if 0
     virtual keymaster_error_t begin(KeyPurpose in_purpose, const vector<uint8_t>& in_keyBlob,
                                 const AuthorizationSet& in_params,

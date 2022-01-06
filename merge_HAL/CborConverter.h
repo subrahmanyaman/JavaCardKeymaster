@@ -36,6 +36,7 @@ using namespace cppbor;
 using ::keymaster::AuthorizationSet;
 using ::keymaster::TimestampToken;
 using ::keymaster::HardwareAuthToken;
+using ::keymaster::VerificationToken;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -85,6 +86,9 @@ class CborConverter {
 
     bool getTimeStampToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                            TimestampToken& token);
+    
+    bool getVerificationToken(const std::unique_ptr<Item>& item, const uint32_t pos,
+                              VerificationToken& token);
 
     //bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
     //                           vector<KeyCharacteristics>& keyCharacteristics);
@@ -101,6 +105,8 @@ class CborConverter {
                              vector<vector<uint8_t>>& data);
 
     bool addTimeStampToken(Array& array, const TimestampToken& token);
+
+    bool addVerificationToken(Array& array, const VerificationToken& token, const vector<uint8_t>& encodedParamsVerified);
 
     bool getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos,
                              Map& map);

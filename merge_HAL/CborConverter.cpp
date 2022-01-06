@@ -476,23 +476,34 @@ bool CborConverter::addSharedSecretParameters(Array& array,
 }
 
 bool CborConverter::addTimeStampToken(Array& array, const TimestampToken& token) {
+    vector<uint8_t> mac(token.mac.begin(), token.mac.end());
     Array vToken;
     vToken.add(static_cast<uint64_t>(token.challenge));
     vToken.add(static_cast<uint64_t>(token.timestamp));
-    vToken.add((std::vector<uint8_t>(token.mac.begin(), token.mac.end())));
+    vToken.add(mac);
     array.add(std::move(vToken));
     return true;
 }
 
-bool CborConverter::addHardwareAuthToken(Array& array, const HardwareAuthToken& authToken) {
+bool CborConverter::addVerificationToken(Array& vToken, const VerificationToken& token, const vector<uint8_t>& encodedParamsVerified) {
+    vector<uint8_t> mac(token.mac.begin(), token.mac.end());
+    vToken.add(token.challenge);
+    vToken.add(token.timestamp);
+    vToken.add(std::move(encodedParamsVerified));
+    vToken.add(static_cast<uint64_t>(token.security_level));
+    vToken.add(mac);
+    return true;
+}
 
+bool CborConverter::addHardwareAuthToken(Array& array, const HardwareAuthToken& authToken) {
+    vector<uint8_t> mac(authToken.mac.begin(), authToken.mac.end());
     Array hwAuthToken;
     hwAuthToken.add(static_cast<uint64_t>(authToken.challenge));
     hwAuthToken.add(static_cast<uint64_t>(authToken.user_id));
     hwAuthToken.add(static_cast<uint64_t>(authToken.authenticator_id));
     hwAuthToken.add(static_cast<uint64_t>(authToken.authenticator_type));
     hwAuthToken.add(static_cast<uint64_t>(authToken.timestamp));
-    hwAuthToken.add((std::vector<uint8_t>(authToken.mac.begin(), authToken.mac.end())));
+    hwAuthToken.add(mac);
     array.add(std::move(hwAuthToken));
     return true;
 }
@@ -524,6 +535,23 @@ bool CborConverter::getTimeStampToken(const unique_ptr<Item>& item, const uint32
         !getBinaryArray(item, pos + 2, mac)) {
         return false;
     }
+    token.mac = KeymasterBlob(mac.data(), mac.size());
+    return true;
+}
+
+bool CborConverter::getVerificationToken(const unique_ptr<Item>& item, const uint32_t pos,
+                                      VerificationToken& token) {
+    // {challenge, timestamp, parametersVerified, securityLevel, Mac}
+    std::vector<uint8_t> mac;
+    uint64_t securityLevel;
+    if (!getUint64<uint64_t>(item, pos, token.challenge) ||
+        !getUint64<uint64_t>(item, pos + 1, token.timestamp) ||
+        !getKeyParameters(item, pos + 2, token.parameters_verified) ||
+        !getUint64<uint64_t>(item, pos + 3, securityLevel) ||
+        !getBinaryArray(item, pos + 4, mac)) {
+        return false;
+    }
+    token.security_level = static_cast<keymaster_security_level_t>(securityLevel);
     token.mac = KeymasterBlob(mac.data(), mac.size());
     return true;
 }

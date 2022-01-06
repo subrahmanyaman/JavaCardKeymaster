@@ -7,6 +7,7 @@
 
 namespace javacard_keymaster {
 using cppbor::Array;
+using cppbor::EncodedItem;
 using keymaster::KeymasterKeyBlob;
 using keymaster::KeymasterBlob;
 
@@ -382,16 +383,24 @@ keymaster_error_t JavacardKeymaster::begin(KeyPurpose in_purpose, const std::vec
 
 keymaster_error_t JavacardKeymaster::deviceLocked(bool passwordOnly,
                                                   const vector<uint8_t>& cborEncodedVerificationToken) {
+    Array array;
+    array.add(passwordOnly);
+    array.add(EncodedItem(cborEncodedVerificationToken));
     auto [_, err] = sendRequest(Instruction::INS_DEVICE_LOCKED_CMD);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending destroyAttestationIds err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending deviceLocked err: " << (int32_t) err;
         return err;
     }
     return KM_ERROR_OK;
 }
 
 keymaster_error_t JavacardKeymaster::earlyBootEnded() {
-
+    auto [_, err] = sendRequest(Instruction::INS_EARLY_BOOT_ENDED_CMD);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in sending earlyBootEnded err: " << (int32_t) err;
+        return err;
+    }
+    return KM_ERROR_OK;
 }
 
 keymaster_error_t JavacardKeymaster::getKeyCharacteristics(const std::vector<uint8_t>& in_keyBlob,
@@ -400,15 +409,19 @@ keymaster_error_t JavacardKeymaster::getKeyCharacteristics(const std::vector<uin
                                                            AuthorizationSet* swEnforced,
                                                            AuthorizationSet* hwEnforced,
                                                            AuthorizationSet* teeEnforced) {
-
+    Array array;
+    array.add(in_keyBlob);
+    array.add(in_appId);
+    array.add(in_appData);
+    auto [item, err] = sendRequest(Instruction::INS_GET_KEY_CHARACTERISTICS_CMD, array);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in sending getKeyCharacteristics err: " << (int32_t) err;
+        return err;
+    }
+    if (!cbor_.getKeyCharacteristics(item, 1, *swEnforced, *hwEnforced, *teeEnforced)) {
+        LOG(ERROR) << "Error in decoding the response in getKeyCharacteristics.";
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    return KM_ERROR_OK;
 }
-
-keymaster_error_t JavacardKeymaster::exportKey(keymaster_key_format_t exportFormat,
-                                               const vector<uint8_t>& keyBlob,
-                                               const vector<uint8_t>& clientId,
-                                               const vector<uint8_t>& appData,
-                                               vector<uint8_t>* retKeyblob) {
-
-}
-#endif
 } // javacard_keymaster

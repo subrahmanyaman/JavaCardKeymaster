@@ -24,11 +24,15 @@
 #include "CborConverter.h"
 #include <JavacardSecureElement.h>
 #include<JavacardKeymaster.h>
+#include <keymaster/keymaster_configuration.h>
+#include <keymaster/contexts/pure_soft_keymaster_context.h>
+#include <keymaster/android_keymaster.h>
+#include <JavacardSoftKeymasterContext.h>
+#include <km_utils.h>
 
 namespace keymaster {
 namespace V4_1 {
 namespace javacard {
-
 using std::shared_ptr;
 using ::javacard_keymaster::CborConverter;
 using ::javacard_keymaster::JavacardKeymaster;
@@ -55,9 +59,9 @@ using V41ErrorCode = ::android::hardware::keymaster::V4_1::ErrorCode;
 
 class JavacardKeymaster4Device : public IKeymasterDevice {
   public:
-  
-    JavacardKeymaster4Device(shared_ptr<JavacardKeymaster> jcImpl) : jcImpl_(jcImpl) { }
-    virtual ~JavacardKeymaster4Device() {}
+
+    JavacardKeymaster4Device(shared_ptr<JavacardKeymaster> jcImpl);
+    virtual ~JavacardKeymaster4Device();
 
     // Methods from ::android::hardware::keymaster::V4_0::IKeymasterDevice follow.
     Return<void> getHardwareInfo(getHardwareInfo_cb _hidl_cb) override;
@@ -86,7 +90,11 @@ class JavacardKeymaster4Device : public IKeymasterDevice {
 
   private:
 
+    keymaster_error_t encodeVerificationToken(const VerificationToken &token, std::vector<uint8_t>* encodedToken);
+
+
     CborConverter cbor_;
+    std::unique_ptr<::keymaster::AndroidKeymaster> softKm_;
     const shared_ptr<JavacardKeymaster> jcImpl_;
 };
 
