@@ -15,7 +15,8 @@
  */
 
 #pragma once
-
+#include<iostream>
+#include<optional>
 #include "CborConverter.h"
 #include <ITransport.h>
 
@@ -24,10 +25,11 @@
 #define APDU_P2 0x00
 #define APDU_RESP_STATUS_OK 0x9000
 
+#define SE_POWER_RESET_STATUS_FLAG ( 1 << 30)
+
 #define KEYMINT_CMD_APDU_START 0x20
 
-namespace keymint::javacard {
-using ndk::ScopedAStatus;
+namespace javacard_keymaster {
 using std::optional;
 using std::shared_ptr;
 using std::vector;
@@ -59,7 +61,7 @@ enum class Instruction {
     INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23,
     INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24,
     INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25,
-    INS_SET_BOOT_PARAMS_CMD = KEYMINT_CMD_APDU_START + 26,
+    INS_INIT_STRONGBOX_CMD = KEYMINT_CMD_APDU_START + 26,
     // RKP Commands
     INS_GET_RKP_HARDWARE_INFO = KEYMINT_CMD_APDU_START + 27,
     INS_GENERATE_RKP_KEY_CMD = KEYMINT_CMD_APDU_START + 28,
@@ -69,6 +71,12 @@ enum class Instruction {
     INS_UPDATE_CHALLENGE_CMD = KEYMINT_CMD_APDU_START + 32,
     INS_FINISH_SEND_DATA_CMD = KEYMINT_CMD_APDU_START + 33,
   INS_GET_RESPONSE_CMD = KEYMINT_CMD_APDU_START + 34,
+};
+
+class IJavacardSeResetListener {
+public:
+    virtual ~IJavacardSeResetListener() { };
+    virtual void seResetEvent();
 };
 
 class JavacardSecureElement {

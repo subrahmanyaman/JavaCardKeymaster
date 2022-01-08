@@ -19,7 +19,7 @@
 #include <memory>
 #include <vector>
 
-namespace keymint::javacard {
+namespace javacard_keymaster {
 using std::shared_ptr;
 using std::vector;
 

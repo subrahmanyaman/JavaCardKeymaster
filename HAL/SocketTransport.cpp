@@ -27,7 +27,7 @@
 #define IPADDR  "192.168.7.239"
 #define MAX_RECV_BUFFER_SIZE 2500
 
-namespace keymint::javacard {
+namespace javacard_keymaster {
 using std::shared_ptr;
 using std::vector;
 
