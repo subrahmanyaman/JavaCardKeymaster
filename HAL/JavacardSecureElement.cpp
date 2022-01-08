@@ -16,7 +16,7 @@
 
 #define LOG_TAG "javacard.keymint.device.strongbox-impl"
 #include "JavacardSecureElement.h"
-#include "km_utils.h"
+#include "keymint_utils.h"
 
 #include <algorithm>
 #include <android-base/logging.h>
@@ -29,15 +29,15 @@
 #include <string>
 #include <vector>
 
-namespace javacard_keymaster {
+namespace keymint::javacard {
 
 using namespace ::keymaster;
 keymaster_error_t JavacardSecureElement::initializeJavacard() {
     Array request;
-    request.add(Uint(osVersion_));
-    request.add(Uint(osPatchLevel_));
-    request.add(Uint(vendorPatchLevel_));
-    auto [item, err] = sendRequest(Instruction::INS_INIT_STRONGBOX_CMD, request);
+    request.add(Uint(getOsVersion()));
+    request.add(Uint(getOsPatchlevel()));
+    request.add(Uint(getVendorPatchlevel()));
+    auto [item, err] = sendRequest(Instruction::INS_SET_BOOT_PARAMS_CMD, request);
     return err;
 }
 

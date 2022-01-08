@@ -15,37 +15,26 @@
  ** limitations under the License.
  */
 #pragma once
-//#include <aidl/android/hardware/security/keymint/Certificate.h>
-//#include <aidl/android/hardware/security/keymint/IKeyMintDevice.h>
-//#include <aidl/android/hardware/security/secureclock/TimeStampToken.h>
-//#include <aidl/android/hardware/security/sharedsecret/ISharedSecret.h>
+#include <aidl/android/hardware/security/keymint/Certificate.h>
+#include <aidl/android/hardware/security/keymint/IKeyMintDevice.h>
+#include <aidl/android/hardware/security/secureclock/TimeStampToken.h>
+#include <aidl/android/hardware/security/sharedsecret/ISharedSecret.h>
 #include <cppbor.h>
 #include <cppbor_parse.h>
 #include <iostream>
 #include <keymaster/android_keymaster_messages.h>
-#include <keymaster/android_keymaster_utils.h>
 #include <memory>
 #include <numeric>
 #include <vector>
 
-namespace javacard_keymaster {
+namespace keymint::javacard {
 using namespace cppbor;
-//using namespace aidl::android::hardware::security::keymint;
-//using namespace aidl::android::hardware::security::secureclock;
-//using namespace aidl::android::hardware::security::sharedsecret;
-using ::keymaster::AuthorizationSet;
-using ::keymaster::TimestampToken;
-using ::keymaster::HardwareAuthToken;
-using ::keymaster::VerificationToken;
-using ::keymaster::KeymasterKeyBlob;
+using namespace aidl::android::hardware::security::keymint;
+using namespace aidl::android::hardware::security::secureclock;
+using namespace aidl::android::hardware::security::sharedsecret;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-
-struct HmacSharingParameters {
-    vector<uint8_t> seed;
-    vector<uint8_t> nonce;
-};
 
 class CborConverter {
   public:
@@ -53,7 +42,6 @@ class CborConverter {
     ~CborConverter() = default;
     std::tuple<std::unique_ptr<Item>, keymaster_error_t>
     decodeData(const std::vector<uint8_t>& response);
-    std::unique_ptr<Item> decodeKeyblob(const KeymasterKeyBlob& keyblob);
 
     template <typename T>
     bool getUint64(const std::unique_ptr<Item>& item, const uint32_t pos, T& value);
@@ -61,7 +49,7 @@ class CborConverter {
     template <typename T> bool getUint64(const std::unique_ptr<Item>& item, T& value);
 
     bool getSharedSecretParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
-                                   vector<uint8_t>& seed, vector<uint8_t>& nonce);
+                                   SharedSecretParameters& params);
     bool getBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos, string& value);
 
     bool getBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos,
@@ -70,45 +58,30 @@ class CborConverter {
     bool getHardwareAuthToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                               HardwareAuthToken& authType);
 
-    //bool getKeyParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
-    //                      vector<KeyParameter>& keyParams);
-    
     bool getKeyParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
-                          AuthorizationSet& keyParams);
+                          vector<KeyParameter>& keyParams);
 
-    //bool addKeyparameters(Array& array, const vector<KeyParameter>& keyParams);
+    bool addKeyparameters(Array& array, const vector<KeyParameter>& keyParams);
 
-    bool addKeyparameters(Array& array, const keymaster_key_param_set_t& keyParams);
-
-    //bool addAttestationKey(Array& array, const std::optional<AttestationKey>& attestationKey);
+    bool addAttestationKey(Array& array, const std::optional<AttestationKey>& attestationKey);
 
     bool addHardwareAuthToken(Array& array, const HardwareAuthToken& authToken);
 
-    bool addSharedSecretParameters(Array& array, vector<HmacSharingParameters> params);
+    bool addSharedSecretParameters(Array& array, const vector<SharedSecretParameters>& params);
 
     bool getTimeStampToken(const std::unique_ptr<Item>& item, const uint32_t pos,
-                           TimestampToken& token);
-    
-    bool getVerificationToken(const std::unique_ptr<Item>& item, const uint32_t pos,
-                              VerificationToken& token);
+                           TimeStampToken& token);
 
-    //bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
-    //                           vector<KeyCharacteristics>& keyCharacteristics);
-    
     bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
-                               AuthorizationSet& swEnforced,
-                               AuthorizationSet& hwEnforced,
-                               AuthorizationSet& teeEnforced);
+                               vector<KeyCharacteristics>& keyCharacteristics);
 
-    //bool getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
-    //                         vector<Certificate>& certificateChain);
+    bool getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
+                             vector<Certificate>& keyCharacteristics);
 
     bool getMultiBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos,
                              vector<vector<uint8_t>>& data);
 
-    bool addTimeStampToken(Array& array, const TimestampToken& token);
-
-    bool addVerificationToken(Array& array, const VerificationToken& token, const vector<uint8_t>& encodedParamsVerified);
+    bool addTimeStampToken(Array& array, const TimeStampToken& token);
 
     bool getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos,
                              Map& map);
@@ -142,11 +115,8 @@ class CborConverter {
      * value contains binary string. If TagType is UINT_REP or ULONG_REP the value contains Array of
      * unsigned integers.
      */
-    //bool getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
-    //                     vector<KeyParameter>& keyParam);
-    
     bool getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
-                         AuthorizationSet& keyParam);
+                         vector<KeyParameter>& keyParam);
 
     /**
      * Get the sub item pointer from the root item pointer at the given position.
