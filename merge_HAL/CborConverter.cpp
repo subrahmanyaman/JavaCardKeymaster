@@ -621,4 +621,14 @@ CborConverter::decodeData(const std::vector<uint8_t>& response) {
     return {std::move(item), errorCode};
 }
 
+std::unique_ptr<Item>
+CborConverter::decodeKeyblob(const KeymasterKeyBlob& keyBlob) {
+    std::vector<uint8_t> data(keyBlob.begin(), keyBlob.end());
+    auto [item, pos, message] = parse(data);
+    if (!item || MajorType::ARRAY != getType(item)) {
+        return nullptr;
+    }
+    return std::move(item);
+}
+
 }  // namespace keymint::javacard

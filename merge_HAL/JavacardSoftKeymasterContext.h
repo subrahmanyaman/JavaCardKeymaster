@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef SYSTEM_KEYMASTER_JAVA_CARD_SOFT_KEYMASTER_CONTEXT_H_
-#define SYSTEM_KEYMASTER_JAVA_CARD_SOFT_KEYMASTER_CONTEXT_H_
-
+#pragma once
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 #include <keymaster/contexts/soft_attestation_cert.h>
-namespace keymaster {
-
-class SoftKeymasterKeyRegistrations;
-class Keymaster0Engine;
-class Keymaster1Engine;
-class Key;
+#include <CborConverter.h>
+namespace javacard_keymaster {
+using namespace ::keymaster;
+//class SoftKeymasterKeyRegistrations;
+//class Keymaster0Engine;
+//class Keymaster1Engine;
+//class ::keymaster::Key;
 
 /**
  * SoftKeymasterContext provides the context for a non-secure implementation of AndroidKeymaster.
  */
-class JavaCardSoftKeymasterContext : public keymaster::PureSoftKeymasterContext {
+class JavaCardSoftKeymasterContext : public ::keymaster::PureSoftKeymasterContext {
     keymaster_error_t LoadKey(const keymaster_algorithm_t algorithm, KeymasterKeyBlob&& key_material,
                                                 AuthorizationSet&& hw_enforced,
                                                 AuthorizationSet&& sw_enforced,
@@ -43,9 +41,6 @@ class JavaCardSoftKeymasterContext : public keymaster::PureSoftKeymasterContext 
     keymaster_error_t ParseKeyBlob(const KeymasterKeyBlob& blob,
                                    const AuthorizationSet& additional_params,
                                    UniquePtr<Key>* key) const override;
-
 };
 
-}  // namespace keymaster
-
-#endif  // SYSTEM_KEYMASTER_PURE_SOFT_KEYMASTER_CONTEXT_H_
+}  // namespace javacard_keymaster

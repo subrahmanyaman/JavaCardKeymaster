@@ -37,6 +37,7 @@ using ::keymaster::AuthorizationSet;
 using ::keymaster::TimestampToken;
 using ::keymaster::HardwareAuthToken;
 using ::keymaster::VerificationToken;
+using ::keymaster::KeymasterKeyBlob;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -52,6 +53,7 @@ class CborConverter {
     ~CborConverter() = default;
     std::tuple<std::unique_ptr<Item>, keymaster_error_t>
     decodeData(const std::vector<uint8_t>& response);
+    std::unique_ptr<Item> decodeKeyblob(const KeymasterKeyBlob& keyblob);
 
     template <typename T>
     bool getUint64(const std::unique_ptr<Item>& item, const uint32_t pos, T& value);

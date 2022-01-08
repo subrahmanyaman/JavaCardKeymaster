@@ -15,6 +15,7 @@
  */
 
 #include <android-base/properties.h>
+#include <android-base/logging.h>
 #include <km_utils.h>
 #include <regex.h>
 
@@ -114,6 +115,43 @@ uint32_t getPatchlevel(const char* patchlevel_str, PatchlevelOutput detail) {
 }
 
 }  // anonymous namespace
+
+//TODO Can we move it to JavacardSecureElement class
+keymaster_error_t translateExtendedErrorsToHalErrors(keymaster_error_t errorCode) {
+    keymaster_error_t err = errorCode;
+    switch(static_cast<int32_t>(errorCode)) {
+        case SW_CONDITIONS_NOT_SATISFIED:
+        case UNSUPPORTED_CLA:
+        case INVALID_P1P2:
+        case INVALID_DATA:
+        case CRYPTO_ILLEGAL_USE:
+        case CRYPTO_ILLEGAL_VALUE:
+        case CRYPTO_INVALID_INIT:
+        case CRYPTO_UNINITIALIZED_KEY:
+        case GENERIC_UNKNOWN_ERROR:
+            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
+            err = KM_ERROR_UNKNOWN_ERROR;
+            break;
+        case CRYPTO_NO_SUCH_ALGORITHM:
+            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
+            err = KM_ERROR_UNSUPPORTED_ALGORITHM;
+            break;
+        case UNSUPPORTED_INSTRUCTION:
+        case CMD_NOT_ALLOWED:
+        case SW_WRONG_LENGTH:
+            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
+            err = KM_ERROR_UNIMPLEMENTED;
+            break;
+        case PUBLIC_KEY_OPERATION:
+            // This error is handled inside keymaster
+            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
+            break;        
+        default:
+            break;
+    }
+    return err;
+}
+
 
 uint32_t getOsVersion() {
     std::string version = wait_and_get_property(kPlatformVersionProp);

@@ -25,10 +25,11 @@
 #define APDU_P2 0x00
 #define APDU_RESP_STATUS_OK 0x9000
 
+#define SE_POWER_RESET_STATUS_FLAG ( 1 << 30)
+
 #define KEYMINT_CMD_APDU_START 0x20
 
 namespace javacard_keymaster {
-//using ndk::ScopedAStatus;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
@@ -70,6 +71,12 @@ enum class Instruction {
     INS_UPDATE_CHALLENGE_CMD = KEYMINT_CMD_APDU_START + 32,
     INS_FINISH_SEND_DATA_CMD = KEYMINT_CMD_APDU_START + 33,
   INS_GET_RESPONSE_CMD = KEYMINT_CMD_APDU_START + 34,
+};
+
+class IJavacardSeResetListener {
+public:
+    virtual ~IJavacardSeResetListener() { };
+    virtual void seResetEvent();
 };
 
 class JavacardSecureElement {

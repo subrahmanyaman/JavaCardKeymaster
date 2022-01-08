@@ -3,17 +3,19 @@
 #include "CborConverter.h"
 #include "JavacardSecureElement.h"
 #include <android-base/logging.h>
+#include <JavacardKeymasterOperation.h>
 
 namespace javacard_keymaster {
 using ::keymaster::AuthorizationSet;
 using ::javacard_keymaster::HmacSharingParameters;
+using ::keymaster::HardwareAuthToken;
 using std::shared_ptr;
 using std::vector;
 
 class JavacardKeymaster {
 public:
     explicit JavacardKeymaster(shared_ptr<JavacardSecureElement> card)
-        : card_(card) {
+        : card_(card), seResetListener_(nullptr) {
         card_->initializeJavacard();
     }
     virtual ~JavacardKeymaster() {}
@@ -82,16 +84,17 @@ public:
                                         AuthorizationSet* teeEnforced);
     
 
-#if 0
-    virtual keymaster_error_t begin(KeyPurpose in_purpose, const vector<uint8_t>& in_keyBlob,
-                                const AuthorizationSet& in_params,
-                                const vector<uint8_t>& cborEncodedHwToken,
-                                uint64_t *operationHandle,
-                                uint32_t *bufMode,
-                                uint32_t *macLength);
+    keymaster_error_t begin(keymaster_purpose_t purpose, const vector<uint8_t>& keyBlob,
+                                           const AuthorizationSet& inParams,
+                                           const HardwareAuthToken& hwAuthToken,
+                                           AuthorizationSet* outParams,
+                                           std::unique_ptr<JavacardKeymasterOperation>& operation);
 
-    
-#endif
+    void registerSeResetEventListener(shared_ptr<IJavacardSeResetListener> listener) {
+        seResetListener_ = listener;
+    }
+                                           
+    //std::unique_ptr<JavacardKeymasterOperation> getOperation(uint64_t operationHandle, BufferingMode bufMode, uint32_t macLength, OperationType operType);
 private:
     keymaster_error_t handleErrorCode(keymaster_error_t err);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
@@ -114,6 +117,7 @@ private:
  
     const shared_ptr<JavacardSecureElement> card_;
     CborConverter cbor_;
+    shared_ptr<IJavacardSeResetListener> seResetListener_;
 };
 
 } // javacard_keymaster

@@ -3,8 +3,6 @@
 #include <keymaster/wrapped_key.h>
 #include <keymaster/mem.h>
 
-#define SE_POWER_RESET_STATUS_FLAG ( 1 << 30)
-
 namespace javacard_keymaster {
 using cppbor::Array;
 using cppbor::EncodedItem;
@@ -12,50 +10,7 @@ using keymaster::KeymasterKeyBlob;
 using keymaster::KeymasterBlob;
 
 namespace {
-//Extended error codes
-enum ExtendedErrors {
-    SW_CONDITIONS_NOT_SATISFIED = -10001,
-    UNSUPPORTED_CLA = -10002,
-    INVALID_P1P2 = -10003,
-    UNSUPPORTED_INSTRUCTION = -10004,
-    CMD_NOT_ALLOWED = -10005,
-    SW_WRONG_LENGTH = -10006,
-    INVALID_DATA = -10007,
-    CRYPTO_ILLEGAL_USE = -10008,
-    CRYPTO_ILLEGAL_VALUE = -10009,
-    CRYPTO_INVALID_INIT = -10010,
-    CRYPTO_NO_SUCH_ALGORITHM = -10011,
-    CRYPTO_UNINITIALIZED_KEY = -10012,
-    GENERIC_UNKNOWN_ERROR = -10013
-};
 
-static keymaster_error_t translateExtendedErrorsToHalErrors(keymaster_error_t errorCode) {
-    keymaster_error_t err = errorCode;
-    switch(static_cast<int32_t>(errorCode)) {
-        case SW_CONDITIONS_NOT_SATISFIED:
-        case UNSUPPORTED_CLA:
-        case INVALID_P1P2:
-        case INVALID_DATA:
-        case CRYPTO_ILLEGAL_USE:
-        case CRYPTO_ILLEGAL_VALUE:
-        case CRYPTO_INVALID_INIT:
-        case CRYPTO_UNINITIALIZED_KEY:
-        case GENERIC_UNKNOWN_ERROR:
-            err = KM_ERROR_UNKNOWN_ERROR;
-            break;
-        case CRYPTO_NO_SUCH_ALGORITHM:
-            err = KM_ERROR_UNSUPPORTED_ALGORITHM;
-            break;
-        case UNSUPPORTED_INSTRUCTION:
-        case CMD_NOT_ALLOWED:
-        case SW_WRONG_LENGTH:
-            err = KM_ERROR_UNIMPLEMENTED;
-            break;
-        default:
-            break;
-    }
-    return err;
-}
 
 keymaster_error_t parseWrappedKey(const std::vector<uint8_t> &wrappedKeyData,
                                   std::vector<uint8_t> &iv, std::vector<uint8_t> &transitKey,
@@ -98,6 +53,7 @@ keymaster_error_t JavacardKeymaster::handleErrorCode(keymaster_error_t err) {
         //Clear the operation table for Strongbox operations entries.
         //clearStrongboxOprHandleEntries(oprCtx);
         // Unmask the power reset status flag.
+        seResetListener_->seResetEvent();
         errorCode &= ~SE_POWER_RESET_STATUS_FLAG;
     }
     return translateExtendedErrorsToHalErrors(static_cast<keymaster_error_t>(0 - errorCode));
@@ -422,6 +378,35 @@ keymaster_error_t JavacardKeymaster::getKeyCharacteristics(const std::vector<uin
         LOG(ERROR) << "Error in decoding the response in getKeyCharacteristics.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const vector<uint8_t>& keyBlob,
+                                           const AuthorizationSet& inParams,
+                                           const HardwareAuthToken& hwAuthToken,
+                                           AuthorizationSet* outParams,
+                                           std::unique_ptr<JavacardKeymasterOperation>& outOperation) {
+    uint64_t operationHandle;
+    uint64_t bufMode;
+    uint64_t macLength;
+    Array array;
+    array.add(static_cast<uint64_t>(purpose));
+    array.add(std::vector<uint8_t>(keyBlob));
+    cbor_.addKeyparameters(array, inParams);
+    cbor_.addHardwareAuthToken(array, hwAuthToken);
+    auto [item, err] = sendRequest(Instruction::INS_BEGIN_OPERATION_CMD, array);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in sending begin err: " << (int32_t) err;
+        return err;
+    }
+    if (!cbor_.getKeyParameters(item, 1, *outParams) ||
+        !cbor_.getUint64<uint64_t>(item, 2, operationHandle) ||
+        !cbor_.getUint64<uint64_t>(item, 3, bufMode) ||
+        !cbor_.getUint64<uint64_t>(item, 4, macLength)) {
+        LOG(ERROR) << "Error in decoding the response in begin.";
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    outOperation = std::make_unique<JavacardKeymasterOperation>(operationHandle, static_cast<BufferingMode>(bufMode), macLength, nullptr, static_cast<OperationType>(OperationType::PRIVATE_OPERATION));
     return KM_ERROR_OK;
 }
 } // javacard_keymaster

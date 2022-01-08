@@ -28,6 +28,7 @@
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 #include <keymaster/android_keymaster.h>
 #include <JavacardSoftKeymasterContext.h>
+#include <JavacardKeymasterOperation.h>
 #include <km_utils.h>
 
 namespace keymaster {
@@ -36,6 +37,8 @@ namespace javacard {
 using std::shared_ptr;
 using ::javacard_keymaster::CborConverter;
 using ::javacard_keymaster::JavacardKeymaster;
+using ::javacard_keymaster::OperationType;
+using ::javacard_keymaster::JavacardKeymasterOperation;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::hardware::Return;
@@ -91,11 +94,28 @@ class JavacardKeymaster4Device : public IKeymasterDevice {
   private:
 
     keymaster_error_t encodeVerificationToken(const VerificationToken &token, std::vector<uint8_t>* encodedToken);
+    keymaster_error_t handleBeginOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
+                                                                     const hidl_vec<KeyParameter>& inParams, 
+                                                                     const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
+                                                                     uint64_t& operationHandle, OperationType& operType);
+    keymaster_error_t handleBeginPrivateKeyOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
+                                                    const hidl_vec<KeyParameter>& inParams,
+                                                    const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
+                                                    uint64_t& operationHandle);                                               ;
 
+    keymaster_error_t handleBeginPublicKeyOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
+                                                        const hidl_vec<KeyParameter>& inParams,
+                                                        const HardwareAuthToken& authToken,
+                                                        hidl_vec<KeyParameter>& outParams,
+                                                        uint64_t& operationHandle);
+    bool isOperationHandleExists(uint64_t opHandle);
+    keymaster_error_t abortOperation(uint64_t operationHandle);
 
+private:
     CborConverter cbor_;
-    std::unique_ptr<::keymaster::AndroidKeymaster> softKm_;
+    std::shared_ptr<::keymaster::AndroidKeymaster> softKm_;
     const shared_ptr<JavacardKeymaster> jcImpl_;
+    std::map<uint64_t, std::unique_ptr<JavacardKeymasterOperation>> operationTable_;
 };
 
 }  // namespace javacard

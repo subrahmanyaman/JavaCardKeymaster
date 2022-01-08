@@ -59,6 +59,8 @@ cc_library {
         "km_utils.cpp",
         "JavacardSecureElement.cpp",
         "SocketTransport.cpp",
+	"JavacardKeymasterOperation.cpp",
+        "JavacardSoftKeymasterContext.cpp",
     ],
     cflags:["-O0",],
     shared_libs: [
@@ -66,6 +68,7 @@ cc_library {
         "libcppbor_external",
         "libkeymaster_portable",
         "libkeymaster_messages",
+	"libpuresoftkeymasterdevice",
         "libsoft_attestation_cert",
         "liblog",
         "libcrypto",
@@ -102,7 +105,6 @@ cc_library {
     ],
     srcs: [
         "JavacardKeymaster4Device.cpp",
-        "JavacardSoftKeymasterContext.cpp",
     ],
     cflags:["-O0",],
     shared_libs: [
@@ -122,7 +124,8 @@ cc_library {
         "android.hardware.keymaster@4.0",
         "libjc_km_transport",
         "libjc_keymaster_portable",
-	    "libcrypto",
+	"libcrypto",
+	"libkeymaster4support",
     ],
     export_include_dirs: [
         ".",
