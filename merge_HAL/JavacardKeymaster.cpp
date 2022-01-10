@@ -49,11 +49,11 @@ keymaster_error_t JavacardKeymaster::handleErrorCode(keymaster_error_t err) {
     bool isSeResetOccurred = (0 != (errorCode & SE_POWER_RESET_STATUS_FLAG));
 
     if (isSeResetOccurred) {
-        // TODO Handle clearing the operation entries.
         //Clear the operation table for Strongbox operations entries.
-        //clearStrongboxOprHandleEntries(oprCtx);
+        if (seResetListener_) {
+            seResetListener_->seResetEvent();
+        }
         // Unmask the power reset status flag.
-        seResetListener_->seResetEvent();
         errorCode &= ~SE_POWER_RESET_STATUS_FLAG;
     }
     return translateExtendedErrorsToHalErrors(static_cast<keymaster_error_t>(0 - errorCode));
@@ -122,7 +122,7 @@ keymaster_error_t JavacardKeymaster::generateKey(const AuthorizationSet& keyPara
     }
     if (!cbor_.getBinaryArray(item, 1, *retKeyblob) ||
         !cbor_.getKeyCharacteristics(item, 2, *swEnforced, *hwEnforced, *teeEnforced)) {
-        LOG(ERROR) << "Error in decoding og response in generateKey.";
+        LOG(ERROR) << "Error in decoding cbor response in generateKey.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
     return err;
@@ -326,16 +326,6 @@ keymaster_error_t JavacardKeymaster::destroyAttestationIds() {
     }
     return KM_ERROR_OK;
 }
-#if 0
-keymaster_error_t JavacardKeymaster::begin(KeyPurpose in_purpose, const std::vector<uint8_t>& in_keyBlob,
-                                           const std::AuthorizationSet& in_params,
-                                           const vector<uint8_t>& cborEncodedHwToken,
-                                           uint64_t *operationHandle,
-                                           uint32_t *bufMode,
-                                           uint32_t *macLength) {
-
-}
-#endif
 
 keymaster_error_t JavacardKeymaster::deviceLocked(bool passwordOnly,
                                                   const vector<uint8_t>& cborEncodedVerificationToken) {
@@ -406,7 +396,10 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
         LOG(ERROR) << "Error in decoding the response in begin.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
-    outOperation = std::make_unique<JavacardKeymasterOperation>(operationHandle, static_cast<BufferingMode>(bufMode), macLength, nullptr, static_cast<OperationType>(OperationType::PRIVATE_OPERATION));
+    outOperation = std::make_unique<JavacardKeymasterOperation>(operationHandle, static_cast<BufferingMode>(bufMode),
+                                                                macLength, card_,
+                                                                static_cast<OperationType>(OperationType::PRIVATE_OPERATION),
+                                                                seResetListener_);
     return KM_ERROR_OK;
 }
 } // javacard_keymaster

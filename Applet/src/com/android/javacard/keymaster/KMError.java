@@ -102,6 +102,7 @@ public class KMError {
   public static final short CRYPTO_UNINITIALIZED_KEY = 10012;
   //Generic Unknown error.
   public static final short GENERIC_UNKNOWN_ERROR = 10013;
+  public static final short PUBLIC_KEY_OPERATION = 10014;
 
   // Remote key provisioning error codes.
   public static final short STATUS_FAILED = 32000;

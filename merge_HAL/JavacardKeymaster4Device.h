@@ -39,6 +39,7 @@ using ::javacard_keymaster::CborConverter;
 using ::javacard_keymaster::JavacardKeymaster;
 using ::javacard_keymaster::OperationType;
 using ::javacard_keymaster::JavacardKeymasterOperation;
+using ::javacard_keymaster::IJavacardSeResetListener;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::hardware::Return;
@@ -60,7 +61,7 @@ using ::android::hardware::keymaster::V4_0::Tag;
 
 using V41ErrorCode = ::android::hardware::keymaster::V4_1::ErrorCode;
 
-class JavacardKeymaster4Device : public IKeymasterDevice {
+class JavacardKeymaster4Device : public IKeymasterDevice, public IJavacardSeResetListener {
   public:
 
     JavacardKeymaster4Device(shared_ptr<JavacardKeymaster> jcImpl);
@@ -90,6 +91,7 @@ class JavacardKeymaster4Device : public IKeymasterDevice {
     // Methods from ::android::hardware::keymaster::V4_1::IKeymasterDevice follow.
     Return<V41ErrorCode> deviceLocked(bool passwordOnly, const VerificationToken& verificationToken) override;
     Return<V41ErrorCode> earlyBootEnded() override;
+    void seResetEvent() override;
 
   private:
 
@@ -97,17 +99,20 @@ class JavacardKeymaster4Device : public IKeymasterDevice {
     keymaster_error_t handleBeginOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
                                                                      const hidl_vec<KeyParameter>& inParams, 
                                                                      const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
-                                                                     uint64_t& operationHandle, OperationType& operType);
+                                                                     uint64_t& operationHandle, OperationType& operType,
+                                                                     std::unique_ptr<JavacardKeymasterOperation>& operation);
     keymaster_error_t handleBeginPrivateKeyOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
                                                     const hidl_vec<KeyParameter>& inParams,
                                                     const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
-                                                    uint64_t& operationHandle);                                               ;
+                                                    uint64_t& operationHandle,
+                                                    std::unique_ptr<JavacardKeymasterOperation>& operation);                                               ;
 
     keymaster_error_t handleBeginPublicKeyOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
                                                         const hidl_vec<KeyParameter>& inParams,
                                                         const HardwareAuthToken& authToken,
                                                         hidl_vec<KeyParameter>& outParams,
-                                                        uint64_t& operationHandle);
+                                                        uint64_t& operationHandle,
+                                                        std::unique_ptr<JavacardKeymasterOperation>& operation);
     bool isOperationHandleExists(uint64_t opHandle);
     keymaster_error_t abortOperation(uint64_t operationHandle);
 

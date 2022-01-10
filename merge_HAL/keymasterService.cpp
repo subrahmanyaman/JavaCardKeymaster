@@ -20,6 +20,7 @@
 #include <hidl/HidlTransportSupport.h>
 #include <JavacardKeymaster4Device.h>
 #include <JavacardKeymaster.h>
+#include <keymaster/km_version.h>
 #include <SocketTransport.h>
 #include "km_utils.h"
 using namespace javacard_keymaster;
@@ -31,7 +32,7 @@ using ::keymaster::V4_1::javacard::JavacardKeymaster4Device;
 int main() {
     ::android::hardware::configureRpcThreadpool(1, true);
     std::shared_ptr<JavacardSecureElement> card =
-        std::make_shared<JavacardSecureElement>(std::make_shared<SocketTransport>(), getOsVersion(),
+        std::make_shared<JavacardSecureElement>(KmVersion::KEYMASTER_4_1, std::make_shared<SocketTransport>(), getOsVersion(),
                                                 getOsPatchlevel(), getVendorPatchlevel());
     std::shared_ptr<JavacardKeymaster> jcImpl = std::make_shared<JavacardKeymaster>(card);
     auto keymaster = new JavacardKeymaster4Device(jcImpl);

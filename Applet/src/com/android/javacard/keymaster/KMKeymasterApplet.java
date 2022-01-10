@@ -725,7 +725,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(keyBlob).add(KMKeymasterApplet.KEY_BLOB_SECRET, KMByteBlob.exp());
     KMArray.cast(keyBlob).add(KMKeymasterApplet.KEY_BLOB_AUTH_TAG, KMByteBlob.exp());
     KMArray.cast(keyBlob).add(KMKeymasterApplet.KEY_BLOB_NONCE, KMByteBlob.exp());
-    short keyChar = KMKeymasterApplet.specification.getKeyCharacteristicsExp();
+    short keyChar = KMKeyCharacteristics.exp();
     KMArray.cast(keyBlob).add(KMKeymasterApplet.KEY_BLOB_PARAMS, keyChar);
     KMArray.cast(keyBlob).add(KMKeymasterApplet.KEY_BLOB_PUB_KEY, KMByteBlob.exp());
     return keyBlob;
@@ -1732,9 +1732,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case KMType.RSA:
         // Fill the scratch pad with zero
         Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 256, (byte) 0);
-        if (op.getPadding() == KMType.PADDING_NONE && len != 256) {
-          KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
-        }
         len =
             op.getOperation().finish(
                 KMByteBlob.cast(data[INPUT_DATA]).getBuffer(), KMByteBlob.cast(data[INPUT_DATA]).getStartOff(),
@@ -2109,9 +2106,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     } else if (op.getPurpose() == KMType.ENCRYPT || op.getPurpose() == KMType.DECRYPT) {
       // Update for encrypt/decrypt using RSA will not be supported because to do this op state
       //  will have to buffer the data - so reject the update if it is rsa algorithm.
-      if (op.getAlgorithm() == KMType.RSA) {
-        KMException.throwIt(KMError.OPERATION_CANCELLED);
-      }
       short len  = KMByteBlob.cast(data[INPUT_DATA]).length();
       short blockSize = DES_BLOCK_SIZE;
       if (op.getAlgorithm() == KMType.AES) {
@@ -2275,6 +2269,23 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(cmd).add((short) 3, authToken);
     return receiveIncoming(apdu, cmd);
   }
+  
+  void assertPrivateOperation(short purpose, short algorithm) {
+    switch(algorithm) {
+    case KMType.RSA:
+      if (purpose == KMType.ENCRYPT || purpose == KMType.VERIFY) {
+        KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
+      }
+      break;
+    case KMType.EC:
+      if (purpose == KMType.VERIFY) {
+        KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
+      }
+      break;
+    default:
+        break;
+    }
+  }
 
   private void processBeginOperationCmd(APDU apdu) {
     // Receive the incoming request fully from the master into buffer.
@@ -2300,7 +2311,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
     KMTag.assertPresence(data[SB_PARAMETERS],KMType.ENUM_TAG,KMType.ALGORITHM,KMError.UNSUPPORTED_ALGORITHM);
     short algorithm = KMEnumTag.getValue(KMType.ALGORITHM,data[SB_PARAMETERS]);
-    
+
     //TODO should be removed for keymint
     // If Blob usage tag is present in key characteristics then it should be standalone.
     if(KMTag.isPresent(data[SB_PARAMETERS],KMType.ENUM_TAG, KMType.BLOB_USAGE_REQ)){
@@ -2626,6 +2637,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     authorizeDigest(op);
     authorizePadding(op);
     authorizeBlockModeAndMacLength(op);
+    assertPrivateOperation(op.getPurpose(), op.getAlgorithm());
     authorizeUserSecureIdAuthTimeout(op, scratchPad);
     authorizeDeviceUnlock(scratchPad);
     authorizeKeyUsageForCount(scratchPad);
@@ -3068,15 +3080,12 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private short importKeyCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 6);
+    short cmd = KMArray.instance((short) 3);
     // Arguments
     short params = KMKeyParameters.expAny();
     KMArray.cast(cmd).add((short) 0, params);
     KMArray.cast(cmd).add((short) 1, KMEnum.instance(KMType.KEY_FORMAT));
     KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());
-    KMArray.cast(cmd).add((short) 3, KMByteBlob.exp()); //attest key
-    KMArray.cast(cmd).add((short) 4, params); //attest key params
-    KMArray.cast(cmd).add((short) 5, KMByteBlob.exp()); //issuer
     return receiveIncoming(apdu, cmd);
   }
   
@@ -3087,9 +3096,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 0);
     short keyFmt = KMArray.cast(cmd).get((short) 1);
     data[IMPORTED_KEY_BLOB] = KMArray.cast(cmd).get((short) 2);
-    data[ATTEST_KEY_BLOB] = KMArray.cast(cmd).get((short) 3);
-    data[ATTEST_KEY_PARAMS] = KMArray.cast(cmd).get((short) 4);
-    data[ATTEST_KEY_ISSUER] = KMArray.cast(cmd).get((short) 5);
     keyFmt = KMEnum.cast(keyFmt).getVal();
 
     data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.

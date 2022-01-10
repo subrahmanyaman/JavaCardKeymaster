@@ -182,11 +182,15 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
     if (item != nullptr) {
         std::vector<uint8_t> temp;
         AuthorizationSet _;
-        if (!cbor_.getBinaryArray(item, kPubKeyOffset, temp) ||
-            !cbor_.getKeyCharacteristics(item, kKeyCharsOffset, sw_enforced, hw_enforced, _)) {
+        // Read public key from keyblob. For symmetric keys the data
+        // will be empty so ignore the error.
+        if(cbor_.getBinaryArray(item, kPubKeyOffset, temp)) {
+            key_material = {temp.data(), temp.size()};
+            temp.clear();
+        }
+        if (!cbor_.getKeyCharacteristics(item, kKeyCharsOffset, sw_enforced, hw_enforced, _)) {
             return KM_ERROR_INVALID_KEY_BLOB;
         }
-        key_material = {temp.data(), temp.size()};
         return constructKey();
     }
     return KM_ERROR_INVALID_KEY_BLOB;

@@ -27,14 +27,15 @@ public class KMKeymasterSpecification implements KMSpecification {
 
   @Override
   public short getHardwareInfo() {
-    short respPtr = KMArray.instance((short) 3);
+    short respPtr = KMArray.instance((short) 4);
     KMArray resp = KMArray.cast(respPtr);
-    resp.add((short) 0, KMEnum.instance(KMType.HARDWARE_TYPE, KMType.STRONGBOX));
+    resp.add((short) 0, KMInteger.uint_16(KMError.OK));
+    resp.add((short) 1, KMEnum.instance(KMType.HARDWARE_TYPE, KMType.STRONGBOX));
     resp.add(
-        (short) 1,
+        (short) 2,
         KMByteBlob.instance(
             JAVACARD_KEYMASTER_DEVICE, (short) 0, (short) JAVACARD_KEYMASTER_DEVICE.length));
-    resp.add((short) 2, KMByteBlob.instance(GOOGLE, (short) 0, (short) GOOGLE.length));
+    resp.add((short) 3, KMByteBlob.instance(GOOGLE, (short) 0, (short) GOOGLE.length));
     return respPtr;
   }
 
@@ -46,23 +47,22 @@ public class KMKeymasterSpecification implements KMSpecification {
     short teeParams = KMKeyParameters.makeTeeEnforced(keyParams, scratchPad);
     short swParams = KMKeyParameters.makeKeystoreEnforced(keyParams, scratchPad);
     short hwParams = KMKeyParameters.makeHwEnforced(strongboxParams, teeParams);
-    short keyCharacteristics = KMKeyCharacteristics.instance2();
+    short arr = KMArray.instance((short) 0);
+    short emptyParams = KMKeyParameters.instance(arr);
+    short keyCharacteristics = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.cast(keyCharacteristics).setStrongboxEnforced(hwParams);
     KMKeyCharacteristics.cast(keyCharacteristics).setKeystoreEnforced(swParams);
+    KMKeyCharacteristics.cast(keyCharacteristics).setTeeEnforced(emptyParams);
     return keyCharacteristics;
   }
 
   @Override
   public short makeKeyCharacteristicsForKeyblob(short swParams, short sbParams, short teeParams) {
-    short keyChars = KMKeyCharacteristics.instance2();
+    short keyChars = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.cast(keyChars).setStrongboxEnforced(sbParams);
     KMKeyCharacteristics.cast(keyChars).setKeystoreEnforced(swParams);
+    KMKeyCharacteristics.cast(keyChars).setTeeEnforced(teeParams);
     return keyChars;
-  }
-
-  @Override
-  public short getKeyCharacteristicsExp() {
-    return KMKeyCharacteristics.exp2();
   }
 
   @Override

@@ -26,11 +26,11 @@ keymaster_error_t JavacardKeymasterOperation::handleErrorCode(keymaster_error_t 
     bool isSeResetOccurred = (0 != (errorCode & SE_POWER_RESET_STATUS_FLAG));
 
     if (isSeResetOccurred) {
-        // TODO Handle clearing the operation entries.
         //Clear the operation table for Strongbox operations entries.
-        //clearStrongboxOprHandleEntries(oprCtx);
+        if (seResetListener_) {
+            seResetListener_->seResetEvent();
+        }
         // Unmask the power reset status flag.
-        //seResetListener_->seResetEvent();
         errorCode &= ~SE_POWER_RESET_STATUS_FLAG;
     }
     return translateExtendedErrorsToHalErrors(static_cast<keymaster_error_t>(0 - errorCode));
@@ -100,8 +100,7 @@ keymaster_error_t JavacardKeymasterOperation::update(const vector<uint8_t> &inpu
                        << (int32_t) response.error;
         }
         return response.error;
-    }
-    else {
+    } else {
         DataView view = {.buffer = {}, .data = input, .start = 0, .length = input.size()};
         keymaster_error_t err = bufferData(view);
         if (err != KM_ERROR_OK) {
@@ -321,7 +320,7 @@ keymaster_error_t JavacardKeymasterOperation::sendUpdate(const vector<uint8_t>& 
                                                        const HardwareAuthToken& authToken,
                                                         const vector<uint8_t>& encodedVerificationToken,
                                                            vector<uint8_t>& output) {
-    if (input.empty()) {
+    if (input.empty() && !inParams.Contains(KM_TAG_ASSOCIATED_DATA)) {
         return KM_ERROR_OK;
     }
     cppbor::Array request;
@@ -363,7 +362,7 @@ keymaster_error_t JavacardKeymasterOperation::sendFinish(const vector<uint8_t>& 
         return err;
     }
     vector<uint8_t> respData;
-    if (!cbor_.getBinaryArray(item, 1, respData)) {
+    if (!cbor_.getBinaryArray(item, 2, respData)) {
         return KM_ERROR_UNKNOWN_ERROR;
     }
     opHandle_ = 0;

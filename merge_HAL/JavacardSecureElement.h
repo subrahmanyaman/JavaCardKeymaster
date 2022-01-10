@@ -19,9 +19,11 @@
 #include<optional>
 #include "CborConverter.h"
 #include <ITransport.h>
+#include <keymaster/km_version.h>
 
 #define APDU_CLS 0x80
-#define APDU_P1 0x50
+#define APDU_KEYMINT_P1 0x50
+#define APDU_KEYMASTER_P1 0x40
 #define APDU_P2 0x00
 #define APDU_RESP_STATUS_OK 0x9000
 
@@ -30,6 +32,7 @@
 #define KEYMINT_CMD_APDU_START 0x20
 
 namespace javacard_keymaster {
+using keymaster::KmVersion;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
@@ -76,14 +79,14 @@ enum class Instruction {
 class IJavacardSeResetListener {
 public:
     virtual ~IJavacardSeResetListener() { };
-    virtual void seResetEvent();
+    virtual void seResetEvent() = 0;
 };
 
 class JavacardSecureElement {
   public:
-    explicit JavacardSecureElement(shared_ptr<ITransport> transport, uint32_t osVersion,
+    explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport, uint32_t osVersion,
                                    uint32_t osPatchLevel, uint32_t vendorPatchLevel)
-        : transport_(transport), osVersion_(osVersion), osPatchLevel_(osPatchLevel),
+        : version_(version), transport_(transport), osVersion_(osVersion), osPatchLevel_(osPatchLevel),
           vendorPatchLevel_(vendorPatchLevel) {
         transport_->openConnection();
     }
@@ -106,7 +109,10 @@ class JavacardSecureElement {
         uint8_t SW1 = inputData.at(inputData.size() - 1);
         return (SW0 << 8 | SW1);
     }
+private: 
+    keymaster_error_t getP1(uint8_t *p1);
 
+    KmVersion version_;
     shared_ptr<ITransport> transport_;
     uint32_t osVersion_;
     uint32_t osPatchLevel_;

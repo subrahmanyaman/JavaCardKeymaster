@@ -16,8 +16,6 @@
  */
 
 #include "CborConverter.h"
-//#include <KeyMintUtils.h>
-//#include <aidl/android/hardware/security/keymint/IKeyMintDevice.h>
 #include <cppbor.h>
 #include <map>
 #include <memory>
@@ -262,10 +260,11 @@ bool CborConverter::getKeyParameter(const std::pair<const unique_ptr<Item>&, con
         keyParam.tag = static_cast<keymaster_tag_t>(key);
         const Bstr* bstr = pair.second.get()->asBstr();
         if (bstr == nullptr) return false;
-        keyParam.blob.data = bstr->value().data();
-        keyParam.blob.data_length = bstr->value().size();
+        size_t blobSize = bstr->value().size();
+        keyParam.blob.data = keymaster::dup_buffer(bstr->value().data(), blobSize);
+        keyParam.blob.data_length = blobSize;
         keyParams.push_back(keyParam);
-    } break;
+        } break;
     default:
         /* Invalid - return error */
         return false;

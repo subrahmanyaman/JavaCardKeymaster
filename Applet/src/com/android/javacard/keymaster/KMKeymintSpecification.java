@@ -72,11 +72,6 @@ public class KMKeymintSpecification implements KMSpecification {
   }
 
   @Override
-  public short getKeyCharacteristicsExp() {
-    return KMKeyCharacteristics.exp();
-  }
-
-  @Override
   public boolean canCreateEarlyBootKeys() {
     return false;
   }

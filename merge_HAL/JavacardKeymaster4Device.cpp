@@ -168,8 +168,7 @@ static inline hidl_vec<KeyParameter> kmParamSet2Hidl(const keymaster_key_param_s
             break;
         case KM_BIGNUM:
         case KM_BYTES:
-            result[i].blob.setToExternal(const_cast<unsigned char*>(params[i].blob.data),
-                                         params[i].blob.data_length);
+            result[i].blob = std::vector<uint8_t>(params[i].blob.data, params[i].blob.data + params[i].blob.data_length);
             break;
         case KM_INVALID:
         default:
@@ -235,7 +234,10 @@ JavacardKeymaster4Device::JavacardKeymaster4Device(shared_ptr<JavacardKeymaster>
             return context;
             }(),
             kOperationTableSize, keymaster::MessageVersion(keymaster::KmVersion::KEYMASTER_4_1,
-                                0 /* km_date */) )),  jcImpl_(jcImpl) { }
+                                0 /* km_date */) )),  jcImpl_(jcImpl) {
+    std::shared_ptr<IJavacardSeResetListener> listener(dynamic_cast<IJavacardSeResetListener*>(this));
+    jcImpl_->registerSeResetEventListener(listener);
+}
 
 JavacardKeymaster4Device::~JavacardKeymaster4Device() {}
 
@@ -480,7 +482,8 @@ JavacardKeymaster4Device::handleBeginPublicKeyOperation(KeyPurpose purpose, cons
                                                         const hidl_vec<KeyParameter>& inParams,
                                                         const HardwareAuthToken& authToken,
                                                         hidl_vec<KeyParameter>& outParams,
-                                                        uint64_t& operationHandle) {
+                                                        uint64_t& operationHandle,
+                                                        std::unique_ptr<JavacardKeymasterOperation>& operation) {
     BeginOperationRequest request(softKm_->message_version());
     request.purpose = legacy_enum_conversion(purpose);
     request.SetKeyMaterial(keyBlob.data(), keyBlob.size());
@@ -490,14 +493,12 @@ JavacardKeymaster4Device::handleBeginPublicKeyOperation(KeyPurpose purpose, cons
         TAG_AUTH_TOKEN, reinterpret_cast<uint8_t*>(hidl_vec_token.data()), hidl_vec_token.size());
 
     BeginOperationResponse response(softKm_->message_version());
-    /* For Symmetric key operation, the BeginOperation returns
-     * KM_ERROR_INCOMPATIBLE_ALGORITHM error. */
     softKm_->BeginOperation(request, &response);
     LOG(DEBUG) << "INS_BEGIN_OPERATION_CMD softkm BeginOperation status: " << (int32_t) response.error;
     if (response.error == KM_ERROR_OK) {
         outParams = kmParamSet2Hidl(response.output_params);
         operationHandle = response.op_handle;
-        operationTable_[operationHandle] =
+        operation =
             std::make_unique<JavacardKeymasterOperation>(operationHandle, BufferingMode::NONE, 0, nullptr, OperationType::PUBLIC_OPERATION, softKm_);
     } else {
         LOG(ERROR) << "INS_BEGIN_OPERATION_CMD error in softkm BeginOperation status: "
@@ -509,10 +510,9 @@ JavacardKeymaster4Device::handleBeginPublicKeyOperation(KeyPurpose purpose, cons
 keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
     KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob, const hidl_vec<KeyParameter>& inParams,
     const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
-    uint64_t& operationHandle) {
+    uint64_t& operationHandle, std::unique_ptr<JavacardKeymasterOperation>& operation) {
     AuthorizationSet paramSet;
     AuthorizationSet authSetParams;
-    std::unique_ptr<JavacardKeymasterOperation> operation;
     paramSet.Reinitialize(KmParamSet(inParams));
     ::keymaster::HardwareAuthToken legacyToken;
     legacyHardwareAuthToken(authToken, &legacyToken);
@@ -521,7 +521,6 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
     if (err == KM_ERROR_OK) {
         operationHandle = operation->getOpertionHandle();
         outParams = kmParamSet2Hidl(authSetParams);
-        operationTable_[operationHandle] = std::move(operation);
     }                    
     return err;
 }
@@ -529,10 +528,10 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
 keymaster_error_t JavacardKeymaster4Device::handleBeginOperation(
     KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob, const hidl_vec<KeyParameter>& inParams,
     const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
-    uint64_t& operationHandle, OperationType& operType) {
+    uint64_t& operationHandle, OperationType& operType, std::unique_ptr<JavacardKeymasterOperation>& operation) {
     keymaster_error_t err = KM_ERROR_UNKNOWN_ERROR;
     if (operType == OperationType::PRIVATE_OPERATION) {
-        err = handleBeginPrivateKeyOperation(purpose, keyBlob, inParams, authToken, outParams, operationHandle);
+        err = handleBeginPrivateKeyOperation(purpose, keyBlob, inParams, authToken, outParams, operationHandle, operation);
         if (err == ExtendedErrors::PUBLIC_KEY_OPERATION) {
            // Handle public key operation.
            operType = OperationType::PUBLIC_OPERATION;
@@ -540,7 +539,7 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginOperation(
     }
 
     if (operType == OperationType::PUBLIC_OPERATION) {
-        err = handleBeginPublicKeyOperation(purpose, keyBlob, inParams, authToken, outParams, operationHandle);
+        err = handleBeginPublicKeyOperation(purpose, keyBlob, inParams, authToken, outParams, operationHandle, operation);
     }
     return err;
 }
@@ -557,10 +556,11 @@ Return<void> JavacardKeymaster4Device::begin(KeyPurpose purpose, const hidl_vec<
                                             const HardwareAuthToken& authToken, begin_cb _hidl_cb) {
     uint64_t operationHandle = 0;
     OperationType operType = OperationType::PRIVATE_OPERATION;
+    std::unique_ptr<JavacardKeymasterOperation> operation;
     hidl_vec<KeyParameter> outParams;
     LOG(DEBUG) << "INS_BEGIN_OPERATION_CMD purpose: " << (int32_t)purpose;
     auto err = handleBeginOperation(purpose, keyBlob, inParams, authToken, outParams,
-                                     operationHandle, operType);
+                                     operationHandle, operType, operation);
     if (err == KM_ERROR_OK && isOperationHandleExists(operationHandle)) {
         LOG(DEBUG) << "Operation handle " << operationHandle << "already exists"
                       "in the opertion table. so aborting this opertaion.";
@@ -569,7 +569,7 @@ Return<void> JavacardKeymaster4Device::begin(KeyPurpose purpose, const hidl_vec<
         if (err == KM_ERROR_OK) {
             // retry begin to get an another operation handle.
             err = handleBeginOperation(purpose, keyBlob, inParams, authToken, outParams,
-                                             operationHandle, operType);
+                                             operationHandle, operType, operation);
             if (err == KM_ERROR_OK && isOperationHandleExists(operationHandle)) {
                 err = KM_ERROR_UNKNOWN_ERROR;
                 LOG(ERROR) << "INS_BEGIN_OPERATION_CMD: Failed in begin operation as the"
@@ -583,6 +583,9 @@ Return<void> JavacardKeymaster4Device::begin(KeyPurpose purpose, const hidl_vec<
                 }
             }
         }
+    }
+    if (err == KM_ERROR_OK) {
+        operationTable_[operationHandle] = std::move(operation);
     }
     _hidl_cb(legacy_enum_conversion(err), outParams, operationHandle);
     return Void();
@@ -714,6 +717,21 @@ keymaster_error_t JavacardKeymaster4Device::encodeVerificationToken(const Verifi
     cbor_.addVerificationToken(array, token, asn1ParamsVerified);
     *encodedToken = array.encode();
     return KM_ERROR_OK;
+}
+
+void JavacardKeymaster4Device::seResetEvent() {
+    // clear strongbox entires.
+    LOG(INFO)
+        << "Secure Element reset or applet upgrade detected. Removing existing operation handles";
+    auto it = operationTable_.begin();
+    while (it != operationTable_.end()) {
+        if (it->second->getOperationType() == ::javacard_keymaster::OperationType::PRIVATE_OPERATION) { // Strongbox operation
+            LOG(INFO) << "operation handle: " << it->first << " is removed";
+            it = operationTable_.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 }  // javacard

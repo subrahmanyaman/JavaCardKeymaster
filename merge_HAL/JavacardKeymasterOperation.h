@@ -74,9 +74,10 @@ class JavacardKeymasterOperation {
                                       BufferingMode bufferingMode,
                                       uint16_t macLength,
                                       shared_ptr<JavacardSecureElement> card,
-                                      OperationType operType)
+                                      OperationType operType,
+                                      shared_ptr<IJavacardSeResetListener> seResetListener)
         : buffer_(vector<uint8_t>()), bufferingMode_(bufferingMode), macLength_(macLength),
-          card_(card), opHandle_(opHandle), operType_(operType), softKm_(nullptr)  {}
+          card_(card), opHandle_(opHandle), operType_(operType), seResetListener_(seResetListener), softKm_(nullptr)  {}
     explicit JavacardKeymasterOperation(uint64_t opHandle,
                                       BufferingMode bufferingMode,
                                       uint16_t macLength,
@@ -84,10 +85,12 @@ class JavacardKeymasterOperation {
                                       OperationType operType,
                                       std::shared_ptr<::keymaster::AndroidKeymaster> softKm)
         : buffer_(vector<uint8_t>()), bufferingMode_(bufferingMode), macLength_(macLength),
-          card_(card), opHandle_(opHandle), operType_(operType), softKm_(softKm)  {}
+          card_(card), opHandle_(opHandle), operType_(operType), seResetListener_(nullptr), softKm_(softKm)  {}
     virtual ~JavacardKeymasterOperation();
     
     uint64_t getOpertionHandle() { return opHandle_; }
+
+    OperationType getOperationType() { return operType_; }
 
     keymaster_error_t update(const vector<uint8_t>& input, const AuthorizationSet& inParams, const HardwareAuthToken& authToken,
                          const vector<uint8_t>& encodedVerificationToken,
@@ -151,7 +154,7 @@ private:
     uint64_t opHandle_;
     CborConverter cbor_;
     OperationType operType_;
-    //shared_ptr<IJavacardSeResetListener> seResetListener_;
+    shared_ptr<IJavacardSeResetListener> seResetListener_;
     std::shared_ptr<::keymaster::AndroidKeymaster> softKm_;
 };
 

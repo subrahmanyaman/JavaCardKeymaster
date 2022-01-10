@@ -12,8 +12,6 @@ public interface KMSpecification {
 
   short makeKeyCharacteristicsForKeyblob(short swParams, short sbParams, short teeParams);
 
-  short getKeyCharacteristicsExp();
-
   boolean canCreateEarlyBootKeys();
 
   short getHardwareParamters(short sbParams, short teeParams);
