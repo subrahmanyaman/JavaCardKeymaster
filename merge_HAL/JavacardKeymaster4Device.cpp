@@ -43,6 +43,7 @@ using std::vector;
 using std::string;
 
 constexpr size_t kOperationTableSize = 4;
+constexpr int kKeyblobKeyCharsOffset = 3;
 
 struct KM_AUTH_LIST_Delete {
     void operator()(KM_AUTH_LIST* p) { KM_AUTH_LIST_free(p); }
@@ -224,6 +225,57 @@ static keymaster_error_t encodeParametersVerified(const VerificationToken& verif
     return KM_ERROR_OK;
 }
 
+keymaster_error_t getOperationInfo(keymaster_purpose_t purpose, const AuthorizationSet& inParams,
+                                   const AuthorizationSet& keyBlobParams, uint32_t& buferingMode,
+                                   uint32_t& macLength) {
+    BufferingMode bufMode = BufferingMode::NONE;
+    keymaster_algorithm_t keyAlgo;
+    keymaster_digest_t digest = KM_DIGEST_NONE;
+    keymaster_padding_t padding = KM_PAD_NONE;
+    keymaster_block_mode_t blockMode = KM_MODE_ECB;
+    macLength = 0;
+    if (!keyBlobParams.GetTagValue(TAG_ALGORITHM, &keyAlgo)) {
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    inParams.GetTagValue(TAG_DIGEST, &digest);
+    inParams.GetTagValue(TAG_PADDING, &padding);
+    inParams.GetTagValue(TAG_BLOCK_MODE, &blockMode);
+    inParams.GetTagValue(TAG_MAC_LENGTH, &macLength);
+    macLength = (macLength / 8);
+    switch (keyAlgo) {
+      case KM_ALGORITHM_AES:
+        if (purpose == KM_PURPOSE_ENCRYPT && padding == KM_PAD_PKCS7) {
+          bufMode =  BufferingMode::BUF_AES_ENCRYPT_PKCS7_BLOCK_ALIGNED;
+        } else if (purpose == KM_PURPOSE_DECRYPT && padding == KM_PAD_PKCS7) {
+          bufMode =  BufferingMode::BUF_AES_DECRYPT_PKCS7_BLOCK_ALIGNED;
+        } else if (purpose == KM_PURPOSE_DECRYPT && blockMode == KM_MODE_GCM) {
+          bufMode =  BufferingMode::BUF_AES_GCM_DECRYPT_BLOCK_ALIGNED;
+        }
+        break;
+      case KM_ALGORITHM_TRIPLE_DES:
+        if (purpose == KM_PURPOSE_ENCRYPT && padding == KM_PAD_PKCS7) {
+          bufMode =  BufferingMode::BUF_DES_ENCRYPT_PKCS7_BLOCK_ALIGNED;
+        } else if (purpose == KM_PURPOSE_DECRYPT && padding == KM_PAD_PKCS7) {
+          bufMode = BufferingMode::BUF_DES_DECRYPT_PKCS7_BLOCK_ALIGNED;
+        }
+        break;
+      case KM_ALGORITHM_RSA:
+        if (purpose == KM_PURPOSE_DECRYPT || digest == KM_DIGEST_NONE) {
+            bufMode = BufferingMode::RSA_NO_DIGEST;
+        }
+        break;
+      case KM_ALGORITHM_EC:
+          if (digest == KM_DIGEST_NONE && purpose == KM_PURPOSE_SIGN) {
+              bufMode = BufferingMode::EC_NO_DIGEST;
+          }
+        break;
+      default:
+        break;
+    }
+    buferingMode = static_cast<uint32_t>(bufMode);
+    return KM_ERROR_OK;
+}   
+
 } // anonymous namespace
 
 JavacardKeymaster4Device::JavacardKeymaster4Device(shared_ptr<JavacardKeymaster> jcImpl)
@@ -370,7 +422,7 @@ Return<void> JavacardKeymaster4Device::attestKey(const hidl_vec<uint8_t>& keyToA
     vector<vector<uint8_t>> certChain;
     hidl_vec<hidl_vec<uint8_t>> outCertChain;
     paramSet.Reinitialize(KmParamSet(attestParams));
-    auto err = jcImpl_->attestKey(keyToAttest, paramSet, {}, AuthorizationSet(), {}, &certChain);
+    auto err = jcImpl_->attestKey(keyToAttest, paramSet, &certChain);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "JavacardKeymaster4Device attestKey Failed in attestKey err: " << (int32_t) err;
         _hidl_cb(legacy_enum_conversion(err), outCertChain);
@@ -519,6 +571,26 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
     auto err = jcImpl_->begin(legacy_enum_conversion(purpose), keyBlob, paramSet, legacyToken,
                          &authSetParams, operation);
     if (err == KM_ERROR_OK) {
+        // Decode keyblob to get the BufferingMode and macLength properties.
+        AuthorizationSet swEnforced;
+        AuthorizationSet teeEnforced;
+        AuthorizationSet hwEnforced;
+        uint32_t bufMode;
+        uint32_t macLength;
+        auto [item, _] = cbor_.decodeKeyblob(keyBlob);
+        if (item == nullptr) {
+            return KM_ERROR_UNKNOWN_ERROR;
+        }
+        if (!cbor_.getKeyCharacteristics(item, kKeyblobKeyCharsOffset, swEnforced, hwEnforced, teeEnforced)) {
+            return KM_ERROR_INVALID_KEY_BLOB;
+        }
+        err = getOperationInfo(static_cast<keymaster_purpose_t>(purpose), paramSet, hwEnforced, bufMode, macLength);
+        if (err != KM_ERROR_OK) {
+            return err;
+        }
+        operation->setBufferingMode(static_cast<BufferingMode>(bufMode));
+        operation->setMacLength(macLength);
+        // Get the operation handle from the Operation.
         operationHandle = operation->getOpertionHandle();
         outParams = kmParamSet2Hidl(authSetParams);
     }                    
@@ -638,7 +710,7 @@ JavacardKeymaster4Device::update(uint64_t operationHandle, const hidl_vec<KeyPar
         _hidl_cb(legacy_enum_conversion(err), inputConsumed, outParams, output);
         return Void();
     }
-    err = it->second->update(input, paramSet, legacyHwToken, encodedVerificationToken, &authSetOutParams, &inputConsumed, &output);
+    err = it->second->update(input, std::optional<AuthorizationSet>(paramSet), legacyHwToken, encodedVerificationToken, &authSetOutParams, &inputConsumed, &output);
     if (err != KM_ERROR_OK) {
         /* Delete the entry on this operationHandle */
         operationTable_.erase(operationHandle);
@@ -675,7 +747,7 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
         _hidl_cb(legacy_enum_conversion(err), outParams, output);
         return Void();
     }
-    err = it->second->finish(input, paramSet, signature, legacyHwToken, encodedVerificationToken, {}, &authSetOutParams, &output);
+    err = it->second->finish(input, std::optional<AuthorizationSet>(paramSet), signature, legacyHwToken, encodedVerificationToken, {}, &authSetOutParams, &output);
     /* Delete the entry on this operationHandle */
     operationTable_.erase(operationHandle);
     outParams = kmParamSet2Hidl(authSetOutParams);

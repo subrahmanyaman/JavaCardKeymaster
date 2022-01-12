@@ -3,6 +3,9 @@ package com.android.javacard.keymaster;
 import com.android.javacard.seprovider.KMAttestationCert;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMSEProvider;
+import javacard.framework.APDU;
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 public class KMKeymintSpecification implements KMSpecification {
@@ -176,6 +179,126 @@ public class KMKeymintSpecification implements KMSpecification {
   }
 
   @Override
+  public short generateAttestKeyExp() {
+    short params = KMKeyParameters.expAny();
+    short blob = KMByteBlob.exp();
+    // Array of expected arguments
+    short cmd = KMArray.instance((short) 5);
+    KMArray.cast(cmd).add((short) 0, blob); //key blob
+    KMArray.cast(cmd).add((short) 1, params); //keyparamters to be attested.
+    KMArray.cast(cmd).add((short) 2, blob); //attest key blob
+    KMArray.cast(cmd).add((short) 3, params); //attest key params
+    KMArray.cast(cmd).add((short) 4, blob); //attest issuer
+    return cmd;
+  }
+
+  @Override
+  public void getAttestKeyInputParameters(short arrPtr, short[] data, byte keyBlobOff,
+      byte keyParametersOff,
+      byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
+    data[keyBlobOff] = KMArray.cast(arrPtr).get((short) 0);
+    data[keyParametersOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[attestKeyBlobOff] = KMArray.cast(arrPtr).get((short) 2);
+    data[attestKeyParamsOff] = KMArray.cast(arrPtr).get((short) 3);
+    data[attestKeyIssuerOff] = KMArray.cast(arrPtr).get((short) 4);
+  }
+
+  @Override
+  public short prepareBeginResp(short paramsPtr, short opHandlePtr, short bufModePtr,
+      short macLengthPtr) {
+    short resp = KMArray.instance((short) 5);
+    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.cast(resp).add((short) 1, paramsPtr);
+    KMArray.cast(resp).add((short) 2, opHandlePtr);
+    KMArray.cast(resp).add((short) 3, bufModePtr);
+    KMArray.cast(resp).add((short) 4, macLengthPtr);
+    return resp;
+  }
+
+  @Override
+  public short prepareFinishExp() {
+    short byteBlob = KMByteBlob.exp();
+    short cmd = KMArray.instance((short) 6);
+    KMArray.cast(cmd).add((short) 0, KMInteger.exp());//op handle
+    KMArray.cast(cmd).add((short) 1, byteBlob);// input data
+    KMArray.cast(cmd).add((short) 2, byteBlob); // signature
+    short authToken = KMHardwareAuthToken.exp();
+    KMArray.cast(cmd).add((short) 3, authToken); // auth token
+    short verToken = getKMVerificationTokenExp();
+    KMArray.cast(cmd).add((short) 4, verToken); // time stamp token
+    KMArray.cast(cmd).add((short) 5, byteBlob); // confirmation token
+    return cmd;
+  }
+
+  @Override
+  public short prepareUpdateExp() {
+    short cmd = KMArray.instance((short) 4);
+    // Arguments
+    KMArray.cast(cmd).add((short) 0, KMInteger.exp());
+    KMArray.cast(cmd).add((short) 1, KMByteBlob.exp());
+    short authToken = KMHardwareAuthToken.exp();
+    KMArray.cast(cmd).add((short) 2, authToken);
+    short verToken = getKMVerificationTokenExp();
+    KMArray.cast(cmd).add((short) 3, verToken);
+    return cmd;
+  }
+
+  @Override
+  public void getUpdateInputParameters(short arrPtr, short[] data, byte opHandleOff,
+      byte keyParametersOff, byte inputDataOff, byte hwTokenOff,
+      byte verToken) {
+    data[opHandleOff] = KMArray.cast(arrPtr).get((short) 0);
+    data[inputDataOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[hwTokenOff] = KMArray.cast(arrPtr).get((short) 2);
+    data[verToken] = KMArray.cast(arrPtr).get((short) 3);
+  }
+
+  @Override
+  public void getFinishInputParameters(short arrPtr, short[] data, byte opHandleOff,
+      byte keyParametersOff, byte inputDataOff, byte signDataOff, byte hwTokenOff, byte verToken,
+      byte confToken) {
+    data[opHandleOff] = KMArray.cast(arrPtr).get((short) 0);
+    data[keyParametersOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[inputDataOff] = KMArray.cast(arrPtr).get((short) 2);
+    data[signDataOff] = KMArray.cast(arrPtr).get((short) 3);
+    data[hwTokenOff] = KMArray.cast(arrPtr).get((short) 4);
+    data[verToken] = KMArray.cast(arrPtr).get((short) 5);
+    data[confToken] = KMArray.cast(arrPtr).get((short) 6);
+  }
+
+  @Override
+  public short prepareFinishResp(short outputPtr) {
+    short resp = KMArray.instance((short) 2);
+    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.cast(resp).add((short) 1, outputPtr);
+    return resp;
+  }
+
+  @Override
+  public short prepareUpdateResp(short outputPtr, short inputConsumedPtr) {
+    short resp = KMArray.instance((short) 2);
+    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.cast(resp).add((short) 1, outputPtr);
+    return resp;
+  }
+
+
+  @Override
+  public short validateApduHeader(APDU apdu) {
+    byte[] apduBuffer = apdu.getBuffer();
+    short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
+    byte ins = apduBuffer[ISO7816.OFFSET_INS];
+    switch (ins) {
+      case KMKeymasterApplet.INS_GET_CERT_CHAIN_CMD:
+        return KMError.UNSUPPORTED_INSTRUCTION;
+    }
+    if (P1P2 != KMKeymasterApplet.KM_HAL_VERSION) {
+      return KMError.INVALID_P1P2;
+    }
+    return KMError.OK;
+  }
+
+  @Override
   public boolean isKeyAgreementSupported() {
     return true;
   }
@@ -197,4 +320,5 @@ public class KMKeymintSpecification implements KMSpecification {
   public short getMacFromVerificationToken(short verToken) {
     return KMVerificationToken.cast(verToken).getMac((short) 0x02);
   }
+
 }

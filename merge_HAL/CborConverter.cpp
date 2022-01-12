@@ -24,27 +24,10 @@
 
 namespace javacard_keymaster {
 using namespace cppbor;
-//using namespace aidl::android::hardware::security::keymint;
-//using namespace aidl::android::hardware::security::secureclock;
-//using namespace aidl::android::hardware::security::sharedsecret;
 using ::keymaster::KeymasterBlob;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-/*
-bool CborConverter::addAttestationKey(Array& array,
-                                      const std::optional<AttestationKey>& attestationKey) {
-    if (attestationKey.has_value()) {
-        array.add(Bstr(attestationKey->keyBlob));
-        addKeyparameters(array, attestationKey->attestKeyParams);
-        array.add(Bstr(attestationKey->issuerSubjectName));
-    } else {
-        array.add(std::move(Bstr(vector<uint8_t>(0))));
-        array.add(std::move(Map()));
-        array.add(std::move(Bstr(vector<uint8_t>(0))));
-    }
-    return true;
-}*/
 
 inline keymaster_tag_type_t typeFromTag(const keymaster_tag_t tag) {
     return keymaster_tag_get_type(tag);
@@ -112,34 +95,7 @@ bool CborConverter::addKeyparameters(Array& array, const keymaster_key_param_set
     array.add(std::move(map));
     return true;
 }
-/*
-bool CborConverter::addKeyparameters(Array& array, const vector<KeyParameter>& keyParams) {
-    keymaster_key_param_set_t paramSet = km_utils::aidlKeyParams2Km(keyParams);
-    return addKeyparameters(array, paramSet);
-}
 
-// Array of three maps
-bool CborConverter::getKeyCharacteristics(const unique_ptr<Item>& item, const uint32_t pos,
-                                          vector<KeyCharacteristics>& keyCharacteristics) {
-    unique_ptr<Item> arrayItem(nullptr);
-    getItemAtPos(item, pos, arrayItem);
-    if ((arrayItem == nullptr) || (MajorType::ARRAY != getType(arrayItem))) return false;
-
-    KeyCharacteristics swEnf{SecurityLevel::KEYSTORE, {}};
-    KeyCharacteristics teeEnf{SecurityLevel::TRUSTED_ENVIRONMENT, {}};
-    KeyCharacteristics sbEnf{SecurityLevel::STRONGBOX, {}};
-
-    if (!getKeyParameters(arrayItem, 0, sbEnf.authorizations) ||
-        !getKeyParameters(arrayItem, 1, teeEnf.authorizations) ||
-        !getKeyParameters(arrayItem, 2, swEnf.authorizations)) {
-        return false;
-    }
-    // VTS will fail if the authorizations list is empty.
-    if (!sbEnf.authorizations.empty()) keyCharacteristics.push_back(std::move(sbEnf));
-    if (!teeEnf.authorizations.empty()) keyCharacteristics.push_back(std::move(teeEnf));
-    if (!swEnf.authorizations.empty()) keyCharacteristics.push_back(std::move(swEnf));
-    return true;
-}*/
 
 bool CborConverter::getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
                                AuthorizationSet& swEnforced,
@@ -148,10 +104,6 @@ bool CborConverter::getKeyCharacteristics(const std::unique_ptr<Item>& item, con
     unique_ptr<Item> arrayItem(nullptr);
     getItemAtPos(item, pos, arrayItem);
     if ((arrayItem == nullptr) || (MajorType::ARRAY != getType(arrayItem))) return false;
-
-    //KeyCharacteristics swEnf{SecurityLevel::KEYSTORE, {}};
-    //KeyCharacteristics teeEnf{SecurityLevel::TRUSTED_ENVIRONMENT, {}};
-    //KeyCharacteristics sbEnf{SecurityLevel::STRONGBOX, {}};
 
     if (!getKeyParameters(arrayItem, 0, swEnforced) ||
         !getKeyParameters(arrayItem, 1, hwEnforced) ||
@@ -272,136 +224,7 @@ bool CborConverter::getKeyParameter(const std::pair<const unique_ptr<Item>&, con
     }
     return true;
 }
-#if 0
-bool CborConverter::getKeyParameter(
-    const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
-    vector<KeyParameter>& keyParams) {
-    uint64_t key;
-    uint64_t value;
-    if (!getUint64(pair.first, key)) {
-        return false;
-    }
-    switch (keymaster_tag_get_type(static_cast<keymaster_tag_t>(key))) {
-    case KM_ENUM_REP: {
-        /* ENUM_REP contains values encoded in a Binary string */
-        const Bstr* bstr = pair.second.get()->asBstr();
-        if (bstr == nullptr) return false;
-        for (auto bchar : bstr->value()) {
-            keymaster_key_param_t keyParam;
-            keyParam.tag = static_cast<keymaster_tag_t>(key);
-            keyParam.enumerated = bchar;
-            keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-        }
-    } break;
-    case KM_ENUM: {
-        keymaster_key_param_t keyParam;
-        keyParam.tag = static_cast<keymaster_tag_t>(key);
-        if (!getUint64(pair.second, value)) {
-            return false;
-        }
-        keyParam.enumerated = static_cast<uint32_t>(value);
-        keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-    } break;
-    case KM_UINT: {
-        keymaster_key_param_t keyParam;
-        keyParam.tag = static_cast<keymaster_tag_t>(key);
-        if (!getUint64(pair.second, value)) {
-            return false;
-        }
-        keyParam.integer = static_cast<uint32_t>(value);
-        keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-    } break;
-    case KM_ULONG: {
-        keymaster_key_param_t keyParam;
-        keyParam.tag = static_cast<keymaster_tag_t>(key);
-        if (!getUint64(pair.second, value)) {
-            return false;
-        }
-        keyParam.long_integer = value;
-        keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-    } break;
-    case KM_UINT_REP: {
-        /* UINT_REP contains values encoded in a Array */
-        Array* array = const_cast<Array*>(pair.second.get()->asArray());
-        if (array == nullptr) return false;
-        for (int i = 0; i < array->size(); i++) {
-            keymaster_key_param_t keyParam;
-            keyParam.tag = static_cast<keymaster_tag_t>(key);
-            std::unique_ptr<Item> item = std::move((*array)[i]);
-            if (!getUint64(item, value)) {
-                return false;
-            }
-            keyParam.integer = static_cast<uint32_t>(value);
-            keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-        }
-    } break;
-    case KM_ULONG_REP: {
-        /* ULONG_REP contains values encoded in a Array */
-        Array* array = const_cast<Array*>(pair.second.get()->asArray());
-        if (array == nullptr) return false;
-        for (int i = 0; i < array->size(); i++) {
-            keymaster_key_param_t keyParam;
-            keyParam.tag = static_cast<keymaster_tag_t>(key);
-            std::unique_ptr<Item> item = std::move((*array)[i]);
-            if (!getUint64(item, keyParam.long_integer)) {
-                return false;
-            }
-            keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-        }
-    } break;
-    case KM_DATE: {
-        keymaster_key_param_t keyParam;
-        keyParam.tag = static_cast<keymaster_tag_t>(key);
-        if (!getUint64(pair.second, value)) {
-            return false;
-        }
-        keyParam.date_time = value;
-        keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-    } break;
-    case KM_BOOL: {
-        keymaster_key_param_t keyParam;
-        keyParam.tag = static_cast<keymaster_tag_t>(key);
-        if (!getUint64(pair.second, value)) {
-            return false;
-        }
-        // TODO re-check the logic below
-        keyParam.boolean = static_cast<bool>(value);
-        keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-    } break;
-    case KM_BYTES: {
-        keymaster_key_param_t keyParam;
-        keyParam.tag = static_cast<keymaster_tag_t>(key);
-        const Bstr* bstr = pair.second.get()->asBstr();
-        if (bstr == nullptr) return false;
-        keyParam.blob.data = bstr->value().data();
-        keyParam.blob.data_length = bstr->value().size();
-        keyParams.push_back(km_utils::kmParam2Aidl(keyParam));
-    } break;
-    default:
-        /* Invalid - return error */
-        return false;
-        break;
-    }
-    return true;
-}
 
-// array of a blobs
-bool CborConverter::getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
-                                        vector<Certificate>& certChain) {
-    std::unique_ptr<Item> arrayItem(nullptr);
-    getItemAtPos(item, pos, arrayItem);
-    if ((arrayItem == nullptr) || (MajorType::ARRAY != getType(arrayItem))) return false;
-
-    const Array* arr = arrayItem.get()->asArray();
-    for (int i = 0; i < arr->size(); i++) {
-        Certificate cert;
-        if (!getBinaryArray(arrayItem, i, cert.encodedCertificate)) return false;
-        certChain.push_back(std::move(cert));
-    }
-    return true;
-}
-
-#endif
 bool CborConverter::getMultiBinaryArray(const unique_ptr<Item>& item, const uint32_t pos,
                                         vector<vector<uint8_t>>& data) {
     bool ret = false;
@@ -589,26 +412,6 @@ bool CborConverter::getKeyParameters(const unique_ptr<Item>& item, const uint32_
     ret = true;
     return ret;
 }
-/*
-bool CborConverter::getKeyParameters(const unique_ptr<Item>& item, const uint32_t pos,
-                                     vector<KeyParameter>& keyParams) {
-    bool ret = false;
-    unique_ptr<Item> mapItem(nullptr);
-    vector<KeyParameter> params;
-    getItemAtPos(item, pos, mapItem);
-    if ((mapItem == nullptr) || (MajorType::MAP != getType(mapItem))) return ret;
-    const Map* map = mapItem.get()->asMap();
-    size_t mapSize = map->size();
-    for (int i = 0; i < mapSize; i++) {
-        if (!getKeyParameter((*map)[i], params)) {
-            return ret;
-        }
-    }
-    keyParams.resize(params.size());
-    keyParams = params;
-    ret = true;
-    return ret;
-}*/
 
 std::tuple<std::unique_ptr<Item>, keymaster_error_t>
 CborConverter::decodeData(const std::vector<uint8_t>& response) {
@@ -620,14 +423,13 @@ CborConverter::decodeData(const std::vector<uint8_t>& response) {
     return {std::move(item), errorCode};
 }
 
-std::unique_ptr<Item>
-CborConverter::decodeKeyblob(const KeymasterKeyBlob& keyBlob) {
-    std::vector<uint8_t> data(keyBlob.begin(), keyBlob.end());
-    auto [item, pos, message] = parse(data);
+std::tuple<std::unique_ptr<Item>, keymaster_error_t>
+CborConverter::decodeKeyblob(const vector<uint8_t>& keyblob) {
+    auto [item, pos, message] = parse(keyblob);
     if (!item || MajorType::ARRAY != getType(item)) {
-        return nullptr;
+        return {nullptr, KM_ERROR_UNKNOWN_ERROR};
     }
-    return std::move(item);
+    return {std::move(item), KM_ERROR_OK};
 }
 
 }  // namespace keymint::javacard

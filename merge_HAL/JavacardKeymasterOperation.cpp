@@ -73,7 +73,7 @@ keymaster_error_t JavacardKeymasterOperation::updateAad(const vector<uint8_t>& /
 
 
 keymaster_error_t JavacardKeymasterOperation::update(const vector<uint8_t> &input,
-                                                     const AuthorizationSet &inParams,
+                                                     const std::optional<AuthorizationSet>& inParams,
                                                      const HardwareAuthToken &authToken,
                                                      const vector<uint8_t> &encodedVerificationToken,
                                                      AuthorizationSet *outParams,
@@ -86,7 +86,7 @@ keymaster_error_t JavacardKeymasterOperation::update(const vector<uint8_t> &inpu
         UpdateOperationRequest request(softKm_->message_version());
         request.op_handle = opHandle_;
         request.input.Reinitialize(input.data(), input.size());
-        request.additional_params.Reinitialize(inParams);
+        request.additional_params.Reinitialize(inParams.value());
 
         softKm_->UpdateOperation(request, &response);
         LOG(DEBUG) << "INS_UPDATE_OPERATION_CMD - swkm update operation status: "
@@ -122,11 +122,11 @@ keymaster_error_t JavacardKeymasterOperation::update(const vector<uint8_t> &inpu
 }
 
 keymaster_error_t JavacardKeymasterOperation::finish(const vector<uint8_t>& inData,
-                                                    const AuthorizationSet& inParams,
+                                                     const std::optional<AuthorizationSet>& inParams,
                                                      const vector<uint8_t>& signature,
                                                      const HardwareAuthToken& authToken,
                                                      const vector<uint8_t>& encodedVerificationToken,
-                                                     const vector<uint8_t>& confToken,
+                                                     const std::optional<vector<uint8_t>>& confToken,
                                                      AuthorizationSet* outParams,
                                                      vector<uint8_t>* output) {
     if (operType_ == OperationType::PUBLIC_OPERATION) {
@@ -137,7 +137,7 @@ keymaster_error_t JavacardKeymasterOperation::finish(const vector<uint8_t>& inDa
         request.op_handle = opHandle_;
         request.input.Reinitialize(inData.data(), inData.size());
         request.signature.Reinitialize(signature.data(), signature.size());
-        request.additional_params.Reinitialize(inParams);
+        request.additional_params.Reinitialize(inParams.value());
         softKm_->FinishOperation(request, &response);
         LOG(DEBUG) << "FINISH - swkm operation, status: " << (int32_t)response.error;;
 
@@ -274,7 +274,7 @@ keymaster_error_t JavacardKeymasterOperation::bufferData(DataView& view) {
 
 // Incrementally send the request using multiple updates.
 keymaster_error_t JavacardKeymasterOperation::updateInChunks(DataView& view,
-                                                           const AuthorizationSet& inParams,
+                                                           const std::optional<AuthorizationSet>& inParams,
                                                            const HardwareAuthToken& authToken,
                                                            const vector<uint8_t>& encodedVerificationToken,
                                                            vector<uint8_t>* output) {
@@ -316,16 +316,17 @@ vector<uint8_t> JavacardKeymasterOperation::popNextChunk(DataView& view, uint32_
 }
 
 keymaster_error_t JavacardKeymasterOperation::sendUpdate(const vector<uint8_t>& input,
-                                                       const AuthorizationSet& inParams,
+                                                       const std::optional<AuthorizationSet>& inParams,
                                                        const HardwareAuthToken& authToken,
                                                         const vector<uint8_t>& encodedVerificationToken,
                                                            vector<uint8_t>& output) {
-    if (input.empty() && !inParams.Contains(KM_TAG_ASSOCIATED_DATA)) {
+    if (input.empty() && !inParams->Contains(KM_TAG_ASSOCIATED_DATA)) {
         return KM_ERROR_OK;
     }
     cppbor::Array request;
     request.add(Uint(opHandle_));
-    cbor_.addKeyparameters(request, inParams);
+    if (inParams.has_value())
+        cbor_.addKeyparameters(request, inParams.value());
     request.add(Bstr(input));
     cbor_.addHardwareAuthToken(request, authToken);
     request.add(EncodedItem(encodedVerificationToken));
@@ -334,7 +335,10 @@ keymaster_error_t JavacardKeymasterOperation::sendUpdate(const vector<uint8_t>& 
         return error;
     }
     vector<uint8_t> respData;
-    if (!cbor_.getBinaryArray(item, 1, respData)) {
+    size_t size;
+    error = cbor_.getArraySize(item, size);
+    if ((error != KM_ERROR_OK) || 
+        !cbor_.getBinaryArray(item, size - 1, respData)) {
         return KM_ERROR_UNKNOWN_ERROR;
     }
     output.insert(output.end(), respData.begin(), respData.end());
@@ -342,27 +346,32 @@ keymaster_error_t JavacardKeymasterOperation::sendUpdate(const vector<uint8_t>& 
 }
 
 keymaster_error_t JavacardKeymasterOperation::sendFinish(const vector<uint8_t>& data,
-                                                       const AuthorizationSet& inParams,
+                                                       const std::optional<AuthorizationSet>& inParams,
                                                        const vector<uint8_t>& sign,
                                                        const HardwareAuthToken& authToken,
                                                        const vector<uint8_t>& encodedVerificationToken,
-                                                       const vector<uint8_t>& confToken,
+                                                       const std::optional<vector<uint8_t>>& confToken,
                                                        vector<uint8_t>& output) {
     cppbor::Array request;
     request.add(Uint(opHandle_));
-    cbor_.addKeyparameters(request, inParams);
+    if (inParams.has_value())
+        cbor_.addKeyparameters(request, inParams.value());
     request.add(Bstr(data));
     request.add(Bstr(sign));
     cbor_.addHardwareAuthToken(request, authToken);
     request.add(EncodedItem(encodedVerificationToken));
-    request.add(Bstr(confToken));
-    
+    if (confToken.has_value())
+        request.add(Bstr(confToken.value()));
+    LOG(ERROR) << "JavacardKeymasterOperation::sendFinish step2";
     auto [item, err] = sendRequest(Instruction::INS_FINISH_OPERATION_CMD, request);
     if (err != KM_ERROR_OK) {
         return err;
     }
     vector<uint8_t> respData;
-    if (!cbor_.getBinaryArray(item, 2, respData)) {
+    size_t size;
+    err = cbor_.getArraySize(item, size);
+    if ((err != KM_ERROR_OK) || 
+        !cbor_.getBinaryArray(item, size - 1, respData)) {
         return KM_ERROR_UNKNOWN_ERROR;
     }
     opHandle_ = 0;

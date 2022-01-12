@@ -129,6 +129,28 @@ keymaster_error_t JavacardKeymaster::generateKey(const AuthorizationSet& keyPara
 
 }
 
+keymaster_error_t JavacardKeymaster::attestKey(Array& request, vector<vector<uint8_t>>* certChain) {
+    auto [item, err] = sendRequest(Instruction::INS_ATTEST_KEY_CMD, request);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in sending attestKey.";
+        return err;
+    }
+    if (!cbor_.getMultiBinaryArray(item, 1, *certChain)) {
+        LOG(ERROR) << "Error in decoding og response in attestKey.";
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    return err;
+}
+
+keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
+                                               const AuthorizationSet& keyParams,
+                                               vector<vector<uint8_t>>* certChain) {
+    cppbor::Array array;
+    array.add(keyblob);
+    cbor_.addKeyparameters(array, keyParams);
+    return attestKey(array, certChain);
+}
+
 keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
                                                const AuthorizationSet& keyParams,
                                                const vector<uint8_t>& attestKeyBlob,
@@ -141,16 +163,7 @@ keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
     array.add(attestKeyBlob);
     cbor_.addKeyparameters(array, attestKeyParams);
     array.add(attestKeyIssuer);
-    auto [item, err] = sendRequest(Instruction::INS_ATTEST_KEY_CMD, array);
-    if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending attestKey.";
-        return err;
-    }
-    if (!cbor_.getMultiBinaryArray(item, 1, *certChain)) {
-        LOG(ERROR) << "Error in decoding og response in attestKey.";
-        return KM_ERROR_UNKNOWN_ERROR;
-    }
-    return err;
+    return attestKey(array, certChain);
 }
 
 keymaster_error_t JavacardKeymaster::getCertChain(vector<vector<uint8_t>>* certChain) {
@@ -377,8 +390,9 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
                                            AuthorizationSet* outParams,
                                            std::unique_ptr<JavacardKeymasterOperation>& outOperation) {
     uint64_t operationHandle;
-    uint64_t bufMode;
-    uint64_t macLength;
+    uint64_t bufMode = static_cast<uint64_t>(BufferingMode::NONE);
+    uint64_t macLength = 0;
+    size_t size;
     Array array;
     array.add(static_cast<uint64_t>(purpose));
     array.add(std::vector<uint8_t>(keyBlob));
@@ -390,9 +404,19 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
         return err;
     }
     if (!cbor_.getKeyParameters(item, 1, *outParams) ||
-        !cbor_.getUint64<uint64_t>(item, 2, operationHandle) ||
-        !cbor_.getUint64<uint64_t>(item, 3, bufMode) ||
-        !cbor_.getUint64<uint64_t>(item, 4, macLength)) {
+        !cbor_.getUint64<uint64_t>(item, 2, operationHandle)) {
+        LOG(ERROR) << "Error in decoding the response in begin.";
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    // Keymint Applet sends buffering mode and macLength parameters.
+    err = cbor_.getArraySize(item, size);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in getting cbor array size ";
+        return err;
+    }
+    if ((size > 3) &&
+         (!cbor_.getUint64<uint64_t>(item, 3, bufMode) ||
+         !cbor_.getUint64<uint64_t>(item, 4, macLength))) {
         LOG(ERROR) << "Error in decoding the response in begin.";
         return KM_ERROR_UNKNOWN_ERROR;
     }

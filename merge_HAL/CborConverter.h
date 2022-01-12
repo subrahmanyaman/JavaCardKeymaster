@@ -53,7 +53,8 @@ class CborConverter {
     ~CborConverter() = default;
     std::tuple<std::unique_ptr<Item>, keymaster_error_t>
     decodeData(const std::vector<uint8_t>& response);
-    std::unique_ptr<Item> decodeKeyblob(const KeymasterKeyBlob& keyblob);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t>
+    decodeKeyblob(const vector<uint8_t>& keyblob);
 
     template <typename T>
     bool getUint64(const std::unique_ptr<Item>& item, const uint32_t pos, T& value);
@@ -69,18 +70,12 @@ class CborConverter {
 
     bool getHardwareAuthToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                               HardwareAuthToken& authType);
-
-    //bool getKeyParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
-    //                      vector<KeyParameter>& keyParams);
     
     bool getKeyParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
                           AuthorizationSet& keyParams);
 
-    //bool addKeyparameters(Array& array, const vector<KeyParameter>& keyParams);
-
     bool addKeyparameters(Array& array, const keymaster_key_param_set_t& keyParams);
 
-    //bool addAttestationKey(Array& array, const std::optional<AttestationKey>& attestationKey);
 
     bool addHardwareAuthToken(Array& array, const HardwareAuthToken& authToken);
 
@@ -92,16 +87,10 @@ class CborConverter {
     bool getVerificationToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                               VerificationToken& token);
 
-    //bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
-    //                           vector<KeyCharacteristics>& keyCharacteristics);
-    
     bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
                                AuthorizationSet& swEnforced,
                                AuthorizationSet& hwEnforced,
                                AuthorizationSet& teeEnforced);
-
-    //bool getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
-    //                         vector<Certificate>& certificateChain);
 
     bool getMultiBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos,
                              vector<vector<uint8_t>>& data);
@@ -124,6 +113,17 @@ class CborConverter {
         }
         errorCode = static_cast<keymaster_error_t>(0 - errorVal);
         return true;
+    }
+
+    inline keymaster_error_t getArraySize(const unique_ptr<Item>& item, size_t& size) {
+        Array* arr = nullptr;
+
+        if (MajorType::ARRAY != getType(item)) {
+            return KM_ERROR_UNKNOWN_ERROR;
+        }
+        arr = const_cast<Array*>(item.get()->asArray());
+        size = arr->size();
+        return KM_ERROR_OK;
     }
 
   private:

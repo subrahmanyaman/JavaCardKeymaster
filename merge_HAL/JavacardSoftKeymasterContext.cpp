@@ -30,11 +30,10 @@
 
 using std::unique_ptr;
 
-constexpr int kPubKeyOffset = 4;
-constexpr int kKeyCharsOffset = 3;
-
 
 namespace javacard_keymaster {
+constexpr int kKeyblobPubKeyOffset = 4;
+constexpr int kKeyblobKeyCharsOffset = 3;
 using ::keymaster::PureSoftKeymasterContext;
 
 JavaCardSoftKeymasterContext::JavaCardSoftKeymasterContext(keymaster_security_level_t security_level)
@@ -178,17 +177,16 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
         return error;
     };
     CborConverter cbor_;
-    std::unique_ptr<Item> item = cbor_.decodeKeyblob(blob);
+    auto [item, _] = cbor_.decodeKeyblob(std::vector<uint8_t>(blob.begin(), blob.end()));
     if (item != nullptr) {
-        std::vector<uint8_t> temp;
+        std::vector<uint8_t> pubKey;
         AuthorizationSet _;
         // Read public key from keyblob. For symmetric keys the data
         // will be empty so ignore the error.
-        if(cbor_.getBinaryArray(item, kPubKeyOffset, temp)) {
-            key_material = {temp.data(), temp.size()};
-            temp.clear();
+        if(cbor_.getBinaryArray(item, kKeyblobPubKeyOffset, pubKey)) {
+            key_material = {pubKey.data(), pubKey.size()};
         }
-        if (!cbor_.getKeyCharacteristics(item, kKeyCharsOffset, sw_enforced, hw_enforced, _)) {
+        if (!cbor_.getKeyCharacteristics(item, kKeyblobKeyCharsOffset, sw_enforced, hw_enforced, _)) {
             return KM_ERROR_INVALID_KEY_BLOB;
         }
         return constructKey();

@@ -20,7 +20,6 @@ import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import javacard.framework.APDU;
 import javacard.framework.ISO7816;
-import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 public class KMJCardSimApplet extends KMKeymasterApplet {
@@ -366,7 +365,6 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
     // Read the apdu header and buffer.
     byte[] apduBuffer = apdu.getBuffer();
     byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
-    short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
 
     // Validate APDU Header.
     if ((apduClass != CLA_ISO7816_NO_SM_NO_CHAN)) {
@@ -374,15 +372,9 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
       return KMType.INVALID_VALUE;
     }
 
-    if (kmSpecification == KMKeymasterApplet.KEYMASTER_SPECIFICATION &&
-        P1P2 != KMKeymasterApplet.KEYMASTER_HAL_VERSION) {
-      sendError(apdu, KMError.INVALID_P1P2);
-      return KMType.INVALID_VALUE;
-    }
-    // Validate P1P2.
-    if (kmSpecification == KMKeymasterApplet.KEYMINT_SPECIFICATION &&
-        P1P2 != KMKeymasterApplet.KM_HAL_VERSION) {
-      sendError(apdu, KMError.INVALID_P1P2);
+    short err = specification.validateApduHeader(apdu);
+    if (err != KMError.OK) {
+      sendError(apdu, err);
       return KMType.INVALID_VALUE;
     }
     return apduBuffer[ISO7816.OFFSET_INS];

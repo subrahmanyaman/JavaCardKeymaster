@@ -92,7 +92,7 @@ class JavacardKeymasterOperation {
 
     OperationType getOperationType() { return operType_; }
 
-    keymaster_error_t update(const vector<uint8_t>& input, const AuthorizationSet& inParams, const HardwareAuthToken& authToken,
+    keymaster_error_t update(const vector<uint8_t>& input, const std::optional<AuthorizationSet>& inParams, const HardwareAuthToken& authToken,
                          const vector<uint8_t>& encodedVerificationToken,
                          AuthorizationSet *outParams, uint32_t *inputConsumed,vector<uint8_t>* output);
     
@@ -102,13 +102,17 @@ class JavacardKeymasterOperation {
                             const vector<uint8_t>& encodedVerificationToken);
 
     keymaster_error_t finish(const vector<uint8_t>& input,
-                         const AuthorizationSet &inParams,
+                         const std::optional<AuthorizationSet> &inParams,
                          const vector<uint8_t>& signature,
                          const HardwareAuthToken& authToken,
                          const vector<uint8_t>& encodedVerificationToken,
-                         const vector<uint8_t>& confirmationToken,
+                         const std::optional<vector<uint8_t>>& confirmationToken,
                          AuthorizationSet* outParams,
                          vector<uint8_t>* output);
+
+    void setBufferingMode(BufferingMode bufMode) { bufferingMode_ = bufMode; }
+
+    void setMacLength(uint32_t macLength) { macLength_ = macLength; }
 
     keymaster_error_t abort();
 
@@ -119,18 +123,18 @@ class JavacardKeymasterOperation {
   std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, Array& request);
   vector<uint8_t> popNextChunk(DataView& view, uint32_t chunkSize);
 
-    keymaster_error_t updateInChunks(DataView& view, const AuthorizationSet& inParams, const HardwareAuthToken& authToken,
+    keymaster_error_t updateInChunks(DataView& view, const std::optional<AuthorizationSet>& inParams, const HardwareAuthToken& authToken,
                                   const vector<uint8_t>& encodedVerificationToken, vector<uint8_t>* output);
 
     keymaster_error_t sendFinish(const vector<uint8_t>& data, 
-                                 const AuthorizationSet& inParams,
+                                 const std::optional<AuthorizationSet>& inParams,
                                  const vector<uint8_t>& signature,
                                  const HardwareAuthToken& authToken,
                                  const vector<uint8_t>& encodedVerificationToken,
-                                 const vector<uint8_t>& confToken,
+                                 const std::optional<vector<uint8_t>>& confToken,
                                  vector<uint8_t>& output);
 
-    keymaster_error_t sendUpdate(const vector<uint8_t>& data, const AuthorizationSet& inParams, const HardwareAuthToken& authToken,
+    keymaster_error_t sendUpdate(const vector<uint8_t>& data, const std::optional<AuthorizationSet>& inParams, const HardwareAuthToken& authToken,
                                  const vector<uint8_t>& encodedVerificationToken, vector<uint8_t>& output);
 
     inline void appendBufferedData(DataView& view) {
@@ -145,6 +149,7 @@ class JavacardKeymasterOperation {
     keymaster_error_t bufferData(DataView& data);
     void blockAlign(DataView& data, uint16_t blockSize);
     uint16_t getDataViewOffset(DataView& view, uint16_t blockSize);
+
 
 private:
     vector<uint8_t> buffer_;

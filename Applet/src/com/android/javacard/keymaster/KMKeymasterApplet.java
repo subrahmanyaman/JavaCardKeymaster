@@ -95,32 +95,32 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // Top 32 commands are reserved for provisioning.
   private static final byte KEYMINT_CMD_APDU_START = 0x20;
 
-  private static final byte INS_GENERATE_KEY_CMD = KEYMINT_CMD_APDU_START + 1;  //0x21
-  private static final byte INS_IMPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 2;    //0x22
-  private static final byte INS_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 3; //0x23
-  private static final byte INS_EXPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 4; //0x24
-  private static final byte INS_ATTEST_KEY_CMD = KEYMINT_CMD_APDU_START + 5; //0x25
-  private static final byte INS_UPGRADE_KEY_CMD = KEYMINT_CMD_APDU_START + 6; //0x26
-  private static final byte INS_DELETE_KEY_CMD = KEYMINT_CMD_APDU_START + 7; //0x27
-  private static final byte INS_DELETE_ALL_KEYS_CMD = KEYMINT_CMD_APDU_START + 8; //0x28
-  private static final byte INS_ADD_RNG_ENTROPY_CMD = KEYMINT_CMD_APDU_START + 9; //0x29
-  private static final byte INS_COMPUTE_SHARED_HMAC_CMD = KEYMINT_CMD_APDU_START + 10; //0x2A
-  private static final byte INS_DESTROY_ATT_IDS_CMD = KEYMINT_CMD_APDU_START + 11;  //0x2B
-  private static final byte INS_VERIFY_AUTHORIZATION_CMD = KEYMINT_CMD_APDU_START + 12; //0x2C
-  private static final byte INS_GET_HMAC_SHARING_PARAM_CMD = KEYMINT_CMD_APDU_START + 13; //0x2D
-  private static final byte INS_GET_KEY_CHARACTERISTICS_CMD = KEYMINT_CMD_APDU_START + 14; //0x2E
-  private static final byte INS_GET_HW_INFO_CMD = KEYMINT_CMD_APDU_START + 15; //0x2F
-  private static final byte INS_BEGIN_OPERATION_CMD = KEYMINT_CMD_APDU_START + 16;  //0x30
-  private static final byte INS_UPDATE_OPERATION_CMD = KEYMINT_CMD_APDU_START + 17;  //0x31
-  private static final byte INS_FINISH_OPERATION_CMD = KEYMINT_CMD_APDU_START + 18; //0x32
-  private static final byte INS_ABORT_OPERATION_CMD = KEYMINT_CMD_APDU_START + 19; //0x33
-  private static final byte INS_DEVICE_LOCKED_CMD = KEYMINT_CMD_APDU_START + 20;//0x34
-  private static final byte INS_EARLY_BOOT_ENDED_CMD = KEYMINT_CMD_APDU_START + 21; //0x35
-  private static final byte INS_GET_CERT_CHAIN_CMD = KEYMINT_CMD_APDU_START + 22; //0x36
-  private static final byte INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23; //0x37
-  private static final byte INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24; //0x38
-  private static final byte INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25; //0x39
-  private static final byte INS_INIT_STRONGBOX_CMD = KEYMINT_CMD_APDU_START + 26; //0x3A
+  public static final byte INS_GENERATE_KEY_CMD = KEYMINT_CMD_APDU_START + 1;  //0x21
+  public static final byte INS_IMPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 2;    //0x22
+  public static final byte INS_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 3; //0x23
+  public static final byte INS_EXPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 4; //0x24
+  public static final byte INS_ATTEST_KEY_CMD = KEYMINT_CMD_APDU_START + 5; //0x25
+  public static final byte INS_UPGRADE_KEY_CMD = KEYMINT_CMD_APDU_START + 6; //0x26
+  public static final byte INS_DELETE_KEY_CMD = KEYMINT_CMD_APDU_START + 7; //0x27
+  public static final byte INS_DELETE_ALL_KEYS_CMD = KEYMINT_CMD_APDU_START + 8; //0x28
+  public static final byte INS_ADD_RNG_ENTROPY_CMD = KEYMINT_CMD_APDU_START + 9; //0x29
+  public static final byte INS_COMPUTE_SHARED_HMAC_CMD = KEYMINT_CMD_APDU_START + 10; //0x2A
+  public static final byte INS_DESTROY_ATT_IDS_CMD = KEYMINT_CMD_APDU_START + 11;  //0x2B
+  public static final byte INS_VERIFY_AUTHORIZATION_CMD = KEYMINT_CMD_APDU_START + 12; //0x2C
+  public static final byte INS_GET_HMAC_SHARING_PARAM_CMD = KEYMINT_CMD_APDU_START + 13; //0x2D
+  public static final byte INS_GET_KEY_CHARACTERISTICS_CMD = KEYMINT_CMD_APDU_START + 14; //0x2E
+  public static final byte INS_GET_HW_INFO_CMD = KEYMINT_CMD_APDU_START + 15; //0x2F
+  public static final byte INS_BEGIN_OPERATION_CMD = KEYMINT_CMD_APDU_START + 16;  //0x30
+  public static final byte INS_UPDATE_OPERATION_CMD = KEYMINT_CMD_APDU_START + 17;  //0x31
+  public static final byte INS_FINISH_OPERATION_CMD = KEYMINT_CMD_APDU_START + 18; //0x32
+  public static final byte INS_ABORT_OPERATION_CMD = KEYMINT_CMD_APDU_START + 19; //0x33
+  public static final byte INS_DEVICE_LOCKED_CMD = KEYMINT_CMD_APDU_START + 20;//0x34
+  public static final byte INS_EARLY_BOOT_ENDED_CMD = KEYMINT_CMD_APDU_START + 21; //0x35
+  public static final byte INS_GET_CERT_CHAIN_CMD = KEYMINT_CMD_APDU_START + 22; //0x36
+  public static final byte INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23; //0x37
+  public static final byte INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24; //0x38
+  public static final byte INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25; //0x39
+  public static final byte INS_INIT_STRONGBOX_CMD = KEYMINT_CMD_APDU_START + 26; //0x3A
   // RKP
   public static final byte INS_GET_RKP_HARDWARE_INFO = KEYMINT_CMD_APDU_START + 27; //0x3B
   public static final byte INS_GENERATE_RKP_KEY_CMD = KEYMINT_CMD_APDU_START + 28; //0x3C
@@ -393,7 +393,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
           sendError(apdu, KMError.OK);
           return;
         case INS_GENERATE_KEY_CMD:
-          processGenerateKey1(apdu);
+          processGenerateKey(apdu);
           break;
         case INS_ATTEST_KEY_CMD:
           processAttestKeyCmd(apdu);
@@ -1651,31 +1651,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private short finishOperationCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 7);
-    KMArray.cast(cmd).add((short) 0, KMInteger.exp());//op handle
-    short keyParam = KMKeyParameters.exp();
-    KMArray.cast(cmd).add((short) 1, keyParam);// Key Parameters
-    KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());// input data
-    KMArray.cast(cmd).add((short) 3, KMByteBlob.exp()); // signature
-    short authToken = KMHardwareAuthToken.exp();
-    KMArray.cast(cmd).add((short) 4, authToken); // auth token
-    short verToken = specification.getKMVerificationTokenExp();
-    KMArray.cast(cmd).add((short) 5, verToken); // time stamp token
-    KMArray.cast(cmd).add((short) 6, KMByteBlob.exp()); //confirmation token
-    return receiveIncoming(apdu, cmd);
+    return receiveIncoming(apdu, specification.prepareFinishExp());
   }
 
   private void processFinishOperationCmd(APDU apdu) {
     short cmd = finishOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
-    data[OP_HANDLE] = KMArray.cast(cmd).get((short) 0);
-    data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 1);
-    data[INPUT_DATA] = KMArray.cast(cmd).get((short) 2);
-    data[SIGNATURE] = KMArray.cast(cmd).get((short) 3);
-    data[HW_TOKEN] = KMArray.cast(cmd).get((short) 4);
-    data[VERIFICATION_TOKEN] = KMArray.cast(cmd).get((short) 5);
-    data[CONFIRMATION_TOKEN] = KMArray.cast(cmd).get((short) 6);
-    
+    specification.getFinishInputParameters(cmd, data, OP_HANDLE, KEY_PARAMETERS, INPUT_DATA,
+        SIGNATURE, HW_TOKEN, VERIFICATION_TOKEN, CONFIRMATION_TOKEN);
     // Check Operation Handle
     KMOperationState op = findOperation(data[OP_HANDLE]);
     if (op == null) {
@@ -1697,7 +1680,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         break;
       case KMType.AGREE_KEY:
 	    if(specification.isKeyAgreementSupported()) {
-		  finishKeyAgreementOperation(op, scratchPad);  
+		    finishKeyAgreementOperation(op, scratchPad);
     	} else {
     	  KMException.throwIt(KMError.UNIMPLEMENTED);
     	}
@@ -1710,13 +1693,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     releaseOperation(op);
 
     // make response
-    short keyParam = KMArray.instance((short) 0);
-    keyParam = KMKeyParameters.instance(keyParam);
-    short resp = KMArray.instance((short) 3);
-    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.cast(resp).add((short) 1, keyParam);
-    KMArray.cast(resp).add((short) 2, data[OUTPUT_DATA]);
-    sendOutgoing(apdu, resp);
+    sendOutgoing(apdu, specification.prepareFinishResp(data[OUTPUT_DATA]));
   }
 
   private void finishEncryptOperation(KMOperationState op, byte[] scratchPad) {
@@ -1732,6 +1709,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case KMType.RSA:
         // Fill the scratch pad with zero
         Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 256, (byte) 0);
+        if (op.getPadding() == KMType.PADDING_NONE && len != 256) {
+          KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+        }
         len =
             op.getOperation().finish(
                 KMByteBlob.cast(data[INPUT_DATA]).getBuffer(), KMByteBlob.cast(data[INPUT_DATA]).getStartOff(),
@@ -2056,27 +2036,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private short updateOperationCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 5);
-    // Arguments
-    short keyParams = KMKeyParameters.exp();
-    KMArray.cast(cmd).add((short) 0, KMInteger.exp());
-    KMArray.cast(cmd).add((short) 1, keyParams);
-    KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());
-    short authToken = KMHardwareAuthToken.exp();
-    KMArray.cast(cmd).add((short) 3, authToken);
-    short verToken = specification.getKMVerificationTokenExp();
-    KMArray.cast(cmd).add((short) 4, verToken);
-    return receiveIncoming(apdu, cmd);
+    return receiveIncoming(apdu, specification.prepareUpdateExp());
   }
 
   private void processUpdateOperationCmd(APDU apdu) {
     short cmd = updateOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
-    data[OP_HANDLE] = KMArray.cast(cmd).get((short) 0);
-    data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 1); //will be passed as INVALID_VALUE from keymint HAL
-    data[INPUT_DATA] = KMArray.cast(cmd).get((short) 2);
-    data[HW_TOKEN] = KMArray.cast(cmd).get((short) 3);
-    data[VERIFICATION_TOKEN] = KMArray.cast(cmd).get((short) 4);
+    specification.getUpdateInputParameters(cmd, data, OP_HANDLE, KEY_PARAMETERS,
+        INPUT_DATA, HW_TOKEN, VERIFICATION_TOKEN);
 
     // Input data must be present even if it is zero length.
     if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
@@ -2106,6 +2073,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     } else if (op.getPurpose() == KMType.ENCRYPT || op.getPurpose() == KMType.DECRYPT) {
       // Update for encrypt/decrypt using RSA will not be supported because to do this op state
       //  will have to buffer the data - so reject the update if it is rsa algorithm.
+      if (op.getAlgorithm() == KMType.RSA) {
+        KMException.throwIt(KMError.OPERATION_CANCELLED);
+      }
       short len  = KMByteBlob.cast(data[INPUT_DATA]).length();
       short blockSize = DES_BLOCK_SIZE;
       if (op.getAlgorithm() == KMType.AES) {
@@ -2152,16 +2122,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       data[OUTPUT_DATA] = KMByteBlob.instance((short) 0);
     }
     // Persist if there are any updates.
-    //op.persist();
     // make response
-    short resp = KMArray.instance((short) 4);   
-    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.cast(resp).add((short) 1, data[OUTPUT_DATA]);
-    short keyParm = KMKeyParameters.instance(KMArray.instance((short) 0));
-    KMArray.cast(resp).add((short) 2, keyParm); // will be ignored in keymint HAL
-    KMArray.cast(resp).add((short) 3, KMInteger.uint_16(inputConsumed)); // will be ignored in keymint HAL
-     
-    sendOutgoing(apdu, resp);
+    sendOutgoing(apdu, specification.prepareUpdateResp(data[OUTPUT_DATA], KMInteger.uint_16(inputConsumed)));
   }
 
   private short updateAadOperationCmd(APDU apdu){
@@ -2386,12 +2348,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
 
     short params = KMKeyParameters.instance(iv);
-    short resp  = KMArray.instance((short) 5);
-    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.cast(resp).add((short) 1, params);
-    KMArray.cast(resp).add((short) 2, data[OP_HANDLE]);
-    KMArray.cast(resp).add((short) 3, KMInteger.uint_8(op.getBufferingMode()));
-    KMArray.cast(resp).add((short) 4, KMInteger.uint_16((short) (op.getMacLength() / 8)));
+    short resp =
+    specification.prepareBeginResp(params, data[OP_HANDLE], KMInteger.uint_8(op.getBufferingMode()),
+        KMInteger.uint_16((short) (op.getMacLength() / 8)));
     sendOutgoing(apdu, resp);
   }
 
@@ -3678,7 +3637,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     return receiveIncoming(apdu, cmd);
   }
 
-  private void processGenerateKey1(APDU apdu) {
+  private void processGenerateKey(APDU apdu) {
     // Receive the incoming request fully from the master into buffer.
     short cmd = generateKeyCmd(apdu);
     // Re-purpose the apdu buffer as scratch pad.
@@ -3771,16 +3730,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   }
 
   private short generateAttestKeyCmd(APDU apdu) {
-    short params = KMKeyParameters.expAny();
-    short blob = KMByteBlob.exp();
-    // Array of expected arguments
-    short cmd = KMArray.instance((short) 5);
-    KMArray.cast(cmd).add((short) 0, blob); //key blob
-    KMArray.cast(cmd).add((short) 1, params); //keyparamters to be attested.
-    KMArray.cast(cmd).add((short) 2, blob); //attest key blob
-    KMArray.cast(cmd).add((short) 3, params); //attest key params
-    KMArray.cast(cmd).add((short) 4, blob); //attest issuer
-    return receiveIncoming(apdu, cmd);
+    return receiveIncoming(apdu, specification.generateAttestKeyExp());
   }
 
   private void processGetCertChainCmd(APDU apdu) {
@@ -3822,11 +3772,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     short cmd = generateAttestKeyCmd(apdu);
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
-    data[KEY_BLOB] = KMArray.cast(cmd).get((short) 0);
-    data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 1);
-    data[ATTEST_KEY_BLOB] = KMArray.cast(cmd).get((short) 2);
-    data[ATTEST_KEY_PARAMS] = KMArray.cast(cmd).get((short) 3);
-    data[ATTEST_KEY_ISSUER] = KMArray.cast(cmd).get((short) 4);
+    specification.getAttestKeyInputParameters(cmd, data, KEY_BLOB, KEY_PARAMETERS, ATTEST_KEY_BLOB,
+        ATTEST_KEY_PARAMS, ATTEST_KEY_ISSUER);
     data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
 
     // Check for app id and app data.
@@ -3853,59 +3800,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     short resp = KMArray.instance((short) 2);
     KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
     KMArray.cast(resp).add((short) 1, data[CERTIFICATE]);
-    sendOutgoing(apdu, resp);
-  }
-
-  private void processGenerateKey(APDU apdu) {
-    // Receive the incoming request fully from the master into buffer.
-    short cmd = generateKeyCmd(apdu);
-    // Re-purpose the apdu buffer as scratch pad.
-    byte[] scratchPad = apdu.getBuffer();
-    data[KEY_PARAMETERS] = KMArray.cast(cmd).get((short) 0);
-    data[ATTEST_KEY_BLOB] = KMArray.cast(cmd).get((short) 1);
-    data[ATTEST_KEY_PARAMS] = KMArray.cast(cmd).get((short) 2);
-    data[ATTEST_KEY_ISSUER] = KMArray.cast(cmd).get((short) 3);
-    data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
-    // ROLLBACK_RESISTANCE not supported.
-    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG,KMType.ROLLBACK_RESISTANCE, KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
-    
-    // As per specification Early boot keys may be created after early boot ended.
-    // Algorithm must be present
-    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
-    short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[KEY_PARAMETERS]);
-    // Check algorithm and dispatch to appropriate handler.
-    switch (alg) {
-      case KMType.RSA:
-        generateRSAKey(scratchPad);
-        break;
-      case KMType.AES:
-        generateAESKey(scratchPad);
-        break;
-      case KMType.DES:
-        generateTDESKey(scratchPad);
-        break;
-      case KMType.HMAC:
-        generateHmacKey(scratchPad);
-        break;
-      case KMType.EC:
-        generateECKeys(scratchPad);
-        break;
-      default:
-        KMException.throwIt(KMError.UNSUPPORTED_ALGORITHM);
-        break;
-    }
-
-    // create key blob and associated attestation.
-    data[ORIGIN] = KMType.GENERATED;
-    makeKeyCharacteristics(scratchPad);
-    generateAttestation(data[ATTEST_KEY_BLOB], data[ATTEST_KEY_PARAMS],scratchPad);
-    createEncryptedKeyBlob(scratchPad);
-    // prepare the response
-    short resp = KMArray.instance((short) 4);
-    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.cast(resp).add((short) 1, data[KEY_BLOB]);
-    KMArray.cast(resp).add((short) 2, data[KEY_CHARACTERISTICS]);
-    KMArray.cast(resp).add((short) 3, data[CERTIFICATE]);
     sendOutgoing(apdu, resp);
   }
 

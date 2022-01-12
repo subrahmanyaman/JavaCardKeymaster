@@ -40,6 +40,10 @@ public:
                             const AuthorizationSet& attestKeyParams,
                             const vector<uint8_t>& attestKeyIssuer,
                             vector<vector<uint8_t>>* certChain);
+
+    keymaster_error_t attestKey(const vector<uint8_t>& keyblob,
+                                               const AuthorizationSet& keyParams,
+                                               vector<vector<uint8_t>>* certChain);
     
     keymaster_error_t getCertChain(vector<vector<uint8_t>>* certChain);
 
@@ -96,6 +100,7 @@ public:
                                            
     //std::unique_ptr<JavacardKeymasterOperation> getOperation(uint64_t operationHandle, BufferingMode bufMode, uint32_t macLength, OperationType operType);
 private:
+    keymaster_error_t attestKey(Array& request, vector<vector<uint8_t>>* certChain);
     keymaster_error_t handleErrorCode(keymaster_error_t err);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, Array& request);

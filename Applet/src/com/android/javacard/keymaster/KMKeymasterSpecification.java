@@ -5,6 +5,8 @@ import static com.android.javacard.keymaster.KMKeymasterApplet.seProvider;
 import com.android.javacard.seprovider.KMAttestationCert;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMSEProvider;
+import javacard.framework.APDU;
+import javacard.framework.ISO7816;
 import javacard.framework.Util;
 
 public class KMKeymasterSpecification implements KMSpecification {
@@ -177,4 +179,119 @@ public class KMKeymasterSpecification implements KMSpecification {
   public short getMgf1Digest(short keyParams, short hwParams) {
     return KMType.SHA1;
   }
+
+  @Override
+  public short generateAttestKeyExp() {
+    // Arguments
+    short keyParams = KMKeyParameters.expAny();
+    short keyBlob = KMByteBlob.exp();
+    short argsProto = KMArray.instance((short) 2);
+    KMArray.cast(argsProto).add((short) 0, keyBlob);
+    KMArray.cast(argsProto).add((short) 1, keyParams);
+    return argsProto;
+  }
+
+  @Override
+  public void getAttestKeyInputParameters(short arrPtr, short[] data, byte keyBlobOff,
+      byte keyParametersOff,
+      byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
+    data[keyBlobOff] = KMArray.cast(arrPtr).get((short) 0);
+    data[keyParametersOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[attestKeyBlobOff] = KMType.INVALID_VALUE;
+    data[attestKeyParamsOff] = KMType.INVALID_VALUE;
+    data[attestKeyIssuerOff] = KMType.INVALID_VALUE;
+  }
+
+  @Override
+  public short prepareBeginResp(short paramsPtr, short opHandlePtr, short bufModPtr,
+      short macLengthPtr) {
+    short resp = KMArray.instance((short) 3);
+    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.cast(resp).add((short) 1, paramsPtr);
+    KMArray.cast(resp).add((short) 2, opHandlePtr);
+    return resp;
+  }
+
+  @Override
+  public short prepareFinishExp() {
+    short byteBlob = KMByteBlob.exp();
+    short cmd = KMArray.instance((short) 6);
+    KMArray.cast(cmd).add((short) 0, KMInteger.exp());//op handle
+    short keyParam = KMKeyParameters.exp();
+    KMArray.cast(cmd).add((short) 1, keyParam);// Key Parameters
+    KMArray.cast(cmd).add((short) 2, byteBlob);// input data
+    KMArray.cast(cmd).add((short) 3, byteBlob); // signature
+    short authToken = KMHardwareAuthToken.exp();
+    KMArray.cast(cmd).add((short) 4, authToken); // auth token
+    short verToken = getKMVerificationTokenExp();
+    KMArray.cast(cmd).add((short) 5, verToken); // time stamp token
+    return cmd;
+  }
+
+  @Override
+  public short prepareUpdateExp() {
+    short cmd = KMArray.instance((short) 5);
+    // Arguments
+    short keyParams = KMKeyParameters.exp();
+    KMArray.cast(cmd).add((short) 0, KMInteger.exp());
+    KMArray.cast(cmd).add((short) 1, keyParams);
+    KMArray.cast(cmd).add((short) 2, KMByteBlob.exp());
+    short authToken = KMHardwareAuthToken.exp();
+    KMArray.cast(cmd).add((short) 3, authToken);
+    short verToken = getKMVerificationTokenExp();
+    KMArray.cast(cmd).add((short) 4, verToken);
+    return cmd;
+  }
+
+  @Override
+  public void getUpdateInputParameters(short arrPtr, short[] data, byte opHandleOff,
+      byte keyParametersOff, byte inputDataOff, byte hwTokenOff,
+      byte verToken) {
+    data[opHandleOff] = KMArray.cast(arrPtr).get((short) 0);
+    data[keyParametersOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[inputDataOff] = KMArray.cast(arrPtr).get((short) 2);
+    data[hwTokenOff] = KMArray.cast(arrPtr).get((short) 3);
+    data[verToken] = KMArray.cast(arrPtr).get((short) 4);
+  }
+
+  @Override
+  public void getFinishInputParameters(short arrPtr, short[] data, byte opHandleOff,
+      byte keyParametersOff, byte inputDataOff, byte signDataOff, byte hwTokenOff, byte verToken,
+      byte confToken) {
+    data[opHandleOff] = KMArray.cast(arrPtr).get((short) 0);
+    data[keyParametersOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[inputDataOff] = KMArray.cast(arrPtr).get((short) 2);
+    data[signDataOff] = KMArray.cast(arrPtr).get((short) 3);
+    data[hwTokenOff] = KMArray.cast(arrPtr).get((short) 4);
+    data[verToken] = KMArray.cast(arrPtr).get((short) 5);
+    data[confToken] = KMType.INVALID_VALUE;
+  }
+
+  @Override
+  public short prepareFinishResp(short outputPtr) {
+    short keyParam = KMArray.instance((short) 0);
+    keyParam = KMKeyParameters.instance(keyParam);
+    short resp = KMArray.instance((short) 3);
+    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.cast(resp).add((short) 1, keyParam);
+    KMArray.cast(resp).add((short) 2, outputPtr);
+    return resp;
+  }
+
+  @Override
+  public short prepareUpdateResp(short outputPtr, short inputConsumedPtr) {
+    short resp = KMArray.instance((short) 4);
+    KMArray.cast(resp).add((short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.cast(resp).add((short) 1, inputConsumedPtr);
+    short keyParm = KMKeyParameters.instance(KMArray.instance((short) 0));
+    KMArray.cast(resp).add((short) 2, keyParm);
+    KMArray.cast(resp).add((short) 3, outputPtr);
+    return resp;
+  }
+
+  @Override
+  public short validateApduHeader(APDU apdu) {
+    return KMError.OK;
+  }
+
 }
