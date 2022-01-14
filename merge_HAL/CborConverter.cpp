@@ -16,6 +16,7 @@
  */
 
 #include "CborConverter.h"
+#include <android-base/logging.h>
 #include <cppbor.h>
 #include <map>
 #include <memory>
@@ -411,6 +412,26 @@ bool CborConverter::getKeyParameters(const unique_ptr<Item>& item, const uint32_
     }
     ret = true;
     return ret;
+}
+
+// array of a blobs
+bool CborConverter::getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
+                                        CertificateChain& certChain) {
+    std::unique_ptr<Item> arrayItem(nullptr);
+    std::vector<uint8_t> cert;
+    getItemAtPos(item, pos, arrayItem);
+    if ((arrayItem == nullptr) || (MajorType::ARRAY != getType(arrayItem))) return false;
+
+    const Array* arr = arrayItem.get()->asArray();
+    size_t arrSize = arr->size();
+    for (int i = (arrSize -1); i >= 0; i--) {
+        if (!getBinaryArray(arrayItem, i, cert)) return false;
+        uint8_t *blob = new (std::nothrow) uint8_t[cert.size()];
+        memcpy(blob, cert.data(), cert.size());
+        certChain.push_front({blob, cert.size()});
+        cert.clear();
+    }
+    return true;
 }
 
 std::tuple<std::unique_ptr<Item>, keymaster_error_t>

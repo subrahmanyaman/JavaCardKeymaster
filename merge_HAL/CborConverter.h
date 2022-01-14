@@ -38,6 +38,7 @@ using ::keymaster::TimestampToken;
 using ::keymaster::HardwareAuthToken;
 using ::keymaster::VerificationToken;
 using ::keymaster::KeymasterKeyBlob;
+using ::keymaster::CertificateChain;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -104,6 +105,9 @@ class CborConverter {
     
     bool getArrayItem(const std::unique_ptr<Item>& item, const uint32_t pos,
                              Array& array);
+    
+    bool getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
+                                        CertificateChain& certChain);
 
     inline bool getErrorCode(const std::unique_ptr<Item>& item, const uint32_t pos,
                              keymaster_error_t& errorCode) {

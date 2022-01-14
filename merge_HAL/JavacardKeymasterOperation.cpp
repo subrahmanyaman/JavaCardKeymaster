@@ -15,7 +15,7 @@
  */
 
 #include "JavacardKeymasterOperation.h"
-#include <km_utils.h>
+#include <KMUtils.h>
 #include <android-base/logging.h>
 
 namespace javacard_keymaster {
@@ -53,22 +53,16 @@ JavacardKeymasterOperation::~JavacardKeymasterOperation() {
 }
 
 
-keymaster_error_t JavacardKeymasterOperation::updateAad(const vector<uint8_t>& /*input*/,
-                                                    const HardwareAuthToken& /*authToken*/,
-                                                    const vector<uint8_t>& /*encodedVerificationToken*/) {
-#if 0                                                                                                            
+keymaster_error_t JavacardKeymasterOperation::updateAad(const vector<uint8_t>& input,
+                                                    const HardwareAuthToken& authToken,
+                                                    const vector<uint8_t>& encodedVerificationToken) {
     cppbor::Array request;
     request.add(Uint(opHandle_));
     request.add(Bstr(input));
-    cbor_.addHardwareAuthToken(request, authToken.value_or(HardwareAuthToken()));
-    cbor_.addTimeStampToken(request, timestampToken.value_or(TimeStampToken()));
-    auto [item, err] = card_->sendRequest(Instruction::INS_UPDATE_AAD_OPERATION_CMD, request);
-    if (err != KM_ERROR_OK) {
-        return km_utils::kmError2ScopedAStatus(err);
-    }
-    return ScopedAStatus::ok();
-#endif    
-    return KM_ERROR_OK;
+    cbor_.addHardwareAuthToken(request, authToken);
+    request.add(EncodedItem(encodedVerificationToken));
+    auto [_, err] = card_->sendRequest(Instruction::INS_UPDATE_AAD_OPERATION_CMD, request);
+    return err;
 }
 
 

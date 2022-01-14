@@ -16,7 +16,7 @@
 
 #define LOG_TAG "JavacardSecureElement"
 #include "JavacardSecureElement.h"
-#include "km_utils.h"
+#include "KMUtils.h"
 
 #include <algorithm>
 #include <android-base/logging.h>

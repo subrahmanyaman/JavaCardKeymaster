@@ -22,7 +22,7 @@
 #include <keymaster/km_openssl/openssl_utils.h>
 #include <keymaster/km_openssl/attestation_record.h>
 #include <keymasterV4_0/keymaster_utils.h>
-#include <km_utils.h>
+#include <KMUtils.h>
 #include <time.h>
 
 
@@ -728,7 +728,7 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
     hidl_vec<KeyParameter> outParams;
     AuthorizationSet authSetOutParams;
     vector<uint8_t> output;
-    vector<uint8_t> encodedVerificationToken;           
+    vector<uint8_t> encodedVerificationToken;
     auto it = operationTable_.find(operationHandle);
     if (it == operationTable_.end()) {
         LOG(ERROR) << " Operation handle is invalid. This could happen if invalid operation handle "

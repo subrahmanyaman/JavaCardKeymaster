@@ -25,14 +25,19 @@
 
 #include "JavacardSecureElement.h"
 #include "JavacardSharedSecret.h"
-#include "km_utils.h"
 #include "JavacardRemotelyProvisionedComponentDevice.h"
+#include <JavacardKeymaster.h>
+#include <keymaster/km_version.h>
 #include <SocketTransport.h>
+#include "KMUtils.h"
 
+using namespace javacard_keymaster;
+using ::javacard_keymaster::JavacardSecureElement;
+using ::javacard_keymaster::JavacardKeymaster;
+using ::javacard_keymaster::SocketTransport;
 using aidl::android::hardware::security::keymint::JavacardKeyMintDevice;
 using aidl::android::hardware::security::keymint::JavacardSharedSecret;
 using aidl::android::hardware::security::keymint::SecurityLevel;
-using namespace keymint::javacard;
 
 template <typename T, class... Args> std::shared_ptr<T> addService(Args&&... args) {
     std::shared_ptr<T> ser = ndk::SharedRefBase::make<T>(std::forward<Args>(args)...);
@@ -48,10 +53,11 @@ int main() {
     ABinderProcess_setThreadPoolMaxThreadCount(0);
     // Javacard Secure Element
     std::shared_ptr<JavacardSecureElement> card =
-        std::make_shared<JavacardSecureElement>(std::make_shared<SocketTransport>(), getOsVersion(),
+        std::make_shared<JavacardSecureElement>(KmVersion::KEYMINT_1, std::make_shared<SocketTransport>(), getOsVersion(),
                                                 getOsPatchlevel(), getVendorPatchlevel());
+    std::shared_ptr<JavacardKeymaster> jcImpl = std::make_shared<JavacardKeymaster>(card);                                                
     // Add Keymint Service
-    addService<JavacardKeyMintDevice>(card);
+    addService<JavacardKeyMintDevice>(jcImpl);
     // Add Shared Secret Service
     addService<JavacardSharedSecret>(card);
     // Add Remotely Provisioned Component Service

@@ -10,7 +10,14 @@ using ::keymaster::AuthorizationSet;
 using ::javacard_keymaster::HmacSharingParameters;
 using ::keymaster::HardwareAuthToken;
 using std::shared_ptr;
+using std::optional;
 using std::vector;
+
+struct AttestationKey {
+    std::vector<uint8_t> keyBlob;
+    AuthorizationSet params;
+    std::vector<uint8_t> issuerSubject;
+};
 
 class JavacardKeymaster {
 public:
@@ -36,10 +43,8 @@ public:
 
     keymaster_error_t attestKey(const vector<uint8_t>& keyblob,
                             const AuthorizationSet& keyParams,
-                            const vector<uint8_t>& attestkeyBlob,
-                            const AuthorizationSet& attestKeyParams,
-                            const vector<uint8_t>& attestKeyIssuer,
-                            vector<vector<uint8_t>>* certChain);
+                            const optional<AttestationKey>& attestationKey,
+                            CertificateChain* certChain);
 
     keymaster_error_t attestKey(const vector<uint8_t>& keyblob,
                                                const AuthorizationSet& keyParams,
@@ -100,7 +105,7 @@ public:
                                            
     //std::unique_ptr<JavacardKeymasterOperation> getOperation(uint64_t operationHandle, BufferingMode bufMode, uint32_t macLength, OperationType operType);
 private:
-    keymaster_error_t attestKey(Array& request, vector<vector<uint8_t>>* certChain);
+    keymaster_error_t attestKey(Array& request, CertificateChain* certChain);
     keymaster_error_t handleErrorCode(keymaster_error_t err);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, Array& request);

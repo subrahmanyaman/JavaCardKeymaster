@@ -22,7 +22,7 @@
 #include <JavacardKeymaster.h>
 #include <keymaster/km_version.h>
 #include <SocketTransport.h>
-#include "km_utils.h"
+#include "KMUtils.h"
 using namespace javacard_keymaster;
 using ::javacard_keymaster::JavacardSecureElement;
 using ::javacard_keymaster::JavacardKeymaster;

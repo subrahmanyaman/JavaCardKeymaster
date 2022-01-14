@@ -29,7 +29,7 @@
 #include <keymaster/android_keymaster.h>
 #include <JavacardSoftKeymasterContext.h>
 #include <JavacardKeymasterOperation.h>
-#include <km_utils.h>
+#include <KMUtils.h>
 
 namespace keymaster {
 namespace V4_1 {

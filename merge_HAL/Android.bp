@@ -56,7 +56,7 @@ cc_library {
     srcs: [
         "JavacardKeymaster.cpp",
         "CborConverter.cpp",
-        "km_utils.cpp",
+	"KMUtils.cpp",
         "JavacardSecureElement.cpp",
         "SocketTransport.cpp",
 	"JavacardKeymasterOperation.cpp",
@@ -196,6 +196,7 @@ cc_binary {
         "libjc_km_transport",
         "liblog",
         "libutils",
+        "libjc_keymaster_portable",
     ],
     srcs: [
         "keymintService.cpp",

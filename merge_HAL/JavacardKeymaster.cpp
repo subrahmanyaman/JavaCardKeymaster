@@ -1,5 +1,5 @@
 #include <JavacardKeymaster.h>
-#include <km_utils.h>
+#include <KMUtils.h>
 #include <keymaster/wrapped_key.h>
 #include <keymaster/mem.h>
 
@@ -142,6 +142,19 @@ keymaster_error_t JavacardKeymaster::attestKey(Array& request, vector<vector<uin
     return err;
 }
 
+keymaster_error_t JavacardKeymaster::attestKey(Array& request, CertificateChain* certChain) {
+    auto [item, err] = sendRequest(Instruction::INS_ATTEST_KEY_CMD, request);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in sending attestKey.";
+        return err;
+    }
+    if (!cbor_.getCertificateChain(item, 1, *certChain)) {
+        LOG(ERROR) << "Error in decoding response in attestKey.";
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    return err;
+}
+
 keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
                                                const AuthorizationSet& keyParams,
                                                vector<vector<uint8_t>>* certChain) {
@@ -153,16 +166,16 @@ keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
 
 keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
                                                const AuthorizationSet& keyParams,
-                                               const vector<uint8_t>& attestKeyBlob,
-                                               const AuthorizationSet& attestKeyParams,
-                                               const vector<uint8_t>& attestKeyIssuer,
-                                               vector<vector<uint8_t>>* certChain) {
+                                               const optional<AttestationKey>& attestationKey,
+                                               CertificateChain* certChain) {
     cppbor::Array array;
     array.add(keyblob);
     cbor_.addKeyparameters(array, keyParams);
-    array.add(attestKeyBlob);
-    cbor_.addKeyparameters(array, attestKeyParams);
-    array.add(attestKeyIssuer);
+    if (attestationKey.has_value()) {
+        array.add(attestationKey->keyBlob);
+        cbor_.addKeyparameters(array, attestationKey->params);
+        array.add(attestationKey->issuerSubject);
+    }
     return attestKey(array, certChain);
 }
 
