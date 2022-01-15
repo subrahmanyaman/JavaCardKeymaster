@@ -26,12 +26,14 @@
 #include <keymaster/km_openssl/ec_key_factory.h>
 #include <keymaster/km_openssl/rsa_key_factory.h>
 #include <JavacardSoftKeymasterContext.h>
+#include <android-base/logging.h>
 #include <CborConverter.h>
 
 using std::unique_ptr;
 
-
-namespace javacard_keymaster {
+namespace keymaster {
+namespace V4_1 {
+namespace javacard {
 constexpr int kKeyblobPubKeyOffset = 4;
 constexpr int kKeyblobKeyCharsOffset = 3;
 using ::keymaster::PureSoftKeymasterContext;
@@ -193,4 +195,4 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
     }
     return KM_ERROR_INVALID_KEY_BLOB;
 }
-}  // namespace keymaster
+}  // namespace keymaster::V4_1::javacard

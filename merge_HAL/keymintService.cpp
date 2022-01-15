@@ -19,12 +19,11 @@
 #include <android-base/logging.h>
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
-
 #include "JavacardKeyMintDevice.h"
 #include <aidl/android/hardware/security/keymint/SecurityLevel.h>
-
 #include "JavacardSecureElement.h"
 #include "JavacardSharedSecret.h"
+#include "KMUtils.h"
 #include "JavacardRemotelyProvisionedComponentDevice.h"
 #include <JavacardKeymaster.h>
 #include <keymaster/km_version.h>
@@ -38,6 +37,7 @@ using ::javacard_keymaster::SocketTransport;
 using aidl::android::hardware::security::keymint::JavacardKeyMintDevice;
 using aidl::android::hardware::security::keymint::JavacardSharedSecret;
 using aidl::android::hardware::security::keymint::SecurityLevel;
+using aidl::android::hardware::security::keymint::JavacardRemotelyProvisionedComponentDevice;
 
 template <typename T, class... Args> std::shared_ptr<T> addService(Args&&... args) {
     std::shared_ptr<T> ser = ndk::SharedRefBase::make<T>(std::forward<Args>(args)...);
@@ -59,7 +59,7 @@ int main() {
     // Add Keymint Service
     addService<JavacardKeyMintDevice>(jcImpl);
     // Add Shared Secret Service
-    addService<JavacardSharedSecret>(card);
+    addService<JavacardSharedSecret>(jcImpl);
     // Add Remotely Provisioned Component Service
     addService<JavacardRemotelyProvisionedComponentDevice>(card);
 

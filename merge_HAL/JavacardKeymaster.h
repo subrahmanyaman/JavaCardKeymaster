@@ -49,7 +49,7 @@ public:
     keymaster_error_t attestKey(const vector<uint8_t>& keyblob,
                                                const AuthorizationSet& keyParams,
                                                vector<vector<uint8_t>>* certChain);
-    
+
     keymaster_error_t getCertChain(vector<vector<uint8_t>>* certChain);
 
     keymaster_error_t importKey(const AuthorizationSet& keyParams,
@@ -91,7 +91,6 @@ public:
                                         AuthorizationSet* swEnforced,
                                         AuthorizationSet* hwEnforced,
                                         AuthorizationSet* teeEnforced);
-    
 
     keymaster_error_t begin(keymaster_purpose_t purpose, const vector<uint8_t>& keyBlob,
                                            const AuthorizationSet& inParams,
@@ -102,9 +101,9 @@ public:
     void registerSeResetEventListener(shared_ptr<IJavacardSeResetListener> listener) {
         seResetListener_ = listener;
     }
-                                           
-    //std::unique_ptr<JavacardKeymasterOperation> getOperation(uint64_t operationHandle, BufferingMode bufMode, uint32_t macLength, OperationType operType);
+
 private:
+keymaster_error_t attestKey(Array& request, vector<vector<uint8_t>>* certChain);
     keymaster_error_t attestKey(Array& request, CertificateChain* certChain);
     keymaster_error_t handleErrorCode(keymaster_error_t err);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);

@@ -21,6 +21,7 @@ cc_library {
     srcs: [
         "JavacardKeyMintDevice.cpp",
         "JavacardKeyMintOperation.cpp",
+	"JavacardKeyMintUtils.cpp",
 	"JavacardRemotelyProvisionedComponentDevice.cpp",
         "JavacardSharedSecret.cpp",
     ],

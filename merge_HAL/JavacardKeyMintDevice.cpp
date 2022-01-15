@@ -17,7 +17,6 @@
 #define LOG_TAG "javacard.keymint.device.strongbox-impl"
 #include "JavacardKeyMintDevice.h"
 #include "JavacardKeyMintOperation.h"
-#include "JavacardSharedSecret.h"
 #include <KeyMintUtils.h>
 #include <algorithm>
 #include <android-base/logging.h>

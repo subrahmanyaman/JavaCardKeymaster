@@ -20,7 +20,6 @@
 #include "JavacardSecureElement.h"
 #include <hardware/keymaster_defs.h>
 #include <keymaster/android_keymaster.h>
-#include <JavacardSoftKeymasterContext.h>
 #include <vector>
 
 #define AES_BLOCK_SIZE 16

@@ -17,12 +17,12 @@
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 #include <keymaster/contexts/soft_attestation_cert.h>
 #include <CborConverter.h>
-namespace javacard_keymaster {
+
+namespace keymaster {
+namespace V4_1 {
+namespace javacard {
+
 using namespace ::keymaster;
-//class SoftKeymasterKeyRegistrations;
-//class Keymaster0Engine;
-//class Keymaster1Engine;
-//class ::keymaster::Key;
 
 /**
  * SoftKeymasterContext provides the context for a non-secure implementation of AndroidKeymaster.
@@ -43,4 +43,4 @@ class JavaCardSoftKeymasterContext : public ::keymaster::PureSoftKeymasterContex
                                    UniquePtr<Key>* key) const override;
 };
 
-}  // namespace javacard_keymaster
+}  // namespace keymaster::V4_1::javacard

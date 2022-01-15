@@ -34,11 +34,8 @@
 namespace keymaster {
 namespace V4_1 {
 namespace javacard {
+using namespace ::javacard_keymaster;
 using android::hardware::keymaster::V4_0::support::authToken2HidlVec;
-using ::javacard_keymaster::BufferingMode;
-using ::javacard_keymaster::OperationType;
-using ::javacard_keymaster::ExtendedErrors;
-using javacard_keymaster::Instruction;
 using std::vector;
 using std::string;
 
@@ -281,8 +278,8 @@ keymaster_error_t getOperationInfo(keymaster_purpose_t purpose, const Authorizat
 JavacardKeymaster4Device::JavacardKeymaster4Device(shared_ptr<JavacardKeymaster> jcImpl)
     : softKm_(new ::keymaster::AndroidKeymaster(
             []() -> auto {
-            auto context = new ::javacard_keymaster::JavaCardSoftKeymasterContext();
-            context->SetSystemVersion(::javacard_keymaster::getOsVersion(), ::javacard_keymaster::getOsPatchlevel());
+            auto context = new JavaCardSoftKeymasterContext();
+            context->SetSystemVersion(getOsVersion(), getOsPatchlevel());
             return context;
             }(),
             kOperationTableSize, keymaster::MessageVersion(keymaster::KmVersion::KEYMASTER_4_1,
