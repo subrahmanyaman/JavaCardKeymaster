@@ -17,13 +17,14 @@
 #pragma once
 #include <keymaster/serializable.h>
 #include <hardware/keymaster_defs.h>
+#include <keymaster/authorization_set.h>
 #include <vector>
 
 //#include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 
 // namespace aidl::android::hardware::security::keymint {
 namespace javacard_keymaster {
-
+using namespace ::keymaster;
 using std::vector;
 
 //Extended error codes
@@ -67,6 +68,7 @@ keymaster_error_t translateExtendedErrorsToHalErrors(keymaster_error_t errorCode
 uint32_t getOsVersion();
 uint32_t getOsPatchlevel();
 uint32_t getVendorPatchlevel();
+void addCreationTime(AuthorizationSet &paramSet);
 
 keymaster_error_t getCertificateChain(std::vector<uint8_t>& chainBuffer, std::vector<std::vector<uint8_t>>& certChain);
 }  // namespace javacard_keymaster

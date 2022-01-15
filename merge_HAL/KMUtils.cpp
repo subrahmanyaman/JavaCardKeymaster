@@ -16,15 +16,15 @@
 
 #include <android-base/properties.h>
 #include <android-base/logging.h>
-#include <km_utils.h>
+#include <KMUtils.h>
 #include <regex.h>
+#include <keymaster/android_keymaster_utils.h>
 
 #define TAG_SEQUENCE 0x30
 #define LENGTH_MASK 0x80
 #define LENGTH_VALUE_MASK 0x7F
 
 namespace javacard_keymaster {
-
 namespace {
 
 constexpr char kPlatformVersionProp[] = "ro.build.version.release";
@@ -212,6 +212,16 @@ keymaster_error_t getCertificateChain(std::vector<uint8_t>& chainBuffer, std::ve
         }
     }
     return KM_ERROR_OK;
+}
+
+void addCreationTime(AuthorizationSet &paramSet) {
+    if (!paramSet.Contains(KM_TAG_CREATION_DATETIME) &&
+        !paramSet.Contains(KM_TAG_ACTIVE_DATETIME)) {
+        keymaster_key_param_t dateTime;
+        dateTime.tag = KM_TAG_CREATION_DATETIME;
+        dateTime.date_time = java_time(time(nullptr));
+        paramSet.push_back(dateTime);
+    }
 }
 
 
