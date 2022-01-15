@@ -16,7 +16,6 @@
 #pragma once
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 #include <keymaster/contexts/soft_attestation_cert.h>
-#include <CborConverter.h>
 
 namespace keymaster {
 namespace V4_1 {
@@ -43,4 +42,6 @@ class JavaCardSoftKeymasterContext : public ::keymaster::PureSoftKeymasterContex
                                    UniquePtr<Key>* key) const override;
 };
 
-}  // namespace keymaster::V4_1::javacard
+} // javacard
+} // V4_1
+}  // keymaster
