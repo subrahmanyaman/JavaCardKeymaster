@@ -66,10 +66,13 @@ ScopedAStatus JavacardKeyMintOperation::finish(
     TimeStampToken tToken = timestampToken.value_or(TimeStampToken());
     vector<uint8_t> inputData = input.value_or(vector<uint8_t>());
     vector<uint8_t> signatureData = signature.value_or(vector<uint8_t>());
+    // If confirmation token is empty, then create empty vector. This is to 
+    // differentiate between the keymaster and keymint.
+    std::optional<vector<uint8_t>> confToken = confirmationToken.value_or(vector<uint8_t>());
     legacyHardwareAuthToken(aToken, &legacyToken);
     encodeTimestampToken(tToken, &encodedTimestampToken);
     auto err = jcKmOprImpl_->finish(inputData, nullopt, signatureData, legacyToken, encodedTimestampToken,
-                                    confirmationToken, nullptr, output);
+                                    confToken, nullptr, output);
     return km_utils::kmError2ScopedAStatus(err);
 }
 

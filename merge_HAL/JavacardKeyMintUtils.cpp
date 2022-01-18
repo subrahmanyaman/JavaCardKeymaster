@@ -32,9 +32,9 @@ keymaster_error_t legacyHardwareAuthToken(const HardwareAuthToken& aidlToken, Le
 keymaster_error_t encodeTimestampToken(const TimeStampToken& timestampToken, vector<uint8_t>* encodedToken) {
     cppbor::Array array;
     ::keymaster::TimestampToken token;
-    token.challenge = timestampToken.challenge;
-    token.timestamp = timestampToken.timestamp.milliSeconds;
-    token.mac = {timestampToken.mac.data(), timestampToken.mac.size()};
+    array.add(static_cast<uint64_t>(timestampToken.challenge));
+    array.add(static_cast<uint64_t>(timestampToken.timestamp.milliSeconds));
+    array.add(timestampToken.mac);
     *encodedToken = array.encode();
     return KM_ERROR_OK;
 }

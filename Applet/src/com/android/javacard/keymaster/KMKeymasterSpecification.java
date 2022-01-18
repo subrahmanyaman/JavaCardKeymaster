@@ -294,4 +294,8 @@ public class KMKeymasterSpecification implements KMSpecification {
     return KMError.OK;
   }
 
+  @Override
+  public boolean isAssociatedDataTagSupported() {
+    return true;
+  }
 }

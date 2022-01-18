@@ -1744,7 +1744,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
       }
       // update aad if there is any
-      updateAAD(op, KMType.INVALID_VALUE, (byte) 0x01);
+      updateAAD(op, (byte) 0x01);
       if(op.isAesGcmUpdateAllowed()){
         op.setAesGcmUpdateComplete();
       }
@@ -2083,7 +2083,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
           if (op.getBlockMode() == KMType.GCM) {
         	// data[KEY_PARAMETERS] will be invalid for keymint
         	if(data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
-        	  updateAAD(op, KMType.INVALID_VALUE, (byte) 0x00);
+        	  updateAAD(op, (byte) 0x00);
         	}
             // if input data present
             if (len > 0) {
@@ -2139,44 +2139,39 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
   //update operation should send 0x00 for finish variable, where as finish operation
   // should send 0x01 for finish variable.
-  private void updateAAD(KMOperationState op, short associatedData, byte finish) {
-	
-	short aData = associatedData;  
-  	if(associatedData == KMType.INVALID_VALUE) {
-  	  // Is input data absent
-  	  if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
-  	    KMException.throwIt(KMError.INVALID_ARGUMENT);
-  	  }
-  	  // Update can be called either to update auth data, update input data or both.
-  	  // But if it is called for neither then return error.
-  	  short len = KMByteBlob.cast(data[INPUT_DATA]).length();
-  	  short tag =
-  	       KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ASSOCIATED_DATA, data[KEY_PARAMETERS]);
-  	   // For Finish operation the input data can be zero length and associated data can be
-  	   // INVALID_VALUE
-  	   // For update operation either input data or associated data should be present.
-  	  if (tag == KMType.INVALID_VALUE && len <= 0 && finish == 0x00) {
-  	     KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
-  	  }
-  	  // Check if associated data is present and update aad still allowed by the operation.
-  	  if (tag != KMType.INVALID_VALUE) {
-  		 // If allowed the update the aad
-  		 if (!op.isAesGcmUpdateAllowed()) {
-  	        KMException.throwIt(KMError.INVALID_TAG);
-  	     }
-  	     aData = KMByteTag.cast(tag).getValue();
-  	  }
-  	}
-  	try {
-  	  if(aData != KMType.INVALID_VALUE) {     
-        op.getOperation()
-           .updateAAD(
-             KMByteBlob.cast(aData).getBuffer(),
-             KMByteBlob.cast(aData).getStartOff(),
-             KMByteBlob.cast(aData).length());
+  private void updateAAD(KMOperationState op, byte finish) {
+    if (!specification.isAssociatedDataTagSupported()) {
+      return;
+    }
+    // Is input data absent
+    if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    // Update can be called either to update auth data, update input data or both.
+    // But if it is called for neither then return error.
+    short len = KMByteBlob.cast(data[INPUT_DATA]).length();
+    short tag =
+        KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ASSOCIATED_DATA, data[KEY_PARAMETERS]);
+    // For Finish operation the input data can be zero length and associated data can be
+    // INVALID_VALUE
+    // For update operation either input data or associated data should be present.
+    if (tag == KMType.INVALID_VALUE && len <= 0 && finish == 0x00) {
+      KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+    }
+    // Check if associated data is present and update aad still allowed by the operation.
+    if (tag != KMType.INVALID_VALUE) {
+      // If allowed the update the aad
+      if (!op.isAesGcmUpdateAllowed()) {
+        KMException.throwIt(KMError.INVALID_TAG);
       }
-  	} catch(CryptoException exp){
-        KMException.throwIt(KMError.UNKNOWN_ERROR);
+      // If allowed the update the aad
+      short aData = KMByteTag.cast(tag).getValue();
+
+      op.getOperation()
+          .updateAAD(
+              KMByteBlob.cast(aData).getBuffer(),
+              KMByteBlob.cast(aData).getStartOff(),
+              KMByteBlob.cast(aData).length());
     }
   }
   
@@ -2212,7 +2207,15 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
     // authorize the update operation
     authorizeUpdateFinishOperation(op, scratchPad);
-    updateAAD(op, data[INPUT_DATA], (byte)0x00);
+    try {
+      op.getOperation()
+          .updateAAD(
+              KMByteBlob.cast(data[INPUT_DATA]).getBuffer(),
+              KMByteBlob.cast(data[INPUT_DATA]).getStartOff(),
+              KMByteBlob.cast(data[INPUT_DATA]).length());
+    } catch(CryptoException exp){
+      KMException.throwIt(KMError.UNKNOWN_ERROR);
+    }
     
     // make response
     short resp = KMArray.instance((short) 1);
@@ -3802,6 +3805,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(resp).add((short) 1, data[CERTIFICATE]);
     sendOutgoing(apdu, resp);
   }
+
 
   private short getAttestationMode(short attKeyBlob, short attChallenge){
     short alg = KMKeyParameters.findTag(KMType.ENUM_TAG, KMType.ALGORITHM, data[HW_PARAMETERS]);

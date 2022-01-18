@@ -314,7 +314,8 @@ keymaster_error_t JavacardKeymasterOperation::sendUpdate(const vector<uint8_t>& 
                                                        const HardwareAuthToken& authToken,
                                                         const vector<uint8_t>& encodedVerificationToken,
                                                            vector<uint8_t>& output) {
-    if (input.empty() && !inParams->Contains(KM_TAG_ASSOCIATED_DATA)) {
+    if (input.empty() && (!inParams.has_value() || !inParams->Contains(KM_TAG_ASSOCIATED_DATA))) {
+        LOG(ERROR) << "JavacardKeymasterOperation::sendUpdate return no input to send";
         return KM_ERROR_OK;
     }
     cppbor::Array request;

@@ -57,7 +57,9 @@ public interface KMSpecification {
 
   short prepareFinishResp(short outputPtr);
 
-  public short prepareUpdateResp(short outputPtr, short inputConsumedPtr);
+  short prepareUpdateResp(short outputPtr, short inputConsumedPtr);
 
   short validateApduHeader(APDU apdu);
+
+  boolean isAssociatedDataTagSupported();
 }

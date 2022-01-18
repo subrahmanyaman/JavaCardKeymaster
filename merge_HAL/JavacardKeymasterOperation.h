@@ -159,7 +159,7 @@ private:
     CborConverter cbor_;
     OperationType operType_;
     shared_ptr<IJavacardSeResetListener> seResetListener_;
-    std::shared_ptr<::keymaster::AndroidKeymaster> softKm_;
+    shared_ptr<::keymaster::AndroidKeymaster> softKm_;
 };
 
 }  // namespace javacard_keymaster

@@ -258,12 +258,11 @@ public class KMKeymintSpecification implements KMSpecification {
       byte keyParametersOff, byte inputDataOff, byte signDataOff, byte hwTokenOff, byte verToken,
       byte confToken) {
     data[opHandleOff] = KMArray.cast(arrPtr).get((short) 0);
-    data[keyParametersOff] = KMArray.cast(arrPtr).get((short) 1);
-    data[inputDataOff] = KMArray.cast(arrPtr).get((short) 2);
-    data[signDataOff] = KMArray.cast(arrPtr).get((short) 3);
-    data[hwTokenOff] = KMArray.cast(arrPtr).get((short) 4);
-    data[verToken] = KMArray.cast(arrPtr).get((short) 5);
-    data[confToken] = KMArray.cast(arrPtr).get((short) 6);
+    data[inputDataOff] = KMArray.cast(arrPtr).get((short) 1);
+    data[signDataOff] = KMArray.cast(arrPtr).get((short) 2);
+    data[hwTokenOff] = KMArray.cast(arrPtr).get((short) 3);
+    data[verToken] = KMArray.cast(arrPtr).get((short) 4);
+    data[confToken] = KMArray.cast(arrPtr).get((short) 5);
   }
 
   @Override
@@ -296,6 +295,11 @@ public class KMKeymintSpecification implements KMSpecification {
       return KMError.INVALID_P1P2;
     }
     return KMError.OK;
+  }
+
+  @Override
+  public boolean isAssociatedDataTagSupported() {
+    return false;
   }
 
   @Override

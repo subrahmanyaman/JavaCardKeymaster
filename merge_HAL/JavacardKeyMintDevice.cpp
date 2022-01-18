@@ -56,23 +56,21 @@ vector<KeyCharacteristics> convertKeyCharacteristics(AuthorizationSet& keystoreE
                                                      AuthorizationSet& sbEnforced,
                                                      AuthorizationSet& teeEnforced) {
     vector<KeyCharacteristics> retval;
-    retval.reserve(3);
-    retval.push_back({SecurityLevel::KEYSTORE, kmParamSet2Aidl(keystoreEnforced)});
-    retval.push_back({SecurityLevel::STRONGBOX, kmParamSet2Aidl(sbEnforced)});
-    retval.push_back({SecurityLevel::TRUSTED_ENVIRONMENT, kmParamSet2Aidl(teeEnforced)});
+    // VTS will fail if the authorizations list is empty.
+    if(!sbEnforced.empty()) retval.push_back({SecurityLevel::STRONGBOX, kmParamSet2Aidl(sbEnforced)});
+    if(!teeEnforced.empty()) retval.push_back({SecurityLevel::TRUSTED_ENVIRONMENT, kmParamSet2Aidl(teeEnforced)});
+    if(!keystoreEnforced.empty()) retval.push_back({SecurityLevel::KEYSTORE, kmParamSet2Aidl(keystoreEnforced)});
     return retval;
 }
 
 std::optional<JCKMAttestationKey> convertAttestationKey(const std::optional<AttestationKey>& attestationKey) {
-    std::optional<JCKMAttestationKey> jcAttestationKey = nullopt;
+    JCKMAttestationKey key;
     if (attestationKey.has_value()) {
-        JCKMAttestationKey key;
         key.params.Reinitialize(KmParamSet(attestationKey->attestKeyParams));
         key.keyBlob = attestationKey->keyBlob;
         key.issuerSubject = attestationKey->issuerSubjectName;
-        jcAttestationKey = std::move(key);
     }
-    return jcAttestationKey;
+    return std::move(key);
 }
 #if 0
 inline void Vec2KmBlob(const vector<uint8_t>& input, KeymasterBlob* blob) {
@@ -131,17 +129,21 @@ ScopedAStatus JavacardKeyMintDevice::generateKey(const vector<KeyParameter>& key
     AuthorizationSet sbEnforced;
     AuthorizationSet teeEnforced;
     paramSet.Reinitialize(KmParamSet(keyParams));
-    // Add CREATION_DATETIME if required, as secure element is not having clock.
-    addCreationTime(paramSet);
+
     auto err = jcImpl_->generateKey(paramSet, &creationResult->keyBlob, &swEnforced, &sbEnforced, &teeEnforced);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in generateKey" << (int32_t) err;
+        LOG(ERROR) << "Failed in generateKey err: " << (int32_t) err;
         return km_utils::kmError2ScopedAStatus(err);
     }
-    err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey), &creationResult->certificateChain);
-    if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in attestKey" << (int32_t) err;
-        return km_utils::kmError2ScopedAStatus(err);
+    // Call attestKey only Asymmetric algorithms.
+    keymaster_algorithm_t algorithm;
+    paramSet.GetTagValue(TAG_ALGORITHM, &algorithm);
+    if (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC) {
+        err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey), &creationResult->certificateChain);
+        if (err != KM_ERROR_OK) {
+            LOG(ERROR) << "Failed in attestKey err: " << (int32_t)err;
+            return km_utils::kmError2ScopedAStatus(err);
+        }
     }
     creationResult->keyCharacteristics = convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
     return ScopedAStatus::ok();
@@ -159,7 +161,6 @@ keymaster_error_t JavacardKeyMintDevice::attestKey(const vector<uint8_t>& keyblo
     ::keymaster::CertificateChain certChain;                                                      
     auto err = jcImpl_->attestKey(keyblob, keyParams, attestationKey, &certChain);
      if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in attestKey" << (int32_t) err;
         return err;
     }
     *certificateChain = convertCertificateChain(certChain);
@@ -184,10 +185,15 @@ ScopedAStatus JavacardKeyMintDevice::importKey(const vector<KeyParameter>& keyPa
         LOG(ERROR) << "Failed in importKey" << (int32_t) err;
         return km_utils::kmError2ScopedAStatus(err);
     }
-    err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey), &creationResult->certificateChain);
-    if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in attestKey" << (int32_t) err;
-        return km_utils::kmError2ScopedAStatus(err);
+    // Call attestKey only Asymmetric algorithms.
+    keymaster_algorithm_t algorithm;
+    paramSet.GetTagValue(TAG_ALGORITHM, &algorithm);
+    if (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC) {
+        err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey), &creationResult->certificateChain);
+        if (err != KM_ERROR_OK) {
+            LOG(ERROR) << "Failed in attestKey" << (int32_t)err;
+            return km_utils::kmError2ScopedAStatus(err);
+        }
     }
     creationResult->keyCharacteristics = convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
     return ScopedAStatus::ok();
@@ -208,7 +214,6 @@ ScopedAStatus JavacardKeyMintDevice::importWrappedKey(const vector<uint8_t>& wra
     auto err = jcImpl_->importWrappedKey(wrappedKeyData, wrappingKeyBlob, maskingKey, paramSet,
                                          passwordSid, biometricSid, &creationResult->keyBlob, &swEnforced,
                                          &sbEnforced, &teeEnforced);
-    err = attestKey(creationResult->keyBlob, paramSet, nullopt, &creationResult->certificateChain);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Failed in attestKey" << (int32_t) err;
         return km_utils::kmError2ScopedAStatus(err);
