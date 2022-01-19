@@ -15,19 +15,24 @@
  */
 
 #pragma once
-
+#include<iostream>
+#include<optional>
 #include "CborConverter.h"
 #include <ITransport.h>
+#include <keymaster/km_version.h>
 
 #define APDU_CLS 0x80
-#define APDU_P1 0x50
+#define APDU_KEYMINT_P1 0x50
+#define APDU_KEYMASTER_P1 0x40
 #define APDU_P2 0x00
 #define APDU_RESP_STATUS_OK 0x9000
 
+#define SE_POWER_RESET_STATUS_FLAG ( 1 << 30)
+
 #define KEYMINT_CMD_APDU_START 0x20
 
-namespace keymint::javacard {
-using ndk::ScopedAStatus;
+namespace javacard_keymaster {
+using keymaster::KmVersion;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
@@ -59,7 +64,7 @@ enum class Instruction {
     INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23,
     INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24,
     INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25,
-    INS_SET_BOOT_PARAMS_CMD = KEYMINT_CMD_APDU_START + 26,
+    INS_INIT_STRONGBOX_CMD = KEYMINT_CMD_APDU_START + 26,
     // RKP Commands
     INS_GET_RKP_HARDWARE_INFO = KEYMINT_CMD_APDU_START + 27,
     INS_GENERATE_RKP_KEY_CMD = KEYMINT_CMD_APDU_START + 28,
@@ -71,12 +76,18 @@ enum class Instruction {
   INS_GET_RESPONSE_CMD = KEYMINT_CMD_APDU_START + 34,
 };
 
+class IJavacardSeResetListener {
+public:
+    virtual ~IJavacardSeResetListener() { };
+    virtual void seResetEvent() = 0;
+};
+
 class JavacardSecureElement {
   public:
-    explicit JavacardSecureElement(shared_ptr<ITransport> transport, uint32_t osVersion,
+    explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport, uint32_t osVersion,
                                    uint32_t osPatchLevel, uint32_t vendorPatchLevel)
-        : transport_(transport), osVersion_(osVersion), osPatchLevel_(osPatchLevel),
-          vendorPatchLevel_(vendorPatchLevel) {
+        : version_(version), transport_(transport), osVersion_(osVersion), osPatchLevel_(osPatchLevel),
+          vendorPatchLevel_(vendorPatchLevel), cardInitialized_(false) {
         transport_->openConnection();
     }
     virtual ~JavacardSecureElement() { transport_->closeConnection(); }
@@ -98,11 +109,15 @@ class JavacardSecureElement {
         uint8_t SW1 = inputData.at(inputData.size() - 1);
         return (SW0 << 8 | SW1);
     }
+private: 
+    keymaster_error_t getP1(uint8_t *p1);
 
+    KmVersion version_;
     shared_ptr<ITransport> transport_;
     uint32_t osVersion_;
     uint32_t osPatchLevel_;
     uint32_t vendorPatchLevel_;
+    bool cardInitialized_;
     CborConverter cbor_;
 };
 }  // namespace keymint::javacard

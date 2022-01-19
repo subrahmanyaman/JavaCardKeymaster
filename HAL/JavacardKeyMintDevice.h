@@ -22,22 +22,24 @@
 #include <aidl/android/hardware/security/keymint/BnKeyMintOperation.h>
 #include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/sharedsecret/SharedSecretParameters.h>
+#include<JavacardKeymaster.h>
 
 namespace aidl::android::hardware::security::keymint {
-using namespace ::keymint::javacard;
 using namespace aidl::android::hardware::security::sharedsecret;
 using namespace aidl::android::hardware::security::secureclock;
+using namespace ::keymaster;
+using namespace ::javacard_keymaster;
 using ndk::ScopedAStatus;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
+using JCKMAttestationKey = ::javacard_keymaster::AttestationKey;
 
 class JavacardKeyMintDevice : public BnKeyMintDevice {
   public:
-    explicit JavacardKeyMintDevice(shared_ptr<JavacardSecureElement> card)
-        : securitylevel_(SecurityLevel::STRONGBOX), card_(card),
+    explicit JavacardKeyMintDevice(shared_ptr<JavacardKeymaster> jcImpl)
+        : securitylevel_(SecurityLevel::STRONGBOX), jcImpl_(jcImpl),
           isEarlyBootEventPending(false) {
-        card_->initializeJavacard();
     }
     virtual ~JavacardKeyMintDevice() {}
 
@@ -88,29 +90,18 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
                                                std::vector<uint8_t>* ephemeralKeyBlob) override;
 
   private:
-    keymaster_error_t parseWrappedKey(const vector<uint8_t>& wrappedKeyData,
-                                      std::vector<uint8_t>& iv, std::vector<uint8_t>& transitKey,
-                                      std::vector<uint8_t>& secureKey, std::vector<uint8_t>& tag,
-                                      vector<KeyParameter>& authList, KeyFormat& keyFormat,
-                                      std::vector<uint8_t>& wrappedKeyDescription);
 
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendBeginImportWrappedKeyCmd(
-        const std::vector<uint8_t>& transitKey, const std::vector<uint8_t>& wrappingKeyBlob,
-        const std::vector<uint8_t>& maskingKey, const vector<KeyParameter>& unwrappingParams);
-
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t>
-    sendFinishImportWrappedKeyCmd(const vector<KeyParameter>& keyParams, KeyFormat keyFormat,
-                                  const std::vector<uint8_t>& secureKey,
-                                  const std::vector<uint8_t>& tag, const std::vector<uint8_t>& iv,
-                                  const std::vector<uint8_t>& wrappedKeyDescription,
-                                  int64_t passwordSid, int64_t biometricSid);
+    keymaster_error_t attestKey(const vector<uint8_t>& keyblob,
+                                               const AuthorizationSet& keyParams,
+                                               const optional<JCKMAttestationKey>& attestationKey,
+                                               vector<Certificate>* certificateChain);
 
     ScopedAStatus defaultHwInfo(KeyMintHardwareInfo* info);
 
     void handleSendEarlyBootEndedEvent();
 
     const SecurityLevel securitylevel_;
-    const shared_ptr<JavacardSecureElement> card_;
+    const shared_ptr<JavacardKeymaster> jcImpl_;
     CborConverter cbor_;
     bool isEarlyBootEventPending;
 };

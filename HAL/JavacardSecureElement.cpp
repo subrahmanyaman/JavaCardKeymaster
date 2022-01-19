@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "javacard.keymint.device.strongbox-impl"
+#define LOG_TAG "JavacardSecureElement"
 #include "JavacardSecureElement.h"
-#include "keymint_utils.h"
+#include "KMUtils.h"
 
 #include <algorithm>
 #include <android-base/logging.h>
@@ -29,24 +29,50 @@
 #include <string>
 #include <vector>
 
-namespace keymint::javacard {
+namespace javacard_keymaster {
 
 using namespace ::keymaster;
+
+keymaster_error_t JavacardSecureElement::getP1(uint8_t* p1) {
+    switch(version_) {
+        case KmVersion::KEYMASTER_4:
+        case KmVersion::KEYMASTER_4_1:
+            *p1 = APDU_KEYMASTER_P1;
+            break;
+        case KmVersion::KEYMINT_1:
+            *p1 = APDU_KEYMINT_P1;
+            break;
+        default: 
+            return KM_ERROR_UNIMPLEMENTED;
+    }
+    return KM_ERROR_OK;
+}
 keymaster_error_t JavacardSecureElement::initializeJavacard() {
-    Array request;
-    request.add(Uint(getOsVersion()));
-    request.add(Uint(getOsPatchlevel()));
-    request.add(Uint(getVendorPatchlevel()));
-    auto [item, err] = sendRequest(Instruction::INS_SET_BOOT_PARAMS_CMD, request);
-    return err;
+    if (!cardInitialized_) {
+        Array request;
+        request.add(Uint(osVersion_));
+        request.add(Uint(osPatchLevel_));
+        request.add(Uint(vendorPatchLevel_));
+        auto [item, err] = sendRequest(Instruction::INS_INIT_STRONGBOX_CMD, request);
+        if (err != KM_ERROR_OK) {
+            return err;
+        }
+        cardInitialized_ = true;
+    }
+    return KM_ERROR_OK;
 }
 
 keymaster_error_t JavacardSecureElement::constructApduMessage(Instruction& ins,
                                                               std::vector<uint8_t>& inputData,
                                                               std::vector<uint8_t>& apduOut) {
+    uint8_t p1;
+    auto err = getP1(&p1);
+    if (KM_ERROR_OK != err) {
+        return err;
+    }
     apduOut.push_back(static_cast<uint8_t>(APDU_CLS));  // CLS
     apduOut.push_back(static_cast<uint8_t>(ins));       // INS
-    apduOut.push_back(static_cast<uint8_t>(APDU_P1));   // P1
+    apduOut.push_back(p1);   // P1
     apduOut.push_back(static_cast<uint8_t>(APDU_P2));   // P2
 
     if (USHRT_MAX >= inputData.size()) {

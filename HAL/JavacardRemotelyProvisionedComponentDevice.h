@@ -27,7 +27,7 @@
 #include "JavacardSecureElement.h"
 
 namespace aidl::android::hardware::security::keymint {
-using namespace ::keymint::javacard;
+using namespace ::javacard_keymaster;
 using ndk::ScopedAStatus;
 
 class JavacardRemotelyProvisionedComponentDevice
