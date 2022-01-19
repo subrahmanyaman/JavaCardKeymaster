@@ -61,7 +61,6 @@ cc_library {
         "JavacardSecureElement.cpp",
         "SocketTransport.cpp",
 	"JavacardKeymasterOperation.cpp",
-        "JavacardSoftKeymasterContext.cpp",
     ],
     cflags:["-O0",],
     shared_libs: [
@@ -106,6 +105,7 @@ cc_library {
     ],
     srcs: [
         "JavacardKeymaster4Device.cpp",
+        "JavacardSoftKeymasterContext.cpp",
     ],
     cflags:["-O0",],
     shared_libs: [
