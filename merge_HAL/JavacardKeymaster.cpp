@@ -92,6 +92,8 @@ keymaster_error_t JavacardKeymaster::getHmacSharingParameters(vector<uint8_t>* s
         LOG(ERROR) << "Error in sending in getSharedSecretParameters.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
+    // Send earlyBootEnded if there is any pending earlybootEnded event.
+    handleSendEarlyBootEndedEvent();
     return err;
 }
 
@@ -104,6 +106,8 @@ keymaster_error_t JavacardKeymaster::computeSharedHmac(const vector<HmacSharingP
         LOG(ERROR) << "Error in sending in computeSharedHmac.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
+    // Send earlyBootEnded if there is any pending earlybootEnded event.
+    handleSendEarlyBootEndedEvent();
     return err;
 }
 
@@ -115,6 +119,10 @@ keymaster_error_t JavacardKeymaster::generateKey(const AuthorizationSet& keyPara
     cppbor::Array array;
     // add key params
     cbor_.addKeyparameters(array, keyParams);
+
+    // Send earlyBootEnded if there is any pending earlybootEnded event.
+    handleSendEarlyBootEndedEvent();
+
     auto [item, err] = sendRequest(Instruction::INS_GENERATE_KEY_CMD, array);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending generateKey.";
@@ -208,6 +216,10 @@ keymaster_error_t JavacardKeymaster::importKey(const AuthorizationSet& keyParams
     cbor_.addKeyparameters(array, keyParams);
     array.add(static_cast<uint32_t>(keyFormat));
     array.add(keyData);
+
+    // Send earlyBootEnded if there is any pending earlybootEnded event.
+    handleSendEarlyBootEndedEvent();
+
     auto [item, err] = sendRequest(Instruction::INS_IMPORT_KEY_CMD, array);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending importKey.";
@@ -261,6 +273,58 @@ JavacardKeymaster::sendFinishImportWrappedKeyCmd(const AuthorizationSet& keyPara
         return {nullptr, err};
     }
     return {std::move(item), err};
+}
+
+keymaster_error_t JavacardKeymaster::keymasterImportWrappedKey(const vector<uint8_t>& wrappedKeyData,
+                                                      const vector<uint8_t>& wrappingKeyBlob,
+                                                      const vector<uint8_t>& maskingKey,
+                                                      const AuthorizationSet& unwrappingParams,
+                                                      int64_t passwordSid, int64_t biometricSid,
+                                                      vector<uint8_t>* retKeyblob,
+                                                      AuthorizationSet* swEnforced,
+                                                      AuthorizationSet* hwEnforced,
+                                                      AuthorizationSet* teeEnforced) {
+    cppbor::Array array;
+    std::vector<uint8_t> iv;
+    std::vector<uint8_t> transitKey;
+    std::vector<uint8_t> secureKey;
+    std::vector<uint8_t> tag;
+    AuthorizationSet authList;
+    keymaster_key_format_t keyFormat;
+    std::vector<uint8_t> wrappedKeyDescription;
+    // Send earlyBootEnded if there is any pending earlybootEnded event.
+    handleSendEarlyBootEndedEvent();
+    auto error = parseWrappedKey(wrappedKeyData, iv, transitKey, secureKey,
+                    tag, authList, keyFormat, wrappedKeyDescription);
+    if (error != KM_ERROR_OK) {
+        LOG(ERROR) << "INS_IMPORT_WRAPPED_KEY_CMD error while parsing wrapped key status: " << (int32_t) error;
+        return error;
+    }
+    cbor_.addKeyparameters(array, authList);
+    array.add(static_cast<uint64_t>(keyFormat));
+    array.add(secureKey);
+    array.add(tag);
+    array.add(iv);
+    array.add(transitKey);
+    array.add(std::vector<uint8_t>(wrappingKeyBlob));
+    array.add(std::vector<uint8_t>(maskingKey));
+    cbor_.addKeyparameters(array, unwrappingParams);
+    array.add(std::vector<uint8_t>(wrappedKeyDescription));
+    array.add(passwordSid);
+    array.add(biometricSid);
+    std::vector<uint8_t> cborData = array.encode();
+
+    auto [item, err] = sendRequest(Instruction::INS_IMPORT_WRAPPED_KEY_CMD, array);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in sending importWrappedKey err: " << (int32_t) err;
+        return err;
+    }
+    if (!cbor_.getBinaryArray(item, 1, *retKeyblob) ||
+        !cbor_.getKeyCharacteristics(item, 2, *swEnforced, *hwEnforced, *teeEnforced)) {
+        LOG(ERROR) << "Error in decoding the response in importWrappedKey.";
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    return KM_ERROR_OK;
 }
 
 keymaster_error_t JavacardKeymaster::importWrappedKey(const vector<uint8_t>& wrappedKeyData,
@@ -369,6 +433,8 @@ keymaster_error_t JavacardKeymaster::deviceLocked(bool passwordOnly,
 keymaster_error_t JavacardKeymaster::earlyBootEnded() {
     auto [_, err] = sendRequest(Instruction::INS_EARLY_BOOT_ENDED_CMD);
     if (err != KM_ERROR_OK) {
+        // Incase of failure cache the event and send in the next immediate request to Applet.
+        isEarlyBootEventPending = true;
         LOG(ERROR) << "Error in sending earlyBootEnded err: " << (int32_t) err;
         return err;
     }
@@ -407,6 +473,11 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
     uint64_t macLength = 0;
     size_t size;
     Array array;
+
+    // Send earlyBootEnded if there is any pending earlybootEnded event.
+    handleSendEarlyBootEndedEvent();
+
+    // Encode input paramters into cbor array.
     array.add(static_cast<uint64_t>(purpose));
     array.add(std::vector<uint8_t>(keyBlob));
     cbor_.addKeyparameters(array, inParams);
@@ -438,5 +509,14 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
                                                                 static_cast<OperationType>(OperationType::PRIVATE_OPERATION),
                                                                 seResetListener_);
     return KM_ERROR_OK;
+}
+
+void JavacardKeymaster::handleSendEarlyBootEndedEvent() {
+    if (isEarlyBootEventPending) {
+        LOG(INFO) << "JavacardKeymaster4Device::handleSendEarlyBootEndedEvent send earlyBootEnded Event.";
+        if (KM_ERROR_OK == earlyBootEnded()) {
+            isEarlyBootEventPending = false;
+        }
+    }
 }
 } // javacard_keymaster

@@ -403,7 +403,7 @@ Return<void> JavacardKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t> 
     AuthorizationSet teeEnforced;
     vector<uint8_t> retKeyblob;
     paramSet.Reinitialize(KmParamSet(unwrappingParams));
-    auto err = jcImpl_->importWrappedKey(wrappedKeyData, wrappingKeyBlob, maskingKey, paramSet,
+    auto err = jcImpl_->keymasterImportWrappedKey(wrappedKeyData, wrappingKeyBlob, maskingKey, paramSet,
                                          passwordSid, biometricSid, &retKeyblob, &swEnforced,
                                          &hwEnforced, &teeEnforced);
     KeyCharacteristics keyCharacteristics;

@@ -48,12 +48,18 @@ keymaster_error_t JavacardSecureElement::getP1(uint8_t* p1) {
     return KM_ERROR_OK;
 }
 keymaster_error_t JavacardSecureElement::initializeJavacard() {
-    Array request;
-    request.add(Uint(osVersion_));
-    request.add(Uint(osPatchLevel_));
-    request.add(Uint(vendorPatchLevel_));
-    auto [item, err] = sendRequest(Instruction::INS_INIT_STRONGBOX_CMD, request);
-    return err;
+    if (!cardInitialized_) {
+        Array request;
+        request.add(Uint(osVersion_));
+        request.add(Uint(osPatchLevel_));
+        request.add(Uint(vendorPatchLevel_));
+        auto [item, err] = sendRequest(Instruction::INS_INIT_STRONGBOX_CMD, request);
+        if (err != KM_ERROR_OK) {
+            return err;
+        }
+        cardInitialized_ = true;
+    }
+    return KM_ERROR_OK;
 }
 
 keymaster_error_t JavacardSecureElement::constructApduMessage(Instruction& ins,

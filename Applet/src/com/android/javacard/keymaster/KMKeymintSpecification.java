@@ -76,7 +76,7 @@ public class KMKeymintSpecification implements KMSpecification {
 
   @Override
   public boolean canCreateEarlyBootKeys() {
-    return false;
+    return true;
   }
 
   @Override

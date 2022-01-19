@@ -22,7 +22,7 @@ struct AttestationKey {
 class JavacardKeymaster {
 public:
     explicit JavacardKeymaster(shared_ptr<JavacardSecureElement> card)
-        : card_(card), seResetListener_(nullptr) {
+        : card_(card), seResetListener_(nullptr), isEarlyBootEventPending(false) {
         card_->initializeJavacard();
     }
     virtual ~JavacardKeymaster() {}
@@ -70,6 +70,16 @@ public:
                                    AuthorizationSet* hwEnforced,
                                    AuthorizationSet* teeEnforced);
 
+    keymaster_error_t keymasterImportWrappedKey(const vector<uint8_t>& wrappedKeyData,
+                                                      const vector<uint8_t>& wrappingKeyBlob,
+                                                      const vector<uint8_t>& maskingKey,
+                                                      const AuthorizationSet& unwrappingParams,
+                                                      int64_t passwordSid, int64_t biometricSid,
+                                                      vector<uint8_t>* retKeyblob,
+                                                      AuthorizationSet* swEnforced,
+                                                      AuthorizationSet* hwEnforced,
+                                                      AuthorizationSet* teeEnforced);
+
     keymaster_error_t upgradeKey(const vector<uint8_t>& keyBlobToUpgrade,
                              const AuthorizationSet& upgradeParams,
                              vector<uint8_t>* retKeyBlob);
@@ -108,6 +118,7 @@ keymaster_error_t attestKey(Array& request, vector<vector<uint8_t>>* certChain);
     keymaster_error_t handleErrorCode(keymaster_error_t err);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, Array& request);
+    void handleSendEarlyBootEndedEvent();
 
     keymaster_error_t
     sendBeginImportWrappedKeyCmd(const std::vector<uint8_t>& transitKey,
@@ -127,6 +138,7 @@ keymaster_error_t attestKey(Array& request, vector<vector<uint8_t>>* certChain);
     const shared_ptr<JavacardSecureElement> card_;
     CborConverter cbor_;
     shared_ptr<IJavacardSeResetListener> seResetListener_;
+    bool isEarlyBootEventPending;
 };
 
 } // javacard_keymaster

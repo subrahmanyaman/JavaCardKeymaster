@@ -87,7 +87,7 @@ class JavacardSecureElement {
     explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport, uint32_t osVersion,
                                    uint32_t osPatchLevel, uint32_t vendorPatchLevel)
         : version_(version), transport_(transport), osVersion_(osVersion), osPatchLevel_(osPatchLevel),
-          vendorPatchLevel_(vendorPatchLevel) {
+          vendorPatchLevel_(vendorPatchLevel), cardInitialized_(false) {
         transport_->openConnection();
     }
     virtual ~JavacardSecureElement() { transport_->closeConnection(); }
@@ -117,6 +117,7 @@ private:
     uint32_t osVersion_;
     uint32_t osPatchLevel_;
     uint32_t vendorPatchLevel_;
+    bool cardInitialized_;
     CborConverter cbor_;
 };
 }  // namespace keymint::javacard
