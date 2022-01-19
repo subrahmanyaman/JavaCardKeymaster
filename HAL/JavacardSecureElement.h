@@ -15,11 +15,11 @@
  */
 
 #pragma once
-#include<iostream>
-#include<optional>
 #include "CborConverter.h"
 #include <ITransport.h>
+#include <iostream>
 #include <keymaster/km_version.h>
+#include <optional>
 
 #define APDU_CLS 0x80
 #define APDU_KEYMINT_P1 0x50
@@ -27,7 +27,7 @@
 #define APDU_P2 0x00
 #define APDU_RESP_STATUS_OK 0x9000
 
-#define SE_POWER_RESET_STATUS_FLAG ( 1 << 30)
+#define SE_POWER_RESET_STATUS_FLAG (1 << 30)
 
 #define KEYMINT_CMD_APDU_START 0x20
 
@@ -73,21 +73,23 @@ enum class Instruction {
     INS_UPDATE_EEK_CHAIN_CMD = KEYMINT_CMD_APDU_START + 31,
     INS_UPDATE_CHALLENGE_CMD = KEYMINT_CMD_APDU_START + 32,
     INS_FINISH_SEND_DATA_CMD = KEYMINT_CMD_APDU_START + 33,
-  INS_GET_RESPONSE_CMD = KEYMINT_CMD_APDU_START + 34,
+    INS_GET_RESPONSE_CMD = KEYMINT_CMD_APDU_START + 34,
 };
 
 class IJavacardSeResetListener {
-public:
-    virtual ~IJavacardSeResetListener() { };
+  public:
+    virtual ~IJavacardSeResetListener(){};
     virtual void seResetEvent() = 0;
 };
 
 class JavacardSecureElement {
   public:
-    explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport, uint32_t osVersion,
-                                   uint32_t osPatchLevel, uint32_t vendorPatchLevel)
-        : version_(version), transport_(transport), osVersion_(osVersion), osPatchLevel_(osPatchLevel),
-          vendorPatchLevel_(vendorPatchLevel), cardInitialized_(false) {
+    explicit JavacardSecureElement(KmVersion version, shared_ptr<ITransport> transport,
+                                   uint32_t osVersion, uint32_t osPatchLevel,
+                                   uint32_t vendorPatchLevel)
+        : version_(version), transport_(transport), osVersion_(osVersion),
+          osPatchLevel_(osPatchLevel), vendorPatchLevel_(vendorPatchLevel),
+          cardInitialized_(false) {
         transport_->openConnection();
     }
     virtual ~JavacardSecureElement() { transport_->closeConnection(); }
@@ -95,7 +97,8 @@ class JavacardSecureElement {
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
                                                                      Array& request);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, std::vector<uint8_t>& command);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
+                                                                     std::vector<uint8_t>& command);
 
     keymaster_error_t sendData(Instruction ins, std::vector<uint8_t>& inData,
                                std::vector<uint8_t>& response);
@@ -109,8 +112,9 @@ class JavacardSecureElement {
         uint8_t SW1 = inputData.at(inputData.size() - 1);
         return (SW0 << 8 | SW1);
     }
-private: 
-    keymaster_error_t getP1(uint8_t *p1);
+
+  private:
+    keymaster_error_t getP1(uint8_t* p1);
 
     KmVersion version_;
     shared_ptr<ITransport> transport_;
@@ -120,4 +124,4 @@ private:
     bool cardInitialized_;
     CborConverter cbor_;
 };
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

@@ -15,10 +15,10 @@
  */
 
 #pragma once
-#include <keymaster/android_keymaster_utils.h>
 #include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/secureclock/ISecureClock.h>
 #include <keymaster/android_keymaster_messages.h>
+#include <keymaster/android_keymaster_utils.h>
 #include <vector>
 
 namespace aidl::android::hardware::security::keymint {
@@ -32,8 +32,10 @@ inline void Vec2KmBlob(const vector<uint8_t>& input, KeymasterBlob* blob) {
     memcpy(blob->writable_data(), input.data(), input.size());
 }
 
-keymaster_error_t legacyHardwareAuthToken(const HardwareAuthToken& aidlToken, LegacyHardwareAuthToken* legacyToken);
+keymaster_error_t legacyHardwareAuthToken(const HardwareAuthToken& aidlToken,
+                                          LegacyHardwareAuthToken* legacyToken);
 
-keymaster_error_t encodeTimestampToken(const TimeStampToken& timestampToken, vector<uint8_t>* encodedToken);
+keymaster_error_t encodeTimestampToken(const TimeStampToken& timestampToken,
+                                       vector<uint8_t>* encodedToken);
 
-}  // namespace javacard_keymaster
+}  // namespace aidl::android::hardware::security::keymint

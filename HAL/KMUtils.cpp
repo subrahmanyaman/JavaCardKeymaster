@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <android-base/properties.h>
-#include <android-base/logging.h>
 #include <KMUtils.h>
-#include <regex.h>
+#include <android-base/logging.h>
+#include <android-base/properties.h>
 #include <keymaster/android_keymaster_utils.h>
+#include <regex.h>
 
 #define TAG_SEQUENCE 0x30
 #define LENGTH_MASK 0x80
@@ -53,7 +53,7 @@ uint32_t match_to_uint32(const char* expression, const regmatch_t& match) {
 std::string wait_and_get_property(const char* prop) {
     std::string prop_value;
     while (!::android::base::WaitForPropertyCreation(prop))
-    ;
+        ;
     prop_value = ::android::base::GetProperty(prop, "" /* default */);
     return prop_value;
 }
@@ -102,56 +102,55 @@ uint32_t getPatchlevel(const char* patchlevel_str, PatchlevelOutput detail) {
     }
 
     switch (detail) {
-        case PatchlevelOutput::kYearMonthDay: {
-            uint32_t day = match_to_uint32(patchlevel_str, matches[kDayMatch]);
-            if (day < 1 || day > 31) {
-                return 0;
-            }
-            return year * 10000 + month * 100 + day;
+    case PatchlevelOutput::kYearMonthDay: {
+        uint32_t day = match_to_uint32(patchlevel_str, matches[kDayMatch]);
+        if (day < 1 || day > 31) {
+            return 0;
         }
-        case PatchlevelOutput::kYearMonth:
-            return year * 100 + month;
+        return year * 10000 + month * 100 + day;
+    }
+    case PatchlevelOutput::kYearMonth:
+        return year * 100 + month;
     }
 }
 
 }  // anonymous namespace
 
-//TODO Can we move it to JavacardSecureElement class
+// TODO Can we move it to JavacardSecureElement class
 keymaster_error_t translateExtendedErrorsToHalErrors(keymaster_error_t errorCode) {
     keymaster_error_t err = errorCode;
-    switch(static_cast<int32_t>(errorCode)) {
-        case SW_CONDITIONS_NOT_SATISFIED:
-        case UNSUPPORTED_CLA:
-        case INVALID_P1P2:
-        case INVALID_DATA:
-        case CRYPTO_ILLEGAL_USE:
-        case CRYPTO_ILLEGAL_VALUE:
-        case CRYPTO_INVALID_INIT:
-        case CRYPTO_UNINITIALIZED_KEY:
-        case GENERIC_UNKNOWN_ERROR:
-            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
-            err = KM_ERROR_UNKNOWN_ERROR;
-            break;
-        case CRYPTO_NO_SUCH_ALGORITHM:
-            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
-            err = KM_ERROR_UNSUPPORTED_ALGORITHM;
-            break;
-        case UNSUPPORTED_INSTRUCTION:
-        case CMD_NOT_ALLOWED:
-        case SW_WRONG_LENGTH:
-            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
-            err = KM_ERROR_UNIMPLEMENTED;
-            break;
-        case PUBLIC_KEY_OPERATION:
-            // This error is handled inside keymaster
-            LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t) errorCode;
-            break;        
-        default:
-            break;
+    switch (static_cast<int32_t>(errorCode)) {
+    case SW_CONDITIONS_NOT_SATISFIED:
+    case UNSUPPORTED_CLA:
+    case INVALID_P1P2:
+    case INVALID_DATA:
+    case CRYPTO_ILLEGAL_USE:
+    case CRYPTO_ILLEGAL_VALUE:
+    case CRYPTO_INVALID_INIT:
+    case CRYPTO_UNINITIALIZED_KEY:
+    case GENERIC_UNKNOWN_ERROR:
+        LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t)errorCode;
+        err = KM_ERROR_UNKNOWN_ERROR;
+        break;
+    case CRYPTO_NO_SUCH_ALGORITHM:
+        LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t)errorCode;
+        err = KM_ERROR_UNSUPPORTED_ALGORITHM;
+        break;
+    case UNSUPPORTED_INSTRUCTION:
+    case CMD_NOT_ALLOWED:
+    case SW_WRONG_LENGTH:
+        LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t)errorCode;
+        err = KM_ERROR_UNIMPLEMENTED;
+        break;
+    case PUBLIC_KEY_OPERATION:
+        // This error is handled inside keymaster
+        LOG(ERROR) << "translateExtendedErrorsToHalErrors SE error: " << (int32_t)errorCode;
+        break;
+    default:
+        break;
     }
     return err;
 }
-
 
 uint32_t getOsVersion() {
     std::string version = wait_and_get_property(kPlatformVersionProp);
@@ -168,53 +167,54 @@ uint32_t getVendorPatchlevel() {
     return getPatchlevel(patchlevel.c_str(), PatchlevelOutput::kYearMonthDay);
 }
 
-keymaster_error_t getCertificateChain(std::vector<uint8_t>& chainBuffer, std::vector<std::vector<uint8_t>>& certChain) {
-    uint8_t *data = chainBuffer.data();
+keymaster_error_t getCertificateChain(std::vector<uint8_t>& chainBuffer,
+                                      std::vector<std::vector<uint8_t>>& certChain) {
+    uint8_t* data = chainBuffer.data();
     int index = 0;
     uint32_t length = 0;
     while (index < chainBuffer.size()) {
         std::vector<uint8_t> temp;
-        if(data[index] == TAG_SEQUENCE) {
-            //read next byte
-            if (0 == (data[index+1] & LENGTH_MASK)) {
+        if (data[index] == TAG_SEQUENCE) {
+            // read next byte
+            if (0 == (data[index + 1] & LENGTH_MASK)) {
                 length = (uint32_t)data[index];
-                //Add SEQ and Length fields
+                // Add SEQ and Length fields
                 length += 2;
             } else {
-                int additionalBytes = data[index+1] & LENGTH_VALUE_MASK;
+                int additionalBytes = data[index + 1] & LENGTH_VALUE_MASK;
                 if (additionalBytes == 0x01) {
-                    length = data[index+2];
-                    //Add SEQ and Length fields
+                    length = data[index + 2];
+                    // Add SEQ and Length fields
                     length += 3;
                 } else if (additionalBytes == 0x02) {
-                    length = (data[index+2] << 8 | data[index+3]);
-                    //Add SEQ and Length fields
+                    length = (data[index + 2] << 8 | data[index + 3]);
+                    // Add SEQ and Length fields
                     length += 4;
                 } else if (additionalBytes == 0x04) {
-                    length = data[index+2] << 24;
-                    length |= data[index+3] << 16;
-                    length |= data[index+4] << 8;
-                    length |= data[index+5];
-                    //Add SEQ and Length fields
+                    length = data[index + 2] << 24;
+                    length |= data[index + 3] << 16;
+                    length |= data[index + 4] << 8;
+                    length |= data[index + 5];
+                    // Add SEQ and Length fields
                     length += 6;
                 } else {
-                    //Length is larger than uint32_t max limit.
+                    // Length is larger than uint32_t max limit.
                     return KM_ERROR_UNKNOWN_ERROR;
                 }
             }
-            temp.insert(temp.end(), (data+index), (data+index+length));
+            temp.insert(temp.end(), (data + index), (data + index + length));
             index += length;
 
             certChain.push_back(std::move(temp));
         } else {
-            //SEQUENCE TAG MISSING.
+            // SEQUENCE TAG MISSING.
             return KM_ERROR_UNKNOWN_ERROR;
         }
     }
     return KM_ERROR_OK;
 }
 
-void addCreationTime(AuthorizationSet &paramSet) {
+void addCreationTime(AuthorizationSet& paramSet) {
     if (!paramSet.Contains(KM_TAG_CREATION_DATETIME) &&
         !paramSet.Contains(KM_TAG_ACTIVE_DATETIME)) {
         keymaster_key_param_t dateTime;
@@ -224,5 +224,4 @@ void addCreationTime(AuthorizationSet &paramSet) {
     }
 }
 
-
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

@@ -30,15 +30,15 @@
 
 namespace javacard_keymaster {
 using namespace cppbor;
-//using namespace aidl::android::hardware::security::keymint;
-//using namespace aidl::android::hardware::security::secureclock;
-//using namespace aidl::android::hardware::security::sharedsecret;
+// using namespace aidl::android::hardware::security::keymint;
+// using namespace aidl::android::hardware::security::secureclock;
+// using namespace aidl::android::hardware::security::sharedsecret;
 using ::keymaster::AuthorizationSet;
-using ::keymaster::TimestampToken;
-using ::keymaster::HardwareAuthToken;
-using ::keymaster::VerificationToken;
-using ::keymaster::KeymasterKeyBlob;
 using ::keymaster::CertificateChain;
+using ::keymaster::HardwareAuthToken;
+using ::keymaster::KeymasterKeyBlob;
+using ::keymaster::TimestampToken;
+using ::keymaster::VerificationToken;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -71,12 +71,11 @@ class CborConverter {
 
     bool getHardwareAuthToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                               HardwareAuthToken& authType);
-    
+
     bool getKeyParameters(const std::unique_ptr<Item>& item, const uint32_t pos,
                           AuthorizationSet& keyParams);
 
     bool addKeyparameters(Array& array, const keymaster_key_param_set_t& keyParams);
-
 
     bool addHardwareAuthToken(Array& array, const HardwareAuthToken& authToken);
 
@@ -84,13 +83,12 @@ class CborConverter {
 
     bool getTimeStampToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                            TimestampToken& token);
-    
+
     bool getVerificationToken(const std::unique_ptr<Item>& item, const uint32_t pos,
                               VerificationToken& token);
 
     bool getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
-                               AuthorizationSet& swEnforced,
-                               AuthorizationSet& hwEnforced,
+                               AuthorizationSet& swEnforced, AuthorizationSet& hwEnforced,
                                AuthorizationSet& teeEnforced);
 
     bool getMultiBinaryArray(const std::unique_ptr<Item>& item, const uint32_t pos,
@@ -98,16 +96,15 @@ class CborConverter {
 
     bool addTimeStampToken(Array& array, const TimestampToken& token);
 
-    bool addVerificationToken(Array& array, const VerificationToken& token, const vector<uint8_t>& encodedParamsVerified);
+    bool addVerificationToken(Array& array, const VerificationToken& token,
+                              const vector<uint8_t>& encodedParamsVerified);
 
-    bool getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos,
-                             Map& map);
-    
-    bool getArrayItem(const std::unique_ptr<Item>& item, const uint32_t pos,
-                             Array& array);
-    
+    bool getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos, Map& map);
+
+    bool getArrayItem(const std::unique_ptr<Item>& item, const uint32_t pos, Array& array);
+
     bool getCertificateChain(const std::unique_ptr<Item>& item, const uint32_t pos,
-                                        CertificateChain& certChain);
+                             CertificateChain& certChain);
 
     inline bool getErrorCode(const std::unique_ptr<Item>& item, const uint32_t pos,
                              keymaster_error_t& errorCode) {
@@ -146,9 +143,9 @@ class CborConverter {
      * value contains binary string. If TagType is UINT_REP or ULONG_REP the value contains Array of
      * unsigned integers.
      */
-    //bool getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
-    //                     vector<KeyParameter>& keyParam);
-    
+    // bool getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
+    //                      vector<KeyParameter>& keyParam);
+
     bool getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
                          AuthorizationSet& keyParam);
 
@@ -194,4 +191,4 @@ bool CborConverter::getUint64(const unique_ptr<Item>& item, const uint32_t pos, 
     getItemAtPos(item, pos, intItem);
     return getUint64(intItem, value);
 }
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

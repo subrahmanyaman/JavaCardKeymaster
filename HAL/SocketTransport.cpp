@@ -24,7 +24,7 @@
 #include <vector>
 
 #define PORT 8080
-#define IPADDR  "192.168.7.239"
+#define IPADDR "192.168.7.239"
 #define MAX_RECV_BUFFER_SIZE 2500
 
 namespace javacard_keymaster {
@@ -104,4 +104,4 @@ bool SocketTransport::isConnected() {
     return socketStatus;
 }
 
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

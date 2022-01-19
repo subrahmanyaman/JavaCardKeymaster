@@ -48,4 +48,4 @@ class ITransport {
      */
     virtual bool isConnected() = 0;
 };
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

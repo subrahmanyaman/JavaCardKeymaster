@@ -1,10 +1,10 @@
 #pragma once
 
+#include <JavacardKeymaster.h>
 #include <aidl/android/hardware/security/sharedsecret/BnSharedSecret.h>
 #include <aidl/android/hardware/security/sharedsecret/SharedSecretParameters.h>
 #include <memory>
 #include <vector>
-#include <JavacardKeymaster.h>
 
 namespace aidl::android::hardware::security::sharedsecret {
 using namespace ::javacard_keymaster;

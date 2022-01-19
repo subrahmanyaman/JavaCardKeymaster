@@ -52,4 +52,4 @@ class SocketTransport : public ITransport {
     int mSocket;
     bool socketStatus;
 };
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

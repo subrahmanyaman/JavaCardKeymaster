@@ -18,11 +18,11 @@
 
 #include "CborConverter.h"
 #include "JavacardSecureElement.h"
+#include <JavacardKeymaster.h>
 #include <aidl/android/hardware/security/keymint/BnKeyMintDevice.h>
 #include <aidl/android/hardware/security/keymint/BnKeyMintOperation.h>
 #include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
 #include <aidl/android/hardware/security/sharedsecret/SharedSecretParameters.h>
-#include<JavacardKeymaster.h>
 
 namespace aidl::android::hardware::security::keymint {
 using namespace aidl::android::hardware::security::sharedsecret;
@@ -39,8 +39,7 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
   public:
     explicit JavacardKeyMintDevice(shared_ptr<JavacardKeymaster> jcImpl)
         : securitylevel_(SecurityLevel::STRONGBOX), jcImpl_(jcImpl),
-          isEarlyBootEventPending(false) {
-    }
+          isEarlyBootEventPending(false) {}
     virtual ~JavacardKeyMintDevice() {}
 
     ScopedAStatus getHardwareInfo(KeyMintHardwareInfo* info) override;
@@ -90,11 +89,9 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
                                                std::vector<uint8_t>* ephemeralKeyBlob) override;
 
   private:
-
-    keymaster_error_t attestKey(const vector<uint8_t>& keyblob,
-                                               const AuthorizationSet& keyParams,
-                                               const optional<JCKMAttestationKey>& attestationKey,
-                                               vector<Certificate>* certificateChain);
+    keymaster_error_t attestKey(const vector<uint8_t>& keyblob, const AuthorizationSet& keyParams,
+                                const optional<JCKMAttestationKey>& attestationKey,
+                                vector<Certificate>* certificateChain);
 
     ScopedAStatus defaultHwInfo(KeyMintHardwareInfo* info);
 

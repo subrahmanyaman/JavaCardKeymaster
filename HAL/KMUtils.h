@@ -15,19 +15,18 @@
  */
 
 #pragma once
-#include <keymaster/serializable.h>
+
 #include <hardware/keymaster_defs.h>
 #include <keymaster/authorization_set.h>
+#include <keymaster/serializable.h>
 #include <vector>
+#include <string>
 
-//#include <aidl/android/hardware/security/keymint/HardwareAuthToken.h>
-
-// namespace aidl::android::hardware::security::keymint {
 namespace javacard_keymaster {
 using namespace ::keymaster;
 using std::vector;
 
-//Extended error codes
+// Extended error codes
 enum ExtendedErrors {
     SW_CONDITIONS_NOT_SATISFIED = -10001,
     UNSUPPORTED_CLA = -10002,
@@ -56,8 +55,8 @@ inline static std::vector<uint8_t> blob2vector(const std::string& value) {
     return result;
 }
 
-inline void blob2Vec(const uint8_t *from, size_t size, std::vector<uint8_t>& to) {
-    for(size_t i = 0; i < size; ++i) {
+inline void blob2Vec(const uint8_t* from, size_t size, std::vector<uint8_t>& to) {
+    for (size_t i = 0; i < size; ++i) {
         to.push_back(from[i]);
     }
 }
@@ -68,7 +67,8 @@ keymaster_error_t translateExtendedErrorsToHalErrors(keymaster_error_t errorCode
 uint32_t getOsVersion();
 uint32_t getOsPatchlevel();
 uint32_t getVendorPatchlevel();
-void addCreationTime(AuthorizationSet &paramSet);
+void addCreationTime(AuthorizationSet& paramSet);
 
-keymaster_error_t getCertificateChain(std::vector<uint8_t>& chainBuffer, std::vector<std::vector<uint8_t>>& certChain);
+keymaster_error_t getCertificateChain(std::vector<uint8_t>& chainBuffer,
+                                      std::vector<std::vector<uint8_t>>& certChain);
 }  // namespace javacard_keymaster

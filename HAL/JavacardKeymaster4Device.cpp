@@ -17,27 +17,26 @@
 #include <CborConverter.h>
 
 #include <JavacardKeymaster4Device.h>
+#include <KMUtils.h>
 #include <android-base/logging.h>
+#include <keymaster/km_openssl/attestation_record.h>
 #include <keymaster/km_openssl/openssl_err.h>
 #include <keymaster/km_openssl/openssl_utils.h>
-#include <keymaster/km_openssl/attestation_record.h>
 #include <keymasterV4_0/keymaster_utils.h>
-#include <KMUtils.h>
 #include <time.h>
 
-
-#define JAVACARD_KEYMASTER_NAME      "JavacardKeymaster4.1Device v1.0"
-#define JAVACARD_KEYMASTER_AUTHOR    "Android Open Source Project"
-#define PROP_BUILD_QEMU              "ro.kernel.qemu"
-#define PROP_BUILD_FINGERPRINT       "ro.build.fingerprint"
+#define JAVACARD_KEYMASTER_NAME "JavacardKeymaster4.1Device v1.0"
+#define JAVACARD_KEYMASTER_AUTHOR "Android Open Source Project"
+#define PROP_BUILD_QEMU "ro.kernel.qemu"
+#define PROP_BUILD_FINGERPRINT "ro.build.fingerprint"
 
 namespace keymaster {
 namespace V4_1 {
 namespace javacard {
 using namespace ::javacard_keymaster;
 using android::hardware::keymaster::V4_0::support::authToken2HidlVec;
-using std::vector;
 using std::string;
+using std::vector;
 
 constexpr size_t kOperationTableSize = 4;
 constexpr int kKeyblobKeyCharsOffset = 3;
@@ -81,11 +80,13 @@ inline void hidlVec2KmBlob(const hidl_vec<uint8_t>& input, KeymasterBlob* blob) 
     memcpy(blob->writable_data(), input.data(), input.size());
 }
 
-void legacyHardwareAuthToken(const HardwareAuthToken& hidlToken, ::keymaster::HardwareAuthToken* legacyToken) {
+void legacyHardwareAuthToken(const HardwareAuthToken& hidlToken,
+                             ::keymaster::HardwareAuthToken* legacyToken) {
     legacyToken->challenge = hidlToken.challenge;
     legacyToken->user_id = hidlToken.userId;
     legacyToken->authenticator_id = hidlToken.authenticatorId;
-    legacyToken->authenticator_type = static_cast<hw_authenticator_type_t >(hidlToken.authenticatorType);
+    legacyToken->authenticator_type =
+        static_cast<hw_authenticator_type_t>(hidlToken.authenticatorType);
     legacyToken->timestamp = hidlToken.timestamp;
     hidlVec2KmBlob(hidlToken.mac, &legacyToken->mac);
 }
@@ -166,7 +167,8 @@ static inline hidl_vec<KeyParameter> kmParamSet2Hidl(const keymaster_key_param_s
             break;
         case KM_BIGNUM:
         case KM_BYTES:
-            result[i].blob = std::vector<uint8_t>(params[i].blob.data, params[i].blob.data + params[i].blob.data_length);
+            result[i].blob = std::vector<uint8_t>(params[i].blob.data,
+                                                  params[i].blob.data + params[i].blob.data_length);
             break;
         case KM_INVALID:
         default:
@@ -179,18 +181,19 @@ static inline hidl_vec<KeyParameter> kmParamSet2Hidl(const keymaster_key_param_s
 }
 
 class KmParamSet : public keymaster_key_param_set_t {
-    public:
-        explicit KmParamSet(const hidl_vec<KeyParameter>& keyParams)
-            : keymaster_key_param_set_t(hidlKeyParams2Km(keyParams)) {}
-        KmParamSet(KmParamSet&& other) : keymaster_key_param_set_t{other.params, other.length} {
-            other.length = 0;
-            other.params = nullptr;
-        }
-        KmParamSet(const KmParamSet&) = delete;
-        ~KmParamSet() { delete[] params; }
+  public:
+    explicit KmParamSet(const hidl_vec<KeyParameter>& keyParams)
+        : keymaster_key_param_set_t(hidlKeyParams2Km(keyParams)) {}
+    KmParamSet(KmParamSet&& other) : keymaster_key_param_set_t{other.params, other.length} {
+        other.length = 0;
+        other.params = nullptr;
+    }
+    KmParamSet(const KmParamSet&) = delete;
+    ~KmParamSet() { delete[] params; }
 };
 
-static keymaster_error_t encodeParametersVerified(const VerificationToken& verificationToken, std::vector<uint8_t>& asn1ParamsVerified) {
+static keymaster_error_t encodeParametersVerified(const VerificationToken& verificationToken,
+                                                  std::vector<uint8_t>& asn1ParamsVerified) {
     if (verificationToken.parametersVerified.size() > 0) {
         AuthorizationSet paramSet;
         KeymasterBlob derBlob;
@@ -216,7 +219,7 @@ static keymaster_error_t encodeParametersVerified(const VerificationToken& verif
         if (len < 0) {
             return TranslateLastOpenSslError();
         }
-        asn1ParamsVerified.insert(asn1ParamsVerified.begin(), p, p+len);
+        asn1ParamsVerified.insert(asn1ParamsVerified.begin(), p, p + len);
         derBlob.release();
     }
     return KM_ERROR_OK;
@@ -240,51 +243,53 @@ keymaster_error_t getOperationInfo(keymaster_purpose_t purpose, const Authorizat
     inParams.GetTagValue(TAG_MAC_LENGTH, &macLength);
     macLength = (macLength / 8);
     switch (keyAlgo) {
-      case KM_ALGORITHM_AES:
+    case KM_ALGORITHM_AES:
         if (purpose == KM_PURPOSE_ENCRYPT && padding == KM_PAD_PKCS7) {
-          bufMode =  BufferingMode::BUF_AES_ENCRYPT_PKCS7_BLOCK_ALIGNED;
+            bufMode = BufferingMode::BUF_AES_ENCRYPT_PKCS7_BLOCK_ALIGNED;
         } else if (purpose == KM_PURPOSE_DECRYPT && padding == KM_PAD_PKCS7) {
-          bufMode =  BufferingMode::BUF_AES_DECRYPT_PKCS7_BLOCK_ALIGNED;
+            bufMode = BufferingMode::BUF_AES_DECRYPT_PKCS7_BLOCK_ALIGNED;
         } else if (purpose == KM_PURPOSE_DECRYPT && blockMode == KM_MODE_GCM) {
-          bufMode =  BufferingMode::BUF_AES_GCM_DECRYPT_BLOCK_ALIGNED;
+            bufMode = BufferingMode::BUF_AES_GCM_DECRYPT_BLOCK_ALIGNED;
         }
         break;
-      case KM_ALGORITHM_TRIPLE_DES:
+    case KM_ALGORITHM_TRIPLE_DES:
         if (purpose == KM_PURPOSE_ENCRYPT && padding == KM_PAD_PKCS7) {
-          bufMode =  BufferingMode::BUF_DES_ENCRYPT_PKCS7_BLOCK_ALIGNED;
+            bufMode = BufferingMode::BUF_DES_ENCRYPT_PKCS7_BLOCK_ALIGNED;
         } else if (purpose == KM_PURPOSE_DECRYPT && padding == KM_PAD_PKCS7) {
-          bufMode = BufferingMode::BUF_DES_DECRYPT_PKCS7_BLOCK_ALIGNED;
+            bufMode = BufferingMode::BUF_DES_DECRYPT_PKCS7_BLOCK_ALIGNED;
         }
         break;
-      case KM_ALGORITHM_RSA:
+    case KM_ALGORITHM_RSA:
         if (purpose == KM_PURPOSE_DECRYPT || digest == KM_DIGEST_NONE) {
             bufMode = BufferingMode::RSA_NO_DIGEST;
         }
         break;
-      case KM_ALGORITHM_EC:
-          if (digest == KM_DIGEST_NONE && purpose == KM_PURPOSE_SIGN) {
-              bufMode = BufferingMode::EC_NO_DIGEST;
-          }
+    case KM_ALGORITHM_EC:
+        if (digest == KM_DIGEST_NONE && purpose == KM_PURPOSE_SIGN) {
+            bufMode = BufferingMode::EC_NO_DIGEST;
+        }
         break;
-      default:
+    default:
         break;
     }
     buferingMode = static_cast<uint32_t>(bufMode);
     return KM_ERROR_OK;
-}   
+}
 
-} // anonymous namespace
+}  // anonymous namespace
 
 JavacardKeymaster4Device::JavacardKeymaster4Device(shared_ptr<JavacardKeymaster> jcImpl)
     : softKm_(new ::keymaster::AndroidKeymaster(
-            []() -> auto {
-            auto context = new JavaCardSoftKeymasterContext();
-            context->SetSystemVersion(getOsVersion(), getOsPatchlevel());
-            return context;
-            }(),
-            kOperationTableSize, keymaster::MessageVersion(keymaster::KmVersion::KEYMASTER_4_1,
-                                0 /* km_date */) )),  jcImpl_(jcImpl) {
-    std::shared_ptr<IJavacardSeResetListener> listener(dynamic_cast<IJavacardSeResetListener*>(this));
+          []() -> auto{
+              auto context = new JavaCardSoftKeymasterContext();
+              context->SetSystemVersion(getOsVersion(), getOsPatchlevel());
+              return context;
+          }(),
+          kOperationTableSize,
+          keymaster::MessageVersion(keymaster::KmVersion::KEYMASTER_4_1, 0 /* km_date */))),
+      jcImpl_(jcImpl) {
+    std::shared_ptr<IJavacardSeResetListener> listener(
+        dynamic_cast<IJavacardSeResetListener*>(this));
     jcImpl_->registerSeResetEventListener(listener);
 }
 
@@ -298,10 +303,8 @@ Return<void> JavacardKeymaster4Device::getHardwareInfo(getHardwareInfo_cb _hidl_
     string name;
     string author;
     auto [item, err] = jcImpl_->getHardwareInfo();
-    if (err != KM_ERROR_OK ||
-        !cbor_.getUint64<uint64_t>(item, 1, securityLevel) ||
-        !cbor_.getBinaryArray(item, 2, name) ||
-        !cbor_.getBinaryArray(item, 3, author)) {
+    if (err != KM_ERROR_OK || !cbor_.getUint64<uint64_t>(item, 1, securityLevel) ||
+        !cbor_.getBinaryArray(item, 2, name) || !cbor_.getBinaryArray(item, 3, author)) {
         LOG(ERROR) << "Error in response of getHardwareInfo.";
         LOG(INFO) << "Returning defaultHwInfo in getHardwareInfo.";
         _hidl_cb(SecurityLevel::STRONGBOX, JAVACARD_KEYMASTER_NAME, JAVACARD_KEYMASTER_AUTHOR);
@@ -313,7 +316,8 @@ Return<void> JavacardKeymaster4Device::getHardwareInfo(getHardwareInfo_cb _hidl_
     return Void();
 }
 
-Return<void> JavacardKeymaster4Device::getHmacSharingParameters(getHmacSharingParameters_cb _hidl_cb) {
+Return<void>
+JavacardKeymaster4Device::getHmacSharingParameters(getHmacSharingParameters_cb _hidl_cb) {
     HmacSharingParameters hmacSharingParameters;
     vector<uint8_t> nonce;
     vector<uint8_t> seed;
@@ -322,22 +326,25 @@ Return<void> JavacardKeymaster4Device::getHmacSharingParameters(getHmacSharingPa
     memcpy(hmacSharingParameters.nonce.data(), nonce.data(), nonce.size());
     // TODO
     // Send earlyBootEnded if there is any pending earlybootEnded event.
-    //handleSendEarlyBootEndedEvent();
+    // handleSendEarlyBootEndedEvent();
     _hidl_cb(legacy_enum_conversion(err), hmacSharingParameters);
     return Void();
 }
 
-Return<void> JavacardKeymaster4Device::computeSharedHmac(const hidl_vec<HmacSharingParameters>& params, computeSharedHmac_cb _hidl_cb) {
+Return<void>
+JavacardKeymaster4Device::computeSharedHmac(const hidl_vec<HmacSharingParameters>& params,
+                                            computeSharedHmac_cb _hidl_cb) {
     std::vector<uint8_t> secret;
     vector<::javacard_keymaster::HmacSharingParameters> reqParams(params.size());
-    for(size_t i = 0; i < params.size(); i++) {
+    for (size_t i = 0; i < params.size(); i++) {
         reqParams[i].seed = params[i].seed;
-        reqParams[i].nonce.insert(reqParams[i].nonce.end(), params[i].nonce.data(), params[i].nonce.data() + params[i].nonce.elementCount());
+        reqParams[i].nonce.insert(reqParams[i].nonce.end(), params[i].nonce.data(),
+                                  params[i].nonce.data() + params[i].nonce.elementCount());
     }
     auto err = jcImpl_->computeSharedHmac(reqParams, &secret);
     // TODO
     // Send earlyBootEnded if there is any pending earlybootEnded event.
-    //handleSendEarlyBootEndedEvent();
+    // handleSendEarlyBootEndedEvent();
     _hidl_cb(legacy_enum_conversion(err), secret);
     return Void();
 }
@@ -347,7 +354,8 @@ Return<ErrorCode> JavacardKeymaster4Device::addRngEntropy(const hidl_vec<uint8_t
     return legacy_enum_conversion(err);
 }
 
-Return<void> JavacardKeymaster4Device::generateKey(const hidl_vec<KeyParameter>& keyParams, generateKey_cb _hidl_cb) {
+Return<void> JavacardKeymaster4Device::generateKey(const hidl_vec<KeyParameter>& keyParams,
+                                                   generateKey_cb _hidl_cb) {
     AuthorizationSet paramSet;
     AuthorizationSet swEnforced;
     AuthorizationSet hwEnforced;
@@ -369,7 +377,10 @@ Return<void> JavacardKeymaster4Device::generateKey(const hidl_vec<KeyParameter>&
     return Void();
 }
 
-Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& keyParams, KeyFormat keyFormat, const hidl_vec<uint8_t>& keyData, importKey_cb _hidl_cb) {
+Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& keyParams,
+                                                 KeyFormat keyFormat,
+                                                 const hidl_vec<uint8_t>& keyData,
+                                                 importKey_cb _hidl_cb) {
     AuthorizationSet paramSet;
     AuthorizationSet swEnforced;
     AuthorizationSet hwEnforced;
@@ -383,7 +394,8 @@ Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& k
         dateTime.date_time = java_time(time(nullptr));
         paramSet.push_back(dateTime);
     }
-    auto err = jcImpl_->importKey(paramSet, legacy_enum_conversion(keyFormat), keyData, &retKeyblob, &swEnforced, &hwEnforced, &teeEnforced);
+    auto err = jcImpl_->importKey(paramSet, legacy_enum_conversion(keyFormat), keyData, &retKeyblob,
+                                  &swEnforced, &hwEnforced, &teeEnforced);
     KeyCharacteristics keyCharacteristics;
     keyCharacteristics.softwareEnforced = kmParamSet2Hidl(swEnforced);
     keyCharacteristics.hardwareEnforced = kmParamSet2Hidl(hwEnforced);
@@ -391,21 +403,19 @@ Return<void> JavacardKeymaster4Device::importKey(const hidl_vec<KeyParameter>& k
     return Void();
 }
 
-Return<void> JavacardKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t> &wrappedKeyData, 
-                                                        const hidl_vec<uint8_t> &wrappingKeyBlob,
-                                                        const hidl_vec<uint8_t> &maskingKey,
-                                                        const hidl_vec<KeyParameter> &unwrappingParams,
-                                                        uint64_t passwordSid, uint64_t biometricSid,
-                                                        importWrappedKey_cb _hidl_cb) {
+Return<void> JavacardKeymaster4Device::importWrappedKey(
+    const hidl_vec<uint8_t>& wrappedKeyData, const hidl_vec<uint8_t>& wrappingKeyBlob,
+    const hidl_vec<uint8_t>& maskingKey, const hidl_vec<KeyParameter>& unwrappingParams,
+    uint64_t passwordSid, uint64_t biometricSid, importWrappedKey_cb _hidl_cb) {
     AuthorizationSet paramSet;
     AuthorizationSet swEnforced;
     AuthorizationSet hwEnforced;
     AuthorizationSet teeEnforced;
     vector<uint8_t> retKeyblob;
     paramSet.Reinitialize(KmParamSet(unwrappingParams));
-    auto err = jcImpl_->keymasterImportWrappedKey(wrappedKeyData, wrappingKeyBlob, maskingKey, paramSet,
-                                         passwordSid, biometricSid, &retKeyblob, &swEnforced,
-                                         &hwEnforced, &teeEnforced);
+    auto err = jcImpl_->keymasterImportWrappedKey(wrappedKeyData, wrappingKeyBlob, maskingKey,
+                                                  paramSet, passwordSid, biometricSid, &retKeyblob,
+                                                  &swEnforced, &hwEnforced, &teeEnforced);
     KeyCharacteristics keyCharacteristics;
     keyCharacteristics.softwareEnforced = kmParamSet2Hidl(swEnforced);
     keyCharacteristics.hardwareEnforced = kmParamSet2Hidl(hwEnforced);
@@ -413,29 +423,32 @@ Return<void> JavacardKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t> 
     return Void();
 }
 
-
-Return<void> JavacardKeymaster4Device::attestKey(const hidl_vec<uint8_t>& keyToAttest, const hidl_vec<KeyParameter>& attestParams, attestKey_cb _hidl_cb) {
+Return<void> JavacardKeymaster4Device::attestKey(const hidl_vec<uint8_t>& keyToAttest,
+                                                 const hidl_vec<KeyParameter>& attestParams,
+                                                 attestKey_cb _hidl_cb) {
     AuthorizationSet paramSet;
     vector<vector<uint8_t>> certChain;
     hidl_vec<hidl_vec<uint8_t>> outCertChain;
     paramSet.Reinitialize(KmParamSet(attestParams));
     auto err = jcImpl_->attestKey(keyToAttest, paramSet, &certChain);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "JavacardKeymaster4Device attestKey Failed in attestKey err: " << (int32_t) err;
+        LOG(ERROR) << "JavacardKeymaster4Device attestKey Failed in attestKey err: "
+                   << (int32_t)err;
         _hidl_cb(legacy_enum_conversion(err), outCertChain);
         return Void();
     }
     err = jcImpl_->getCertChain(&certChain);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "JavacardKeymaster4Device attestKey Failed in getCertChain err: " << (int32_t) err;
+        LOG(ERROR) << "JavacardKeymaster4Device attestKey Failed in getCertChain err: "
+                   << (int32_t)err;
         _hidl_cb(legacy_enum_conversion(err), outCertChain);
         return Void();
     }
     outCertChain.resize(certChain.size());
-    for(int i = 0; i < certChain.size(); i++) {
+    for (int i = 0; i < certChain.size(); i++) {
         outCertChain[i] = certChain[i];
     }
-   _hidl_cb(legacy_enum_conversion(err), outCertChain);
+    _hidl_cb(legacy_enum_conversion(err), outCertChain);
     return Void();
 }
 
@@ -465,7 +478,6 @@ Return<ErrorCode> JavacardKeymaster4Device::destroyAttestationIds() {
     return legacy_enum_conversion(err);
 }
 
-
 Return<void> JavacardKeymaster4Device::getKeyCharacteristics(const hidl_vec<uint8_t>& keyBlob,
                                                              const hidl_vec<uint8_t>& clientId,
                                                              const hidl_vec<uint8_t>& appData,
@@ -473,8 +485,8 @@ Return<void> JavacardKeymaster4Device::getKeyCharacteristics(const hidl_vec<uint
     AuthorizationSet swEnforced;
     AuthorizationSet hwEnforced;
     AuthorizationSet teeEnforced;
-    auto err = jcImpl_->getKeyCharacteristics(keyBlob, clientId, appData, &swEnforced,
-                                         &hwEnforced, &teeEnforced);
+    auto err = jcImpl_->getKeyCharacteristics(keyBlob, clientId, appData, &swEnforced, &hwEnforced,
+                                              &teeEnforced);
     KeyCharacteristics keyCharacteristics;
     keyCharacteristics.softwareEnforced = kmParamSet2Hidl(swEnforced);
     keyCharacteristics.hardwareEnforced = kmParamSet2Hidl(hwEnforced);
@@ -482,25 +494,30 @@ Return<void> JavacardKeymaster4Device::getKeyCharacteristics(const hidl_vec<uint
     return Void();
 }
 
-Return<void> JavacardKeymaster4Device::verifyAuthorization(uint64_t , const hidl_vec<KeyParameter>& , const HardwareAuthToken& , verifyAuthorization_cb _hidl_cb) {
+Return<void> JavacardKeymaster4Device::verifyAuthorization(uint64_t, const hidl_vec<KeyParameter>&,
+                                                           const HardwareAuthToken&,
+                                                           verifyAuthorization_cb _hidl_cb) {
     VerificationToken verificationToken;
     LOG(DEBUG) << "Verify authorizations UNIMPLEMENTED";
     _hidl_cb(ErrorCode::UNIMPLEMENTED, verificationToken);
     return Void();
 }
 
-Return<void> JavacardKeymaster4Device::exportKey(KeyFormat exportFormat, const hidl_vec<uint8_t>& keyBlob, const hidl_vec<uint8_t>& clientId, const hidl_vec<uint8_t>& appData, exportKey_cb _hidl_cb) {
+Return<void> JavacardKeymaster4Device::exportKey(KeyFormat exportFormat,
+                                                 const hidl_vec<uint8_t>& keyBlob,
+                                                 const hidl_vec<uint8_t>& clientId,
+                                                 const hidl_vec<uint8_t>& appData,
+                                                 exportKey_cb _hidl_cb) {
     ErrorCode errorCode = ErrorCode::UNKNOWN_ERROR;
     hidl_vec<uint8_t> resultKeyBlob;
 
-    //Check if keyblob is corrupted
-    getKeyCharacteristics(keyBlob, clientId, appData,
-            [&](ErrorCode error, KeyCharacteristics /*keyCharacteristics*/) {
-            errorCode = error;
-            });
+    // Check if keyblob is corrupted
+    getKeyCharacteristics(
+        keyBlob, clientId, appData,
+        [&](ErrorCode error, KeyCharacteristics /*keyCharacteristics*/) { errorCode = error; });
 
-    if(errorCode != ErrorCode::OK) {
-        LOG(ERROR) << "Error in exportKey: " << (int32_t) errorCode;
+    if (errorCode != ErrorCode::OK) {
+        LOG(ERROR) << "Error in exportKey: " << (int32_t)errorCode;
         _hidl_cb(errorCode, resultKeyBlob);
         return Void();
     }
@@ -512,8 +529,8 @@ Return<void> JavacardKeymaster4Device::exportKey(KeyFormat exportFormat, const h
     ExportKeyResponse response(softKm_->message_version());
     softKm_->ExportKey(request, &response);
 
-    if(response.error == KM_ERROR_INCOMPATIBLE_ALGORITHM) {
-        //Symmetric Keys cannot be exported.
+    if (response.error == KM_ERROR_INCOMPATIBLE_ALGORITHM) {
+        // Symmetric Keys cannot be exported.
         response.error = KM_ERROR_UNSUPPORTED_KEY_FORMAT;
         LOG(ERROR) << "error in exportKey: unsupported algorithm or key format";
     }
@@ -521,18 +538,15 @@ Return<void> JavacardKeymaster4Device::exportKey(KeyFormat exportFormat, const h
         resultKeyBlob.setToExternal(response.key_data, response.key_data_length);
     }
     errorCode = legacy_enum_conversion(response.error);
-    LOG(DEBUG) << "exportKey status: " << (int32_t) errorCode;
+    LOG(DEBUG) << "exportKey status: " << (int32_t)errorCode;
     _hidl_cb(errorCode, resultKeyBlob);
     return Void();
 }
 
-keymaster_error_t
-JavacardKeymaster4Device::handleBeginPublicKeyOperation(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
-                                                        const hidl_vec<KeyParameter>& inParams,
-                                                        const HardwareAuthToken& authToken,
-                                                        hidl_vec<KeyParameter>& outParams,
-                                                        uint64_t& operationHandle,
-                                                        std::unique_ptr<JavacardKeymasterOperation>& operation) {
+keymaster_error_t JavacardKeymaster4Device::handleBeginPublicKeyOperation(
+    KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob, const hidl_vec<KeyParameter>& inParams,
+    const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
+    uint64_t& operationHandle, std::unique_ptr<JavacardKeymasterOperation>& operation) {
     BeginOperationRequest request(softKm_->message_version());
     request.purpose = legacy_enum_conversion(purpose);
     request.SetKeyMaterial(keyBlob.data(), keyBlob.size());
@@ -543,15 +557,17 @@ JavacardKeymaster4Device::handleBeginPublicKeyOperation(KeyPurpose purpose, cons
 
     BeginOperationResponse response(softKm_->message_version());
     softKm_->BeginOperation(request, &response);
-    LOG(DEBUG) << "INS_BEGIN_OPERATION_CMD softkm BeginOperation status: " << (int32_t) response.error;
+    LOG(DEBUG) << "INS_BEGIN_OPERATION_CMD softkm BeginOperation status: "
+               << (int32_t)response.error;
     if (response.error == KM_ERROR_OK) {
         outParams = kmParamSet2Hidl(response.output_params);
         operationHandle = response.op_handle;
-        operation =
-            std::make_unique<JavacardKeymasterOperation>(operationHandle, BufferingMode::NONE, 0, nullptr, OperationType::PUBLIC_OPERATION, softKm_);
+        operation = std::make_unique<JavacardKeymasterOperation>(
+            operationHandle, BufferingMode::NONE, 0, nullptr, OperationType::PUBLIC_OPERATION,
+            softKm_);
     } else {
         LOG(ERROR) << "INS_BEGIN_OPERATION_CMD error in softkm BeginOperation status: "
-                   << (int32_t) response.error;
+                   << (int32_t)response.error;
     }
     return response.error;
 }
@@ -566,7 +582,7 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
     ::keymaster::HardwareAuthToken legacyToken;
     legacyHardwareAuthToken(authToken, &legacyToken);
     auto err = jcImpl_->begin(legacy_enum_conversion(purpose), keyBlob, paramSet, legacyToken,
-                         &authSetParams, operation);
+                              &authSetParams, operation);
     if (err == KM_ERROR_OK) {
         // Decode keyblob to get the BufferingMode and macLength properties.
         AuthorizationSet swEnforced;
@@ -578,10 +594,12 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
         if (item == nullptr) {
             return KM_ERROR_UNKNOWN_ERROR;
         }
-        if (!cbor_.getKeyCharacteristics(item, kKeyblobKeyCharsOffset, swEnforced, hwEnforced, teeEnforced)) {
+        if (!cbor_.getKeyCharacteristics(item, kKeyblobKeyCharsOffset, swEnforced, hwEnforced,
+                                         teeEnforced)) {
             return KM_ERROR_INVALID_KEY_BLOB;
         }
-        err = getOperationInfo(static_cast<keymaster_purpose_t>(purpose), paramSet, hwEnforced, bufMode, macLength);
+        err = getOperationInfo(static_cast<keymaster_purpose_t>(purpose), paramSet, hwEnforced,
+                               bufMode, macLength);
         if (err != KM_ERROR_OK) {
             return err;
         }
@@ -590,25 +608,28 @@ keymaster_error_t JavacardKeymaster4Device::handleBeginPrivateKeyOperation(
         // Get the operation handle from the Operation.
         operationHandle = operation->getOpertionHandle();
         outParams = kmParamSet2Hidl(authSetParams);
-    }                    
+    }
     return err;
 }
 
 keymaster_error_t JavacardKeymaster4Device::handleBeginOperation(
     KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob, const hidl_vec<KeyParameter>& inParams,
     const HardwareAuthToken& authToken, hidl_vec<KeyParameter>& outParams,
-    uint64_t& operationHandle, OperationType& operType, std::unique_ptr<JavacardKeymasterOperation>& operation) {
+    uint64_t& operationHandle, OperationType& operType,
+    std::unique_ptr<JavacardKeymasterOperation>& operation) {
     keymaster_error_t err = KM_ERROR_UNKNOWN_ERROR;
     if (operType == OperationType::PRIVATE_OPERATION) {
-        err = handleBeginPrivateKeyOperation(purpose, keyBlob, inParams, authToken, outParams, operationHandle, operation);
+        err = handleBeginPrivateKeyOperation(purpose, keyBlob, inParams, authToken, outParams,
+                                             operationHandle, operation);
         if (err == ExtendedErrors::PUBLIC_KEY_OPERATION) {
-           // Handle public key operation.
-           operType = OperationType::PUBLIC_OPERATION;
+            // Handle public key operation.
+            operType = OperationType::PUBLIC_OPERATION;
         }
     }
 
     if (operType == OperationType::PUBLIC_OPERATION) {
-        err = handleBeginPublicKeyOperation(purpose, keyBlob, inParams, authToken, outParams, operationHandle, operation);
+        err = handleBeginPublicKeyOperation(purpose, keyBlob, inParams, authToken, outParams,
+                                            operationHandle, operation);
     }
     return err;
 }
@@ -621,24 +642,26 @@ bool JavacardKeymaster4Device::isOperationHandleExists(uint64_t opHandle) {
 }
 
 Return<void> JavacardKeymaster4Device::begin(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
-                                            const hidl_vec<KeyParameter>& inParams,
-                                            const HardwareAuthToken& authToken, begin_cb _hidl_cb) {
+                                             const hidl_vec<KeyParameter>& inParams,
+                                             const HardwareAuthToken& authToken,
+                                             begin_cb _hidl_cb) {
     uint64_t operationHandle = 0;
     OperationType operType = OperationType::PRIVATE_OPERATION;
     std::unique_ptr<JavacardKeymasterOperation> operation;
     hidl_vec<KeyParameter> outParams;
     LOG(DEBUG) << "INS_BEGIN_OPERATION_CMD purpose: " << (int32_t)purpose;
     auto err = handleBeginOperation(purpose, keyBlob, inParams, authToken, outParams,
-                                     operationHandle, operType, operation);
+                                    operationHandle, operType, operation);
     if (err == KM_ERROR_OK && isOperationHandleExists(operationHandle)) {
-        LOG(DEBUG) << "Operation handle " << operationHandle << "already exists"
+        LOG(DEBUG) << "Operation handle " << operationHandle
+                   << "already exists"
                       "in the opertion table. so aborting this opertaion.";
         // abort the operation.
         err = abortOperation(operationHandle);
         if (err == KM_ERROR_OK) {
             // retry begin to get an another operation handle.
             err = handleBeginOperation(purpose, keyBlob, inParams, authToken, outParams,
-                                             operationHandle, operType, operation);
+                                       operationHandle, operType, operation);
             if (err == KM_ERROR_OK && isOperationHandleExists(operationHandle)) {
                 err = KM_ERROR_UNKNOWN_ERROR;
                 LOG(ERROR) << "INS_BEGIN_OPERATION_CMD: Failed in begin operation as the"
@@ -688,7 +711,7 @@ JavacardKeymaster4Device::update(uint64_t operationHandle, const hidl_vec<KeyPar
     AuthorizationSet authSetOutParams;
     uint32_t inputConsumed = 0;
     vector<uint8_t> output;
-    vector<uint8_t> encodedVerificationToken;           
+    vector<uint8_t> encodedVerificationToken;
     auto it = operationTable_.find(operationHandle);
     if (it == operationTable_.end()) {
         LOG(ERROR) << " Operation handle is invalid. This could happen if invalid operation handle "
@@ -703,11 +726,12 @@ JavacardKeymaster4Device::update(uint64_t operationHandle, const hidl_vec<KeyPar
     legacyHardwareAuthToken(authToken, &legacyHwToken);
     auto err = encodeVerificationToken(verificationToken, &encodedVerificationToken);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "In update failed to encode VerificationToken" << (int32_t) err;
+        LOG(ERROR) << "In update failed to encode VerificationToken" << (int32_t)err;
         _hidl_cb(legacy_enum_conversion(err), inputConsumed, outParams, output);
         return Void();
     }
-    err = it->second->update(input, std::optional<AuthorizationSet>(paramSet), legacyHwToken, encodedVerificationToken, &authSetOutParams, &inputConsumed, &output);
+    err = it->second->update(input, std::optional<AuthorizationSet>(paramSet), legacyHwToken,
+                             encodedVerificationToken, &authSetOutParams, &inputConsumed, &output);
     if (err != KM_ERROR_OK) {
         /* Delete the entry on this operationHandle */
         operationTable_.erase(operationHandle);
@@ -731,7 +755,7 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
         LOG(ERROR) << " Operation handle is invalid. This could happen if invalid operation handle "
                       "is passed or if"
                    << " secure element reset occurred.";
-       _hidl_cb(ErrorCode::INVALID_OPERATION_HANDLE, outParams, output);
+        _hidl_cb(ErrorCode::INVALID_OPERATION_HANDLE, outParams, output);
         return Void();
     }
     AuthorizationSet paramSet;
@@ -740,11 +764,13 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
     legacyHardwareAuthToken(authToken, &legacyHwToken);
     auto err = encodeVerificationToken(verificationToken, &encodedVerificationToken);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "In finish failed to encode VerificationToken" << (int32_t) err;
+        LOG(ERROR) << "In finish failed to encode VerificationToken" << (int32_t)err;
         _hidl_cb(legacy_enum_conversion(err), outParams, output);
         return Void();
     }
-    err = it->second->finish(input, std::optional<AuthorizationSet>(paramSet), signature, legacyHwToken, encodedVerificationToken, {}, &authSetOutParams, &output);
+    err =
+        it->second->finish(input, std::optional<AuthorizationSet>(paramSet), signature,
+                           legacyHwToken, encodedVerificationToken, {}, &authSetOutParams, &output);
     /* Delete the entry on this operationHandle */
     operationTable_.erase(operationHandle);
     outParams = kmParamSet2Hidl(authSetOutParams);
@@ -754,11 +780,12 @@ JavacardKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyPar
 
 // Methods from ::android::hardware::keymaster::V4_1::IKeymasterDevice follow.
 Return<::android::hardware::keymaster::V4_1::ErrorCode>
-JavacardKeymaster4Device::deviceLocked(bool passwordOnly, const VerificationToken& verificationToken) {
+JavacardKeymaster4Device::deviceLocked(bool passwordOnly,
+                                       const VerificationToken& verificationToken) {
     vector<uint8_t> encodedVerificationToken;
     auto err = encodeVerificationToken(verificationToken, &encodedVerificationToken);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "In deviceLocked failed to encode VerificationToken" << (int32_t) err;
+        LOG(ERROR) << "In deviceLocked failed to encode VerificationToken" << (int32_t)err;
         return static_cast<V41ErrorCode>(err);
     }
     err = jcImpl_->deviceLocked(passwordOnly, encodedVerificationToken);
@@ -770,11 +797,14 @@ Return<::android::hardware::keymaster::V4_1::ErrorCode> JavacardKeymaster4Device
     return static_cast<V41ErrorCode>(err);
 }
 
-keymaster_error_t JavacardKeymaster4Device::encodeVerificationToken(const VerificationToken &verificationToken, vector<uint8_t>* encodedToken) {
+keymaster_error_t
+JavacardKeymaster4Device::encodeVerificationToken(const VerificationToken& verificationToken,
+                                                  vector<uint8_t>* encodedToken) {
     vector<uint8_t> asn1ParamsVerified;
     auto err = encodeParametersVerified(verificationToken, asn1ParamsVerified);
     if (err != KM_ERROR_OK) {
-        LOG(DEBUG) << "INS_DEVICE_LOCKED_CMD: Error in encodeParametersVerified, status: " << (int32_t) err;
+        LOG(DEBUG) << "INS_DEVICE_LOCKED_CMD: Error in encodeParametersVerified, status: "
+                   << (int32_t)err;
         return err;
     }
     cppbor::Array array;
@@ -794,7 +824,8 @@ void JavacardKeymaster4Device::seResetEvent() {
         << "Secure Element reset or applet upgrade detected. Removing existing operation handles";
     auto it = operationTable_.begin();
     while (it != operationTable_.end()) {
-        if (it->second->getOperationType() == ::javacard_keymaster::OperationType::PRIVATE_OPERATION) { // Strongbox operation
+        if (it->second->getOperationType() ==
+            ::javacard_keymaster::OperationType::PRIVATE_OPERATION) {  // Strongbox operation
             LOG(INFO) << "operation handle: " << it->first << " is removed";
             it = operationTable_.erase(it);
         } else {
@@ -803,6 +834,6 @@ void JavacardKeymaster4Device::seResetEvent() {
     }
 }
 
-}  // javacard
+}  // namespace javacard
 }  // namespace V4_1
 }  // namespace keymaster

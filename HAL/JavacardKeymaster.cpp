@@ -1,22 +1,21 @@
 #include <JavacardKeymaster.h>
 #include <KMUtils.h>
-#include <keymaster/wrapped_key.h>
 #include <keymaster/mem.h>
+#include <keymaster/wrapped_key.h>
 
 namespace javacard_keymaster {
 using cppbor::Array;
 using cppbor::EncodedItem;
-using keymaster::KeymasterKeyBlob;
 using keymaster::KeymasterBlob;
+using keymaster::KeymasterKeyBlob;
 
 namespace {
 
-
-keymaster_error_t parseWrappedKey(const std::vector<uint8_t> &wrappedKeyData,
-                                  std::vector<uint8_t> &iv, std::vector<uint8_t> &transitKey,
-                                  std::vector<uint8_t> &secureKey, std::vector<uint8_t> &tag,
-                                  AuthorizationSet &authList, keymaster_key_format_t &keyFormat,
-                                  std::vector<uint8_t> &wrappedKeyDescription) {
+keymaster_error_t parseWrappedKey(const std::vector<uint8_t>& wrappedKeyData,
+                                  std::vector<uint8_t>& iv, std::vector<uint8_t>& transitKey,
+                                  std::vector<uint8_t>& secureKey, std::vector<uint8_t>& tag,
+                                  AuthorizationSet& authList, keymaster_key_format_t& keyFormat,
+                                  std::vector<uint8_t>& wrappedKeyDescription) {
     KeymasterBlob kmIv;
     KeymasterKeyBlob kmTransitKey;
     KeymasterKeyBlob kmSecureKey;
@@ -24,32 +23,32 @@ keymaster_error_t parseWrappedKey(const std::vector<uint8_t> &wrappedKeyData,
     KeymasterBlob kmWrappedKeyDescription;
 
     size_t keyDataLen = wrappedKeyData.size();
-    uint8_t *keyData = keymaster::dup_buffer(wrappedKeyData.data(), keyDataLen);
+    uint8_t* keyData = keymaster::dup_buffer(wrappedKeyData.data(), keyDataLen);
     keymaster_key_blob_t keyMaterial = {keyData, keyDataLen};
 
-    keymaster_error_t error = parse_wrapped_key(KeymasterKeyBlob(keyMaterial), &kmIv, &kmTransitKey,
-                                                &kmSecureKey, &kmTag, &authList,
-                                                &keyFormat, &kmWrappedKeyDescription);
-    if (error != KM_ERROR_OK)
-        return error;
+    keymaster_error_t error =
+        parse_wrapped_key(KeymasterKeyBlob(keyMaterial), &kmIv, &kmTransitKey, &kmSecureKey, &kmTag,
+                          &authList, &keyFormat, &kmWrappedKeyDescription);
+    if (error != KM_ERROR_OK) return error;
     blob2Vec(kmIv.data, kmIv.data_length, iv);
     blob2Vec(kmTransitKey.key_material, kmTransitKey.key_material_size, transitKey);
     blob2Vec(kmSecureKey.key_material, kmSecureKey.key_material_size, secureKey);
     blob2Vec(kmTag.data, kmTag.data_length, tag);
-    blob2Vec(kmWrappedKeyDescription.data, kmWrappedKeyDescription.data_length, wrappedKeyDescription);
+    blob2Vec(kmWrappedKeyDescription.data, kmWrappedKeyDescription.data_length,
+             wrappedKeyDescription);
 
     return KM_ERROR_OK;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 keymaster_error_t JavacardKeymaster::handleErrorCode(keymaster_error_t err) {
-    //Check if secure element is reset
+    // Check if secure element is reset
     uint32_t errorCode = static_cast<uint32_t>(0 - err);
     bool isSeResetOccurred = (0 != (errorCode & SE_POWER_RESET_STATUS_FLAG));
 
     if (isSeResetOccurred) {
-        //Clear the operation table for Strongbox operations entries.
+        // Clear the operation table for Strongbox operations entries.
         if (seResetListener_) {
             seResetListener_->seResetEvent();
         }
@@ -59,12 +58,14 @@ keymaster_error_t JavacardKeymaster::handleErrorCode(keymaster_error_t err) {
     return translateExtendedErrorsToHalErrors(static_cast<keymaster_error_t>(0 - errorCode));
 }
 
-std::tuple<std::unique_ptr<Item>, keymaster_error_t> JavacardKeymaster::sendRequest(Instruction ins) {
+std::tuple<std::unique_ptr<Item>, keymaster_error_t>
+JavacardKeymaster::sendRequest(Instruction ins) {
     auto [item, err] = card_->sendRequest(ins);
     return {std::move(item), handleErrorCode(err)};
 }
 
-std::tuple<std::unique_ptr<Item>, keymaster_error_t> JavacardKeymaster::sendRequest(Instruction ins, Array& request) {
+std::tuple<std::unique_ptr<Item>, keymaster_error_t>
+JavacardKeymaster::sendRequest(Instruction ins, Array& request) {
     auto [item, err] = card_->sendRequest(ins, request);
     return {std::move(item), handleErrorCode(err)};
 }
@@ -85,10 +86,11 @@ keymaster_error_t JavacardKeymaster::addRngEntropy(const vector<uint8_t>& data) 
     return err;
 }
 
-keymaster_error_t JavacardKeymaster::getHmacSharingParameters(vector<uint8_t>* seed, vector<uint8_t>* nonce) {
+keymaster_error_t JavacardKeymaster::getHmacSharingParameters(vector<uint8_t>* seed,
+                                                              vector<uint8_t>* nonce) {
     card_->initializeJavacard();
     auto [item, err] = sendRequest(Instruction::INS_GET_SHARED_SECRET_PARAM_CMD);
-     if (err == KM_ERROR_OK && !cbor_.getSharedSecretParameters(item, 1, *seed, *nonce)) {
+    if (err == KM_ERROR_OK && !cbor_.getSharedSecretParameters(item, 1, *seed, *nonce)) {
         LOG(ERROR) << "Error in sending in getSharedSecretParameters.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
@@ -97,12 +99,13 @@ keymaster_error_t JavacardKeymaster::getHmacSharingParameters(vector<uint8_t>* s
     return err;
 }
 
-keymaster_error_t JavacardKeymaster::computeSharedHmac(const vector<HmacSharingParameters>& params, vector<uint8_t>* secret) {
+keymaster_error_t JavacardKeymaster::computeSharedHmac(const vector<HmacSharingParameters>& params,
+                                                       vector<uint8_t>* secret) {
     card_->initializeJavacard();
     cppbor::Array request;
     cbor_.addSharedSecretParameters(request, params);
     auto [item, err] = sendRequest(Instruction::INS_COMPUTE_SHARED_SECRET_CMD, request);
-     if (err == KM_ERROR_OK && !cbor_.getBinaryArray(item, 1, *secret)) {
+    if (err == KM_ERROR_OK && !cbor_.getBinaryArray(item, 1, *secret)) {
         LOG(ERROR) << "Error in sending in computeSharedHmac.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
@@ -134,7 +137,6 @@ keymaster_error_t JavacardKeymaster::generateKey(const AuthorizationSet& keyPara
         return KM_ERROR_UNKNOWN_ERROR;
     }
     return err;
-
 }
 
 keymaster_error_t JavacardKeymaster::attestKey(Array& request, vector<vector<uint8_t>>* certChain) {
@@ -194,7 +196,7 @@ keymaster_error_t JavacardKeymaster::getCertChain(vector<vector<uint8_t>>* certC
         LOG(ERROR) << "Error in sending getCertChain.";
         return err;
     }
-    if(!cbor_.getBinaryArray(item, 1, certChainData)) {
+    if (!cbor_.getBinaryArray(item, 1, certChainData)) {
         LOG(ERROR) << "Error in decoding og response in getCertChain.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
@@ -205,13 +207,11 @@ keymaster_error_t JavacardKeymaster::getCertChain(vector<vector<uint8_t>>* certC
     return err;
 }
 
-keymaster_error_t JavacardKeymaster::importKey(const AuthorizationSet& keyParams,
-                                               const keymaster_key_format_t keyFormat,
-                                               const vector<uint8_t>& keyData,
-                                               vector<uint8_t>* retKeyblob,
-                                               AuthorizationSet* swEnforced,
-                                               AuthorizationSet* hwEnforced,
-                                               AuthorizationSet* teeEnforced) {
+keymaster_error_t
+JavacardKeymaster::importKey(const AuthorizationSet& keyParams,
+                             const keymaster_key_format_t keyFormat, const vector<uint8_t>& keyData,
+                             vector<uint8_t>* retKeyblob, AuthorizationSet* swEnforced,
+                             AuthorizationSet* hwEnforced, AuthorizationSet* teeEnforced) {
     cppbor::Array array;
     cbor_.addKeyparameters(array, keyParams);
     array.add(static_cast<uint32_t>(keyFormat));
@@ -233,11 +233,9 @@ keymaster_error_t JavacardKeymaster::importKey(const AuthorizationSet& keyParams
     return err;
 }
 
-keymaster_error_t
-JavacardKeymaster::sendBeginImportWrappedKeyCmd(const std::vector<uint8_t>& transitKey,
-                                                const std::vector<uint8_t>& wrappingKeyBlob,
-                                                const std::vector<uint8_t>& maskingKey,
-                                                const AuthorizationSet& unwrappingParams) {
+keymaster_error_t JavacardKeymaster::sendBeginImportWrappedKeyCmd(
+    const std::vector<uint8_t>& transitKey, const std::vector<uint8_t>& wrappingKeyBlob,
+    const std::vector<uint8_t>& maskingKey, const AuthorizationSet& unwrappingParams) {
     Array request;
     request.add(std::vector<uint8_t>(transitKey));
     request.add(std::vector<uint8_t>(wrappingKeyBlob));
@@ -245,13 +243,13 @@ JavacardKeymaster::sendBeginImportWrappedKeyCmd(const std::vector<uint8_t>& tran
     cbor_.addKeyparameters(request, unwrappingParams);
     auto [item, err] = sendRequest(Instruction::INS_BEGIN_IMPORT_WRAPPED_KEY_CMD, request);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending sendBeginImportWrappedKeyCmd err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending sendBeginImportWrappedKeyCmd err: " << (int32_t)err;
     }
     return err;
 }
 
 std::tuple<std::unique_ptr<Item>, keymaster_error_t>
-JavacardKeymaster::sendFinishImportWrappedKeyCmd(const AuthorizationSet& keyParams, 
+JavacardKeymaster::sendFinishImportWrappedKeyCmd(const AuthorizationSet& keyParams,
                                                  const keymaster_key_format_t keyFormat,
                                                  const std::vector<uint8_t>& secureKey,
                                                  const std::vector<uint8_t>& tag,
@@ -269,21 +267,17 @@ JavacardKeymaster::sendFinishImportWrappedKeyCmd(const AuthorizationSet& keyPara
     request.add(Uint(biometricSid));
     auto [item, err] = sendRequest(Instruction::INS_FINISH_IMPORT_WRAPPED_KEY_CMD, request);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending sendFinishImportWrappedKeyCmd err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending sendFinishImportWrappedKeyCmd err: " << (int32_t)err;
         return {nullptr, err};
     }
     return {std::move(item), err};
 }
 
-keymaster_error_t JavacardKeymaster::keymasterImportWrappedKey(const vector<uint8_t>& wrappedKeyData,
-                                                      const vector<uint8_t>& wrappingKeyBlob,
-                                                      const vector<uint8_t>& maskingKey,
-                                                      const AuthorizationSet& unwrappingParams,
-                                                      int64_t passwordSid, int64_t biometricSid,
-                                                      vector<uint8_t>* retKeyblob,
-                                                      AuthorizationSet* swEnforced,
-                                                      AuthorizationSet* hwEnforced,
-                                                      AuthorizationSet* teeEnforced) {
+keymaster_error_t JavacardKeymaster::keymasterImportWrappedKey(
+    const vector<uint8_t>& wrappedKeyData, const vector<uint8_t>& wrappingKeyBlob,
+    const vector<uint8_t>& maskingKey, const AuthorizationSet& unwrappingParams,
+    int64_t passwordSid, int64_t biometricSid, vector<uint8_t>* retKeyblob,
+    AuthorizationSet* swEnforced, AuthorizationSet* hwEnforced, AuthorizationSet* teeEnforced) {
     cppbor::Array array;
     std::vector<uint8_t> iv;
     std::vector<uint8_t> transitKey;
@@ -294,10 +288,11 @@ keymaster_error_t JavacardKeymaster::keymasterImportWrappedKey(const vector<uint
     std::vector<uint8_t> wrappedKeyDescription;
     // Send earlyBootEnded if there is any pending earlybootEnded event.
     handleSendEarlyBootEndedEvent();
-    auto error = parseWrappedKey(wrappedKeyData, iv, transitKey, secureKey,
-                    tag, authList, keyFormat, wrappedKeyDescription);
+    auto error = parseWrappedKey(wrappedKeyData, iv, transitKey, secureKey, tag, authList,
+                                 keyFormat, wrappedKeyDescription);
     if (error != KM_ERROR_OK) {
-        LOG(ERROR) << "INS_IMPORT_WRAPPED_KEY_CMD error while parsing wrapped key status: " << (int32_t) error;
+        LOG(ERROR) << "INS_IMPORT_WRAPPED_KEY_CMD error while parsing wrapped key status: "
+                   << (int32_t)error;
         return error;
     }
     cbor_.addKeyparameters(array, authList);
@@ -316,7 +311,7 @@ keymaster_error_t JavacardKeymaster::keymasterImportWrappedKey(const vector<uint
 
     auto [item, err] = sendRequest(Instruction::INS_IMPORT_WRAPPED_KEY_CMD, array);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending importWrappedKey err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending importWrappedKey err: " << (int32_t)err;
         return err;
     }
     if (!cbor_.getBinaryArray(item, 1, *retKeyblob) ||
@@ -327,15 +322,11 @@ keymaster_error_t JavacardKeymaster::keymasterImportWrappedKey(const vector<uint
     return KM_ERROR_OK;
 }
 
-keymaster_error_t JavacardKeymaster::importWrappedKey(const vector<uint8_t>& wrappedKeyData,
-                                                      const vector<uint8_t>& wrappingKeyBlob,
-                                                      const vector<uint8_t>& maskingKey,
-                                                      const AuthorizationSet& unwrappingParams,
-                                                      int64_t passwordSid, int64_t biometricSid,
-                                                      vector<uint8_t>* retKeyblob,
-                                                      AuthorizationSet* swEnforced,
-                                                      AuthorizationSet* hwEnforced,
-                                                      AuthorizationSet* teeEnforced) {
+keymaster_error_t JavacardKeymaster::importWrappedKey(
+    const vector<uint8_t>& wrappedKeyData, const vector<uint8_t>& wrappingKeyBlob,
+    const vector<uint8_t>& maskingKey, const AuthorizationSet& unwrappingParams,
+    int64_t passwordSid, int64_t biometricSid, vector<uint8_t>* retKeyblob,
+    AuthorizationSet* swEnforced, AuthorizationSet* hwEnforced, AuthorizationSet* teeEnforced) {
     cppbor::Array array;
     std::unique_ptr<Item> item;
     std::vector<uint8_t> iv;
@@ -345,10 +336,11 @@ keymaster_error_t JavacardKeymaster::importWrappedKey(const vector<uint8_t>& wra
     AuthorizationSet authList;
     keymaster_key_format_t keyFormat;
     std::vector<uint8_t> wrappedKeyDescription;
-    auto err = parseWrappedKey(wrappedKeyData, iv, transitKey, secureKey,
-                    tag, authList, keyFormat, wrappedKeyDescription);
+    auto err = parseWrappedKey(wrappedKeyData, iv, transitKey, secureKey, tag, authList, keyFormat,
+                               wrappedKeyDescription);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "INS_IMPORT_WRAPPED_KEY_CMD error while parsing wrapped key status: " << (int32_t)err;
+        LOG(ERROR) << "INS_IMPORT_WRAPPED_KEY_CMD error while parsing wrapped key status: "
+                   << (int32_t)err;
         return err;
     }
     // begin import
@@ -378,7 +370,7 @@ keymaster_error_t JavacardKeymaster::upgradeKey(const vector<uint8_t>& keyBlobTo
     cbor_.addKeyparameters(array, upgradeParams);
     auto [item, err] = sendRequest(Instruction::INS_UPGRADE_KEY_CMD, array);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending upgradeKey err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending upgradeKey err: " << (int32_t)err;
         return err;
     }
     if (!cbor_.getBinaryArray(item, 1, *retKeyBlob)) {
@@ -393,7 +385,7 @@ keymaster_error_t JavacardKeymaster::deleteKey(const vector<uint8_t>& keyBlob) {
     array.add(keyBlob);
     auto [_, err] = sendRequest(Instruction::INS_DELETE_KEY_CMD, array);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending deleteKey err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending deleteKey err: " << (int32_t)err;
         return err;
     }
     return KM_ERROR_OK;
@@ -402,7 +394,7 @@ keymaster_error_t JavacardKeymaster::deleteKey(const vector<uint8_t>& keyBlob) {
 keymaster_error_t JavacardKeymaster::deleteAllKeys() {
     auto [_, err] = sendRequest(Instruction::INS_DELETE_ALL_KEYS_CMD);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending deleteAllKeys err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending deleteAllKeys err: " << (int32_t)err;
         return err;
     }
     return KM_ERROR_OK;
@@ -411,20 +403,21 @@ keymaster_error_t JavacardKeymaster::deleteAllKeys() {
 keymaster_error_t JavacardKeymaster::destroyAttestationIds() {
     auto [_, err] = sendRequest(Instruction::INS_DESTROY_ATT_IDS_CMD);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending destroyAttestationIds err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending destroyAttestationIds err: " << (int32_t)err;
         return err;
     }
     return KM_ERROR_OK;
 }
 
-keymaster_error_t JavacardKeymaster::deviceLocked(bool passwordOnly,
-                                                  const vector<uint8_t>& cborEncodedVerificationToken) {
+keymaster_error_t
+JavacardKeymaster::deviceLocked(bool passwordOnly,
+                                const vector<uint8_t>& cborEncodedVerificationToken) {
     Array array;
     array.add(passwordOnly);
     array.add(EncodedItem(cborEncodedVerificationToken));
     auto [_, err] = sendRequest(Instruction::INS_DEVICE_LOCKED_CMD);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending deviceLocked err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending deviceLocked err: " << (int32_t)err;
         return err;
     }
     return KM_ERROR_OK;
@@ -435,7 +428,7 @@ keymaster_error_t JavacardKeymaster::earlyBootEnded() {
     if (err != KM_ERROR_OK) {
         // Incase of failure cache the event and send in the next immediate request to Applet.
         isEarlyBootEventPending = true;
-        LOG(ERROR) << "Error in sending earlyBootEnded err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending earlyBootEnded err: " << (int32_t)err;
         return err;
     }
     return KM_ERROR_OK;
@@ -453,7 +446,7 @@ keymaster_error_t JavacardKeymaster::getKeyCharacteristics(const std::vector<uin
     array.add(in_appData);
     auto [item, err] = sendRequest(Instruction::INS_GET_KEY_CHARACTERISTICS_CMD, array);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending getKeyCharacteristics err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending getKeyCharacteristics err: " << (int32_t)err;
         return err;
     }
     if (!cbor_.getKeyCharacteristics(item, 1, *swEnforced, *hwEnforced, *teeEnforced)) {
@@ -463,11 +456,11 @@ keymaster_error_t JavacardKeymaster::getKeyCharacteristics(const std::vector<uin
     return KM_ERROR_OK;
 }
 
-keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const vector<uint8_t>& keyBlob,
-                                           const AuthorizationSet& inParams,
-                                           const HardwareAuthToken& hwAuthToken,
-                                           AuthorizationSet* outParams,
-                                           std::unique_ptr<JavacardKeymasterOperation>& outOperation) {
+keymaster_error_t
+JavacardKeymaster::begin(keymaster_purpose_t purpose, const vector<uint8_t>& keyBlob,
+                         const AuthorizationSet& inParams, const HardwareAuthToken& hwAuthToken,
+                         AuthorizationSet* outParams,
+                         std::unique_ptr<JavacardKeymasterOperation>& outOperation) {
     uint64_t operationHandle;
     uint64_t bufMode = static_cast<uint64_t>(BufferingMode::NONE);
     uint64_t macLength = 0;
@@ -484,7 +477,7 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
     cbor_.addHardwareAuthToken(array, hwAuthToken);
     auto [item, err] = sendRequest(Instruction::INS_BEGIN_OPERATION_CMD, array);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in sending begin err: " << (int32_t) err;
+        LOG(ERROR) << "Error in sending begin err: " << (int32_t)err;
         return err;
     }
     if (!cbor_.getKeyParameters(item, 1, *outParams) ||
@@ -498,25 +491,24 @@ keymaster_error_t JavacardKeymaster::begin(keymaster_purpose_t purpose, const ve
         LOG(ERROR) << "Error in getting cbor array size ";
         return err;
     }
-    if ((size > 3) &&
-         (!cbor_.getUint64<uint64_t>(item, 3, bufMode) ||
-         !cbor_.getUint64<uint64_t>(item, 4, macLength))) {
+    if ((size > 3) && (!cbor_.getUint64<uint64_t>(item, 3, bufMode) ||
+                       !cbor_.getUint64<uint64_t>(item, 4, macLength))) {
         LOG(ERROR) << "Error in decoding the response in begin.";
         return KM_ERROR_UNKNOWN_ERROR;
     }
-    outOperation = std::make_unique<JavacardKeymasterOperation>(operationHandle, static_cast<BufferingMode>(bufMode),
-                                                                macLength, card_,
-                                                                static_cast<OperationType>(OperationType::PRIVATE_OPERATION),
-                                                                seResetListener_);
+    outOperation = std::make_unique<JavacardKeymasterOperation>(
+        operationHandle, static_cast<BufferingMode>(bufMode), macLength, card_,
+        static_cast<OperationType>(OperationType::PRIVATE_OPERATION), seResetListener_);
     return KM_ERROR_OK;
 }
 
 void JavacardKeymaster::handleSendEarlyBootEndedEvent() {
     if (isEarlyBootEventPending) {
-        LOG(INFO) << "JavacardKeymaster4Device::handleSendEarlyBootEndedEvent send earlyBootEnded Event.";
+        LOG(INFO)
+            << "JavacardKeymaster4Device::handleSendEarlyBootEndedEvent send earlyBootEnded Event.";
         if (KM_ERROR_OK == earlyBootEnded()) {
             isEarlyBootEventPending = false;
         }
     }
 }
-} // javacard_keymaster
+}  // namespace javacard_keymaster

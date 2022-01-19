@@ -15,25 +15,25 @@
 ** limitations under the License.
 */
 
+#include "KMUtils.h"
+#include <JavacardKeymaster.h>
+#include <JavacardKeymaster4Device.h>
+#include <SocketTransport.h>
 #include <android-base/logging.h>
 #include <android/hardware/keymaster/4.1/IKeymasterDevice.h>
 #include <hidl/HidlTransportSupport.h>
-#include <JavacardKeymaster4Device.h>
-#include <JavacardKeymaster.h>
 #include <keymaster/km_version.h>
-#include <SocketTransport.h>
-#include "KMUtils.h"
 using namespace javacard_keymaster;
-using ::javacard_keymaster::JavacardSecureElement;
 using ::javacard_keymaster::JavacardKeymaster;
+using ::javacard_keymaster::JavacardSecureElement;
 using ::javacard_keymaster::SocketTransport;
 using ::keymaster::V4_1::javacard::JavacardKeymaster4Device;
 
 int main() {
     ::android::hardware::configureRpcThreadpool(1, true);
-    std::shared_ptr<JavacardSecureElement> card =
-        std::make_shared<JavacardSecureElement>(KmVersion::KEYMASTER_4_1, std::make_shared<SocketTransport>(), getOsVersion(),
-                                                getOsPatchlevel(), getVendorPatchlevel());
+    std::shared_ptr<JavacardSecureElement> card = std::make_shared<JavacardSecureElement>(
+        KmVersion::KEYMASTER_4_1, std::make_shared<SocketTransport>(), getOsVersion(),
+        getOsPatchlevel(), getVendorPatchlevel());
     std::shared_ptr<JavacardKeymaster> jcImpl = std::make_shared<JavacardKeymaster>(card);
     auto keymaster = new JavacardKeymaster4Device(jcImpl);
     auto status = keymaster->registerAsService("strongbox");

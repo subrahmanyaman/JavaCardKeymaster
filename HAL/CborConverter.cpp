@@ -97,11 +97,10 @@ bool CborConverter::addKeyparameters(Array& array, const keymaster_key_param_set
     return true;
 }
 
-
 bool CborConverter::getKeyCharacteristics(const std::unique_ptr<Item>& item, const uint32_t pos,
-                               AuthorizationSet& swEnforced,
-                               AuthorizationSet& hwEnforced,
-                               AuthorizationSet& teeEnforced) {
+                                          AuthorizationSet& swEnforced,
+                                          AuthorizationSet& hwEnforced,
+                                          AuthorizationSet& teeEnforced) {
     unique_ptr<Item> arrayItem(nullptr);
     getItemAtPos(item, pos, arrayItem);
     if ((arrayItem == nullptr) || (MajorType::ARRAY != getType(arrayItem))) return false;
@@ -114,8 +113,9 @@ bool CborConverter::getKeyCharacteristics(const std::unique_ptr<Item>& item, con
     return true;
 }
 
-bool CborConverter::getKeyParameter(const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
-                         AuthorizationSet& keyParams) {
+bool CborConverter::getKeyParameter(
+    const std::pair<const unique_ptr<Item>&, const unique_ptr<Item>&> pair,
+    AuthorizationSet& keyParams) {
     uint64_t key;
     uint64_t value;
     if (!getUint64(pair.first, key)) {
@@ -217,7 +217,7 @@ bool CborConverter::getKeyParameter(const std::pair<const unique_ptr<Item>&, con
         keyParam.blob.data = keymaster::dup_buffer(bstr->value().data(), blobSize);
         keyParam.blob.data_length = blobSize;
         keyParams.push_back(keyParam);
-        } break;
+    } break;
     default:
         /* Invalid - return error */
         return false;
@@ -285,8 +285,7 @@ bool CborConverter::getSharedSecretParameters(const unique_ptr<Item>& item, cons
     return true;
 }
 
-bool CborConverter::addSharedSecretParameters(Array& array,
-                                              vector<HmacSharingParameters> params) {
+bool CborConverter::addSharedSecretParameters(Array& array, vector<HmacSharingParameters> params) {
     Array cborParamsVec;
     for (auto param : params) {
         Array cborParam;
@@ -308,7 +307,8 @@ bool CborConverter::addTimeStampToken(Array& array, const TimestampToken& token)
     return true;
 }
 
-bool CborConverter::addVerificationToken(Array& vToken, const VerificationToken& token, const vector<uint8_t>& encodedParamsVerified) {
+bool CborConverter::addVerificationToken(Array& vToken, const VerificationToken& token,
+                                         const vector<uint8_t>& encodedParamsVerified) {
     vector<uint8_t> mac(token.mac.begin(), token.mac.end());
     vToken.add(token.challenge);
     vToken.add(token.timestamp);
@@ -363,15 +363,14 @@ bool CborConverter::getTimeStampToken(const unique_ptr<Item>& item, const uint32
 }
 
 bool CborConverter::getVerificationToken(const unique_ptr<Item>& item, const uint32_t pos,
-                                      VerificationToken& token) {
+                                         VerificationToken& token) {
     // {challenge, timestamp, parametersVerified, securityLevel, Mac}
     std::vector<uint8_t> mac;
     uint64_t securityLevel;
     if (!getUint64<uint64_t>(item, pos, token.challenge) ||
         !getUint64<uint64_t>(item, pos + 1, token.timestamp) ||
         !getKeyParameters(item, pos + 2, token.parameters_verified) ||
-        !getUint64<uint64_t>(item, pos + 3, securityLevel) ||
-        !getBinaryArray(item, pos + 4, mac)) {
+        !getUint64<uint64_t>(item, pos + 3, securityLevel) || !getBinaryArray(item, pos + 4, mac)) {
         return false;
     }
     token.security_level = static_cast<keymaster_security_level_t>(securityLevel);
@@ -380,7 +379,7 @@ bool CborConverter::getVerificationToken(const unique_ptr<Item>& item, const uin
 }
 
 bool CborConverter::getArrayItem(const std::unique_ptr<Item>& item, const uint32_t pos,
-                             Array& array) {
+                                 Array& array) {
     unique_ptr<Item> arrayItem(nullptr);
     getItemAtPos(item, pos, arrayItem);
     if ((arrayItem == nullptr) || (MajorType::ARRAY != getType(arrayItem))) return false;
@@ -388,8 +387,7 @@ bool CborConverter::getArrayItem(const std::unique_ptr<Item>& item, const uint32
     return true;
 }
 
-bool CborConverter::getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos,
-                             Map& map) {
+bool CborConverter::getMapItem(const std::unique_ptr<Item>& item, const uint32_t pos, Map& map) {
     unique_ptr<Item> mapItem(nullptr);
     getItemAtPos(item, pos, mapItem);
     if ((mapItem == nullptr) || (MajorType::MAP != getType(mapItem))) return false;
@@ -424,9 +422,9 @@ bool CborConverter::getCertificateChain(const std::unique_ptr<Item>& item, const
 
     const Array* arr = arrayItem.get()->asArray();
     size_t arrSize = arr->size();
-    for (int i = (arrSize -1); i >= 0; i--) {
+    for (int i = (arrSize - 1); i >= 0; i--) {
         if (!getBinaryArray(arrayItem, i, cert)) return false;
-        uint8_t *blob = new (std::nothrow) uint8_t[cert.size()];
+        uint8_t* blob = new (std::nothrow) uint8_t[cert.size()];
         memcpy(blob, cert.data(), cert.size());
         certChain.push_front({blob, cert.size()});
         cert.clear();
@@ -453,4 +451,4 @@ CborConverter::decodeKeyblob(const vector<uint8_t>& keyblob) {
     return {std::move(item), KM_ERROR_OK};
 }
 
-}  // namespace keymint::javacard
+}  // namespace javacard_keymaster

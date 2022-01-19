@@ -19,17 +19,20 @@
 
 namespace aidl::android::hardware::security::keymint {
 
-keymaster_error_t legacyHardwareAuthToken(const HardwareAuthToken& aidlToken, LegacyHardwareAuthToken* legacyToken) {
+keymaster_error_t legacyHardwareAuthToken(const HardwareAuthToken& aidlToken,
+                                          LegacyHardwareAuthToken* legacyToken) {
     legacyToken->challenge = aidlToken.challenge;
     legacyToken->user_id = aidlToken.userId;
     legacyToken->authenticator_id = aidlToken.authenticatorId;
-    legacyToken->authenticator_type = static_cast<hw_authenticator_type_t>(aidlToken.authenticatorType);
+    legacyToken->authenticator_type =
+        static_cast<hw_authenticator_type_t>(aidlToken.authenticatorType);
     legacyToken->timestamp = aidlToken.timestamp.milliSeconds;
     Vec2KmBlob(aidlToken.mac, &legacyToken->mac);
     return KM_ERROR_OK;
 }
 
-keymaster_error_t encodeTimestampToken(const TimeStampToken& timestampToken, vector<uint8_t>* encodedToken) {
+keymaster_error_t encodeTimestampToken(const TimeStampToken& timestampToken,
+                                       vector<uint8_t>* encodedToken) {
     cppbor::Array array;
     ::keymaster::TimestampToken token;
     array.add(static_cast<uint64_t>(timestampToken.challenge));
@@ -39,4 +42,4 @@ keymaster_error_t encodeTimestampToken(const TimeStampToken& timestampToken, vec
     return KM_ERROR_OK;
 }
 
-}  // aidl::android::hardware::security::keymint
+}  // namespace aidl::android::hardware::security::keymint

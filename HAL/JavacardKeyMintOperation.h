@@ -19,10 +19,10 @@
 #include "CborConverter.h"
 #include "JavacardSecureElement.h"
 
+#include <JavacardKeymasterOperation.h>
 #include <aidl/android/hardware/security/keymint/BnKeyMintOperation.h>
 #include <aidl/android/hardware/security/secureclock/ISecureClock.h>
 #include <hardware/keymaster_defs.h>
-#include <JavacardKeymasterOperation.h>
 #include <vector>
 
 #define AES_BLOCK_SIZE 16
@@ -38,7 +38,6 @@ using std::optional;
 using std::shared_ptr;
 using std::string;
 using std::vector;
-
 
 class JavacardKeyMintOperation : public BnKeyMintOperation {
   public:
@@ -63,7 +62,7 @@ class JavacardKeyMintOperation : public BnKeyMintOperation {
 
     ScopedAStatus abort() override;
 
-private:
+  private:
     std::shared_ptr<JavacardKeymasterOperation> jcKmOprImpl_;
 };
 

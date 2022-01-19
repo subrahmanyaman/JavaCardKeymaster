@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#include <openssl/evp.h>
-#include <openssl/rsa.h>
-#include <openssl/ec.h>
-#include <openssl/bn.h>
-#include <openssl/nid.h>
-#include <memory>
-#include <keymaster/km_openssl/asymmetric_key.h>
-#include <keymaster/km_openssl/openssl_utils.h>
-#include <keymaster/km_openssl/openssl_err.h>
-#include <keymaster/km_openssl/ec_key_factory.h>
-#include <keymaster/km_openssl/rsa_key_factory.h>
-#include <keymaster/authorization_set.h>
+#include <CborConverter.h>
 #include <JavacardSoftKeymasterContext.h>
 #include <android-base/logging.h>
-#include <CborConverter.h>
+#include <keymaster/authorization_set.h>
+#include <keymaster/km_openssl/asymmetric_key.h>
+#include <keymaster/km_openssl/ec_key_factory.h>
+#include <keymaster/km_openssl/openssl_err.h>
+#include <keymaster/km_openssl/openssl_utils.h>
+#include <keymaster/km_openssl/rsa_key_factory.h>
+#include <memory>
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/evp.h>
+#include <openssl/nid.h>
+#include <openssl/rsa.h>
 
 using std::unique_ptr;
 
@@ -41,32 +41,32 @@ constexpr int kKeyblobPubKeyOffset = 4;
 constexpr int kKeyblobKeyCharsOffset = 3;
 using ::keymaster::PureSoftKeymasterContext;
 
-JavaCardSoftKeymasterContext::JavaCardSoftKeymasterContext(keymaster_security_level_t security_level)
+JavaCardSoftKeymasterContext::JavaCardSoftKeymasterContext(
+    keymaster_security_level_t security_level)
     : PureSoftKeymasterContext(KmVersion::KEYMASTER_4_1, security_level) {}
 
 JavaCardSoftKeymasterContext::~JavaCardSoftKeymasterContext() {}
 
 EVP_PKEY* RSA_fromMaterial(const uint8_t* modulus, size_t mod_size) {
-    BIGNUM *n = BN_bin2bn(modulus, mod_size, NULL);
-    BIGNUM *e = BN_new();//bignum_decode(exp, 5);
+    BIGNUM* n = BN_bin2bn(modulus, mod_size, NULL);
+    BIGNUM* e = BN_new();  // bignum_decode(exp, 5);
     char exp[] = "65537";
     BN_dec2bn(&e, exp);
 
-   if (!n || !e)
-    return NULL;
+    if (!n || !e) return NULL;
 
-   if (e && n) {
-       EVP_PKEY* pRsaKey = EVP_PKEY_new();
-       RSA* rsa = RSA_new();
-       rsa->e = e;
-       rsa->n = n;
-       EVP_PKEY_assign_RSA(pRsaKey, rsa);
-       return pRsaKey;
-   } else {
-       if (n) BN_free(n);
-       if (e) BN_free(e);
-       return NULL;
-   }
+    if (e && n) {
+        EVP_PKEY* pRsaKey = EVP_PKEY_new();
+        RSA* rsa = RSA_new();
+        rsa->e = e;
+        rsa->n = n;
+        EVP_PKEY_assign_RSA(pRsaKey, rsa);
+        return pRsaKey;
+    } else {
+        if (n) BN_free(n);
+        if (e) BN_free(e);
+        return NULL;
+    }
 }
 
 EC_GROUP* ChooseGroup(keymaster_ec_curve_t ec_curve) {
@@ -90,55 +90,54 @@ EC_GROUP* ChooseGroup(keymaster_ec_curve_t ec_curve) {
 }
 
 EVP_PKEY* EC_fromMaterial(const uint8_t* pub_key, size_t key_size, keymaster_ec_curve_t ec_curve) {
-    
-    EC_GROUP *ec_group = ChooseGroup(ec_curve);
-    EC_POINT *p = EC_POINT_new(ec_group);
-    EC_KEY *ec_key = EC_KEY_new();
-    EVP_PKEY *pEcKey = EVP_PKEY_new();
 
-    if((EC_KEY_set_group(ec_key, ec_group) != 1) || (EC_POINT_oct2point(ec_group, p, pub_key, key_size, NULL) != 1)
-        || (EC_KEY_set_public_key(ec_key, p) != 1) || (EVP_PKEY_set1_EC_KEY(pEcKey, ec_key) != 1)) {
+    EC_GROUP* ec_group = ChooseGroup(ec_curve);
+    EC_POINT* p = EC_POINT_new(ec_group);
+    EC_KEY* ec_key = EC_KEY_new();
+    EVP_PKEY* pEcKey = EVP_PKEY_new();
+
+    if ((EC_KEY_set_group(ec_key, ec_group) != 1) ||
+        (EC_POINT_oct2point(ec_group, p, pub_key, key_size, NULL) != 1) ||
+        (EC_KEY_set_public_key(ec_key, p) != 1) || (EVP_PKEY_set1_EC_KEY(pEcKey, ec_key) != 1)) {
         return NULL;
     }
 
     return pEcKey;
 }
 
-keymaster_error_t JavaCardSoftKeymasterContext::LoadKey(const keymaster_algorithm_t algorithm, KeymasterKeyBlob&& key_material,
-                                                AuthorizationSet&& hw_enforced,
-                                                AuthorizationSet&& sw_enforced,
-                                                UniquePtr<Key>* key) const {
-    auto factory = (AsymmetricKeyFactory*) GetKeyFactory(algorithm);
+keymaster_error_t JavaCardSoftKeymasterContext::LoadKey(const keymaster_algorithm_t algorithm,
+                                                        KeymasterKeyBlob&& key_material,
+                                                        AuthorizationSet&& hw_enforced,
+                                                        AuthorizationSet&& sw_enforced,
+                                                        UniquePtr<Key>* key) const {
+    auto factory = (AsymmetricKeyFactory*)GetKeyFactory(algorithm);
     UniquePtr<AsymmetricKey> asym_key;
     keymaster_error_t error = KM_ERROR_OK;
     const uint8_t* tmp = key_material.key_material;
     const size_t temp_size = key_material.key_material_size;
     EVP_PKEY* pkey = NULL;
 
-    if(algorithm == KM_ALGORITHM_RSA) {
+    if (algorithm == KM_ALGORITHM_RSA) {
         pkey = RSA_fromMaterial(tmp, temp_size);
-    } else if(algorithm == KM_ALGORITHM_EC) {
+    } else if (algorithm == KM_ALGORITHM_EC) {
         keymaster_ec_curve_t ec_curve;
         uint32_t keySize;
         if (!hw_enforced.GetTagValue(TAG_EC_CURVE, &ec_curve) &&
             !sw_enforced.GetTagValue(TAG_EC_CURVE, &ec_curve)) {
-            if(!hw_enforced.GetTagValue(TAG_KEY_SIZE, &keySize) &&
+            if (!hw_enforced.GetTagValue(TAG_KEY_SIZE, &keySize) &&
                 !sw_enforced.GetTagValue(TAG_KEY_SIZE, &keySize)) {
                 return KM_ERROR_INVALID_ARGUMENT;
             }
             error = EcKeySizeToCurve(keySize, &ec_curve);
-            if(error != KM_ERROR_OK)
-                return error;
+            if (error != KM_ERROR_OK) return error;
         }
         pkey = EC_fromMaterial(tmp, temp_size, ec_curve);
     }
-    if (!pkey)
-        return TranslateLastOpenSslError();
+    if (!pkey) return TranslateLastOpenSslError();
     UniquePtr<EVP_PKEY, EVP_PKEY_Delete> pkey_deleter(pkey);
 
     error = factory->CreateEmptyKey(move(hw_enforced), move(sw_enforced), &asym_key);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (error != KM_ERROR_OK) return error;
 
     asym_key->key_material() = move(key_material);
     if (!asym_key->EvpToInternal(pkey))
@@ -149,13 +148,16 @@ keymaster_error_t JavaCardSoftKeymasterContext::LoadKey(const keymaster_algorith
     return error;
 }
 
-keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyBlob& blob,
-                                                         const AuthorizationSet& /*additional_params*/,
-                                                         UniquePtr<Key>* key) const {
+keymaster_error_t
+JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyBlob& blob,
+                                           const AuthorizationSet& /*additional_params*/,
+                                           UniquePtr<Key>* key) const {
 
-    // The JavaCardSoftKeymasterContext handle a key blob generated by JavaCard keymaster for public key operations.
+    // The JavaCardSoftKeymasterContext handle a key blob generated by JavaCard keymaster for public
+    // key operations.
     //
-    // 1.  A JavaCard keymaster key blob is a CborEncoded data of Secret, Nonce, AuthTag, KeyCharectristics and Public key.
+    // 1.  A JavaCard keymaster key blob is a CborEncoded data of Secret, Nonce, AuthTag,
+    // KeyCharectristics and Public key.
     //     Here in public key operation we need only KeyCharectristics and Public key.
     //     Once these values extracted Public key is created based on parameters and returned.
     //
@@ -164,9 +166,9 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
     KeymasterKeyBlob key_material;
     keymaster_error_t error = KM_ERROR_OK;
 
-    auto constructKey = [&, this] () mutable -> keymaster_error_t {
+    auto constructKey = [&, this]() mutable -> keymaster_error_t {
         keymaster_algorithm_t algorithm;
-        if(error != KM_ERROR_OK) {
+        if (error != KM_ERROR_OK) {
             return error;
         }
         if (!hw_enforced.GetTagValue(TAG_ALGORITHM, &algorithm) &&
@@ -177,8 +179,7 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
         if (algorithm != KM_ALGORITHM_RSA && algorithm != KM_ALGORITHM_EC) {
             return KM_ERROR_INCOMPATIBLE_ALGORITHM;
         }
-        error = LoadKey(algorithm, move(key_material), move(hw_enforced),
-                                move(sw_enforced), key);
+        error = LoadKey(algorithm, move(key_material), move(hw_enforced), move(sw_enforced), key);
         return error;
     };
     CborConverter cbor_;
@@ -188,10 +189,11 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
         AuthorizationSet _;
         // Read public key from keyblob. For symmetric keys the data
         // will be empty so ignore the error.
-        if(cbor_.getBinaryArray(item, kKeyblobPubKeyOffset, pubKey)) {
+        if (cbor_.getBinaryArray(item, kKeyblobPubKeyOffset, pubKey)) {
             key_material = {pubKey.data(), pubKey.size()};
         }
-        if (!cbor_.getKeyCharacteristics(item, kKeyblobKeyCharsOffset, sw_enforced, hw_enforced, _)) {
+        if (!cbor_.getKeyCharacteristics(item, kKeyblobKeyCharsOffset, sw_enforced, hw_enforced,
+                                         _)) {
             return KM_ERROR_INVALID_KEY_BLOB;
         }
         return constructKey();
@@ -199,6 +201,6 @@ keymaster_error_t JavaCardSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyB
     return KM_ERROR_INVALID_KEY_BLOB;
 }
 
-} // javacard
-} // V4_1
-}  // keymaster
+}  // namespace javacard
+}  // namespace V4_1
+}  // namespace keymaster

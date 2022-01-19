@@ -30,50 +30,43 @@ namespace aidl::android::hardware::security::keymint {
 using namespace ::javacard_keymaster;
 using ndk::ScopedAStatus;
 
-class JavacardRemotelyProvisionedComponentDevice
-    : public BnRemotelyProvisionedComponent {
- public:
-  explicit JavacardRemotelyProvisionedComponentDevice(
-      shared_ptr<JavacardSecureElement> card)
-      : card_(card) {}
+class JavacardRemotelyProvisionedComponentDevice : public BnRemotelyProvisionedComponent {
+  public:
+    explicit JavacardRemotelyProvisionedComponentDevice(shared_ptr<JavacardSecureElement> card)
+        : card_(card) {}
 
-  virtual ~JavacardRemotelyProvisionedComponentDevice() = default;
+    virtual ~JavacardRemotelyProvisionedComponentDevice() = default;
 
-  ScopedAStatus getHardwareInfo(RpcHardwareInfo* info) override;
+    ScopedAStatus getHardwareInfo(RpcHardwareInfo* info) override;
 
-  ScopedAStatus generateEcdsaP256KeyPair(
-      bool testMode, MacedPublicKey* macedPublicKey,
-      std::vector<uint8_t>* privateKeyHandle) override;
+    ScopedAStatus generateEcdsaP256KeyPair(bool testMode, MacedPublicKey* macedPublicKey,
+                                           std::vector<uint8_t>* privateKeyHandle) override;
 
-  ScopedAStatus generateCertificateRequest(
-      bool testMode, const std::vector<MacedPublicKey>& keysToSign,
-      const std::vector<uint8_t>& endpointEncCertChain,
-      const std::vector<uint8_t>& challenge, DeviceInfo* deviceInfo,
-      ProtectedData* protectedData,
-      std::vector<uint8_t>* keysToSignMac) override;
+    ScopedAStatus generateCertificateRequest(bool testMode,
+                                             const std::vector<MacedPublicKey>& keysToSign,
+                                             const std::vector<uint8_t>& endpointEncCertChain,
+                                             const std::vector<uint8_t>& challenge,
+                                             DeviceInfo* deviceInfo, ProtectedData* protectedData,
+                                             std::vector<uint8_t>* keysToSignMac) override;
 
- private:
-  ScopedAStatus beginSendData(bool testMode,
-                              const std::vector<MacedPublicKey>& keysToSign);
+  private:
+    ScopedAStatus beginSendData(bool testMode, const std::vector<MacedPublicKey>& keysToSign);
 
-  ScopedAStatus updateMacedKey(const std::vector<MacedPublicKey>& keysToSign);
+    ScopedAStatus updateMacedKey(const std::vector<MacedPublicKey>& keysToSign);
 
-  ScopedAStatus updateChallenge(const std::vector<uint8_t>& challenge);
+    ScopedAStatus updateChallenge(const std::vector<uint8_t>& challenge);
 
-  ScopedAStatus updateEEK(const std::vector<uint8_t>& endpointEncCertChain);
+    ScopedAStatus updateEEK(const std::vector<uint8_t>& endpointEncCertChain);
 
-  ScopedAStatus finishSendData(std::vector<uint8_t>* keysToSignMac,
-                               DeviceInfo* deviceInfo,
-                               std::vector<uint8_t>& coseEncryptProtectedHeader,
-                               cppbor::Map& coseEncryptUnProtectedHeader,
-                               std::vector<uint8_t>& partialCipheredData,
-                               uint32_t& respFlag);
+    ScopedAStatus finishSendData(std::vector<uint8_t>* keysToSignMac, DeviceInfo* deviceInfo,
+                                 std::vector<uint8_t>& coseEncryptProtectedHeader,
+                                 cppbor::Map& coseEncryptUnProtectedHeader,
+                                 std::vector<uint8_t>& partialCipheredData, uint32_t& respFlag);
 
-  ScopedAStatus getResponse(std::vector<uint8_t>& partialCipheredData,
-                            cppbor::Array& recepientStructure,
-                            uint32_t& respFlag);
-  std::shared_ptr<JavacardSecureElement> card_;
-  CborConverter cbor_;
+    ScopedAStatus getResponse(std::vector<uint8_t>& partialCipheredData,
+                              cppbor::Array& recepientStructure, uint32_t& respFlag);
+    std::shared_ptr<JavacardSecureElement> card_;
+    CborConverter cbor_;
 };
 
 }  // namespace aidl::android::hardware::security::keymint

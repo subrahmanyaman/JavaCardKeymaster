@@ -17,6 +17,9 @@
 #define LOG_TAG "javacard.keymint.device.strongbox-impl"
 #include "JavacardKeyMintDevice.h"
 #include "JavacardKeyMintOperation.h"
+#include <JavacardKeyMintUtils.h>
+#include <JavacardKeymaster.h>
+#include <KMUtils.h>
 #include <KeyMintUtils.h>
 #include <algorithm>
 #include <android-base/logging.h>
@@ -30,9 +33,6 @@
 #include <regex.h>
 #include <string>
 #include <vector>
-#include <JavacardKeymaster.h>
-#include <KMUtils.h>
-#include <JavacardKeyMintUtils.h>
 
 namespace aidl::android::hardware::security::keymint {
 using km_utils::KmParamSet;
@@ -57,13 +57,17 @@ vector<KeyCharacteristics> convertKeyCharacteristics(AuthorizationSet& keystoreE
                                                      AuthorizationSet& teeEnforced) {
     vector<KeyCharacteristics> retval;
     // VTS will fail if the authorizations list is empty.
-    if(!sbEnforced.empty()) retval.push_back({SecurityLevel::STRONGBOX, kmParamSet2Aidl(sbEnforced)});
-    if(!teeEnforced.empty()) retval.push_back({SecurityLevel::TRUSTED_ENVIRONMENT, kmParamSet2Aidl(teeEnforced)});
-    if(!keystoreEnforced.empty()) retval.push_back({SecurityLevel::KEYSTORE, kmParamSet2Aidl(keystoreEnforced)});
+    if (!sbEnforced.empty())
+        retval.push_back({SecurityLevel::STRONGBOX, kmParamSet2Aidl(sbEnforced)});
+    if (!teeEnforced.empty())
+        retval.push_back({SecurityLevel::TRUSTED_ENVIRONMENT, kmParamSet2Aidl(teeEnforced)});
+    if (!keystoreEnforced.empty())
+        retval.push_back({SecurityLevel::KEYSTORE, kmParamSet2Aidl(keystoreEnforced)});
     return retval;
 }
 
-std::optional<JCKMAttestationKey> convertAttestationKey(const std::optional<AttestationKey>& attestationKey) {
+std::optional<JCKMAttestationKey>
+convertAttestationKey(const std::optional<AttestationKey>& attestationKey) {
     JCKMAttestationKey key;
     if (attestationKey.has_value()) {
         key.params.Reinitialize(KmParamSet(attestationKey->attestKeyParams));
@@ -89,7 +93,7 @@ void legacyHardwareAuthToken(const std::optional<HardwareAuthToken>& aidlToken, 
     }
 }
 #endif
-} // anonymous namespace
+}  // anonymous namespace
 
 ScopedAStatus JavacardKeyMintDevice::defaultHwInfo(KeyMintHardwareInfo* info) {
     info->versionNumber = 1;
@@ -130,22 +134,25 @@ ScopedAStatus JavacardKeyMintDevice::generateKey(const vector<KeyParameter>& key
     AuthorizationSet teeEnforced;
     paramSet.Reinitialize(KmParamSet(keyParams));
 
-    auto err = jcImpl_->generateKey(paramSet, &creationResult->keyBlob, &swEnforced, &sbEnforced, &teeEnforced);
+    auto err = jcImpl_->generateKey(paramSet, &creationResult->keyBlob, &swEnforced, &sbEnforced,
+                                    &teeEnforced);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in generateKey err: " << (int32_t) err;
+        LOG(ERROR) << "Failed in generateKey err: " << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
     }
     // Call attestKey only Asymmetric algorithms.
     keymaster_algorithm_t algorithm;
     paramSet.GetTagValue(TAG_ALGORITHM, &algorithm);
     if (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC) {
-        err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey), &creationResult->certificateChain);
+        err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey),
+                        &creationResult->certificateChain);
         if (err != KM_ERROR_OK) {
             LOG(ERROR) << "Failed in attestKey err: " << (int32_t)err;
             return km_utils::kmError2ScopedAStatus(err);
         }
     }
-    creationResult->keyCharacteristics = convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
+    creationResult->keyCharacteristics =
+        convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
     return ScopedAStatus::ok();
 }
 
@@ -154,13 +161,13 @@ ScopedAStatus JavacardKeyMintDevice::addRngEntropy(const vector<uint8_t>& data) 
     return km_utils::kmError2ScopedAStatus(err);
 }
 
-keymaster_error_t JavacardKeyMintDevice::attestKey(const vector<uint8_t>& keyblob,
-                                               const AuthorizationSet& keyParams,
-                                               const optional<JCKMAttestationKey>& attestationKey,
-                                               vector<Certificate>* certificateChain) {
-    ::keymaster::CertificateChain certChain;                                                      
+keymaster_error_t
+JavacardKeyMintDevice::attestKey(const vector<uint8_t>& keyblob, const AuthorizationSet& keyParams,
+                                 const optional<JCKMAttestationKey>& attestationKey,
+                                 vector<Certificate>* certificateChain) {
+    ::keymaster::CertificateChain certChain;
     auto err = jcImpl_->attestKey(keyblob, keyParams, attestationKey, &certChain);
-     if (err != KM_ERROR_OK) {
+    if (err != KM_ERROR_OK) {
         return err;
     }
     *certificateChain = convertCertificateChain(certChain);
@@ -182,20 +189,22 @@ ScopedAStatus JavacardKeyMintDevice::importKey(const vector<KeyParameter>& keyPa
     auto err = jcImpl_->importKey(paramSet, static_cast<keymaster_key_format_t>(keyFormat), keyData,
                                   &creationResult->keyBlob, &swEnforced, &sbEnforced, &teeEnforced);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in importKey" << (int32_t) err;
+        LOG(ERROR) << "Failed in importKey" << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
     }
     // Call attestKey only Asymmetric algorithms.
     keymaster_algorithm_t algorithm;
     paramSet.GetTagValue(TAG_ALGORITHM, &algorithm);
     if (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC) {
-        err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey), &creationResult->certificateChain);
+        err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey),
+                        &creationResult->certificateChain);
         if (err != KM_ERROR_OK) {
             LOG(ERROR) << "Failed in attestKey" << (int32_t)err;
             return km_utils::kmError2ScopedAStatus(err);
         }
     }
-    creationResult->keyCharacteristics = convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
+    creationResult->keyCharacteristics =
+        convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
     return ScopedAStatus::ok();
 }
 
@@ -212,16 +221,16 @@ ScopedAStatus JavacardKeyMintDevice::importWrappedKey(const vector<uint8_t>& wra
     vector<uint8_t> retKeyblob;
     paramSet.Reinitialize(KmParamSet(unwrappingParams));
     auto err = jcImpl_->importWrappedKey(wrappedKeyData, wrappingKeyBlob, maskingKey, paramSet,
-                                         passwordSid, biometricSid, &creationResult->keyBlob, &swEnforced,
-                                         &sbEnforced, &teeEnforced);
+                                         passwordSid, biometricSid, &creationResult->keyBlob,
+                                         &swEnforced, &sbEnforced, &teeEnforced);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in attestKey" << (int32_t) err;
+        LOG(ERROR) << "Failed in attestKey" << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
     }
-    creationResult->keyCharacteristics = convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
+    creationResult->keyCharacteristics =
+        convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
     return ScopedAStatus::ok();
 }
-
 
 ScopedAStatus JavacardKeyMintDevice::upgradeKey(const vector<uint8_t>& keyBlobToUpgrade,
                                                 const vector<KeyParameter>& upgradeParams,
@@ -258,19 +267,17 @@ ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector
     ::keymaster::HardwareAuthToken legacyToken;
     std::unique_ptr<JavacardKeymasterOperation> operation;
     legacyHardwareAuthToken(aToken, &legacyToken);
-    auto err = jcImpl_->begin(static_cast<keymaster_purpose_t>(purpose), keyBlob, paramSet, legacyToken,
-                         &outParams, operation);
+    auto err = jcImpl_->begin(static_cast<keymaster_purpose_t>(purpose), keyBlob, paramSet,
+                              legacyToken, &outParams, operation);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "Failed in begin" << (int32_t) err;
+        LOG(ERROR) << "Failed in begin" << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
     }
     result->challenge = operation->getOpertionHandle();
     result->operation = ndk::SharedRefBase::make<JavacardKeyMintOperation>(std::move(operation));
     result->params = kmParamSet2Aidl(outParams);
-    return ScopedAStatus::ok();                         
+    return ScopedAStatus::ok();
 }
-
-
 
 ScopedAStatus
 JavacardKeyMintDevice::deviceLocked(bool passwordOnly,
@@ -279,13 +286,12 @@ JavacardKeyMintDevice::deviceLocked(bool passwordOnly,
     vector<uint8_t> encodedTimestampToken;
     auto err = encodeTimestampToken(tToken, &encodedTimestampToken);
     if (err != KM_ERROR_OK) {
-        LOG(ERROR) << "In deviceLocked failed to encode TimeStampToken" << (int32_t) err;
+        LOG(ERROR) << "In deviceLocked failed to encode TimeStampToken" << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
     }
     err = jcImpl_->deviceLocked(passwordOnly, encodedTimestampToken);
     return km_utils::kmError2ScopedAStatus(err);
 }
-
 
 ScopedAStatus JavacardKeyMintDevice::earlyBootEnded() {
     auto err = jcImpl_->earlyBootEnded();
@@ -299,12 +305,12 @@ ScopedAStatus JavacardKeyMintDevice::getKeyCharacteristics(
     AuthorizationSet swEnforced;
     AuthorizationSet sbEnforced;
     AuthorizationSet teeEnforced;
-    auto err = jcImpl_->getKeyCharacteristics(keyBlob, appId, appData, &swEnforced,
-                                         &sbEnforced, &teeEnforced);
+    auto err = jcImpl_->getKeyCharacteristics(keyBlob, appId, appData, &swEnforced, &sbEnforced,
+                                              &teeEnforced);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending in getKeyCharacteristics.";
         return km_utils::kmError2ScopedAStatus(err);
-    }                                         
+    }
     *result = convertKeyCharacteristics(swEnforced, sbEnforced, teeEnforced);
     return ScopedAStatus::ok();
 }

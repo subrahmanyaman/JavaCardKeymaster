@@ -50,11 +50,11 @@ enum class BufferingMode : int32_t {
                         // will further check according to exact key size and crypto provider.
     EC_NO_DIGEST = 2,   // Buffer upto 65 bytes and then truncate. Javacard will further truncate
                         // upto exact keysize.
-    BUF_AES_ENCRYPT_PKCS7_BLOCK_ALIGNED = 3, // Buffer 16 bytes.
-    BUF_AES_DECRYPT_PKCS7_BLOCK_ALIGNED = 4, // Buffer 16 bytes.
-    BUF_DES_ENCRYPT_PKCS7_BLOCK_ALIGNED = 5, // Buffer 8 bytes.
-    BUF_DES_DECRYPT_PKCS7_BLOCK_ALIGNED = 6, // Buffer 8 bytes.
-    BUF_AES_GCM_DECRYPT_BLOCK_ALIGNED = 7, // Buffer 16 bytes.
+    BUF_AES_ENCRYPT_PKCS7_BLOCK_ALIGNED = 3,  // Buffer 16 bytes.
+    BUF_AES_DECRYPT_PKCS7_BLOCK_ALIGNED = 4,  // Buffer 16 bytes.
+    BUF_DES_ENCRYPT_PKCS7_BLOCK_ALIGNED = 5,  // Buffer 8 bytes.
+    BUF_DES_DECRYPT_PKCS7_BLOCK_ALIGNED = 6,  // Buffer 8 bytes.
+    BUF_AES_GCM_DECRYPT_BLOCK_ALIGNED = 7,    // Buffer 16 bytes.
 
 };
 
@@ -69,45 +69,40 @@ struct DataView {
 
 class JavacardKeymasterOperation {
   public:
-    explicit JavacardKeymasterOperation(uint64_t opHandle,
-                                      BufferingMode bufferingMode,
-                                      uint16_t macLength,
-                                      shared_ptr<JavacardSecureElement> card,
-                                      OperationType operType,
-                                      shared_ptr<IJavacardSeResetListener> seResetListener)
+    explicit JavacardKeymasterOperation(uint64_t opHandle, BufferingMode bufferingMode,
+                                        uint16_t macLength, shared_ptr<JavacardSecureElement> card,
+                                        OperationType operType,
+                                        shared_ptr<IJavacardSeResetListener> seResetListener)
         : buffer_(vector<uint8_t>()), bufferingMode_(bufferingMode), macLength_(macLength),
-          card_(card), opHandle_(opHandle), operType_(operType), seResetListener_(seResetListener), softKm_(nullptr)  {}
-    explicit JavacardKeymasterOperation(uint64_t opHandle,
-                                      BufferingMode bufferingMode,
-                                      uint16_t macLength,
-                                      shared_ptr<JavacardSecureElement> card,
-                                      OperationType operType,
-                                      std::shared_ptr<::keymaster::AndroidKeymaster> softKm)
+          card_(card), opHandle_(opHandle), operType_(operType), seResetListener_(seResetListener),
+          softKm_(nullptr) {}
+    explicit JavacardKeymasterOperation(uint64_t opHandle, BufferingMode bufferingMode,
+                                        uint16_t macLength, shared_ptr<JavacardSecureElement> card,
+                                        OperationType operType,
+                                        std::shared_ptr<::keymaster::AndroidKeymaster> softKm)
         : buffer_(vector<uint8_t>()), bufferingMode_(bufferingMode), macLength_(macLength),
-          card_(card), opHandle_(opHandle), operType_(operType), seResetListener_(nullptr), softKm_(softKm)  {}
+          card_(card), opHandle_(opHandle), operType_(operType), seResetListener_(nullptr),
+          softKm_(softKm) {}
     virtual ~JavacardKeymasterOperation();
-    
+
     uint64_t getOpertionHandle() { return opHandle_; }
 
     OperationType getOperationType() { return operType_; }
 
-    keymaster_error_t update(const vector<uint8_t>& input, const std::optional<AuthorizationSet>& inParams, const HardwareAuthToken& authToken,
-                         const vector<uint8_t>& encodedVerificationToken,
-                         AuthorizationSet *outParams, uint32_t *inputConsumed,vector<uint8_t>* output);
-    
+    keymaster_error_t
+    update(const vector<uint8_t>& input, const std::optional<AuthorizationSet>& inParams,
+           const HardwareAuthToken& authToken, const vector<uint8_t>& encodedVerificationToken,
+           AuthorizationSet* outParams, uint32_t* inputConsumed, vector<uint8_t>* output);
 
-    keymaster_error_t updateAad(const vector<uint8_t>& input,
-                            const HardwareAuthToken& authToken,
-                            const vector<uint8_t>& encodedVerificationToken);
+    keymaster_error_t updateAad(const vector<uint8_t>& input, const HardwareAuthToken& authToken,
+                                const vector<uint8_t>& encodedVerificationToken);
 
     keymaster_error_t finish(const vector<uint8_t>& input,
-                         const std::optional<AuthorizationSet> &inParams,
-                         const vector<uint8_t>& signature,
-                         const HardwareAuthToken& authToken,
-                         const vector<uint8_t>& encodedVerificationToken,
-                         const std::optional<vector<uint8_t>>& confirmationToken,
-                         AuthorizationSet* outParams,
-                         vector<uint8_t>* output);
+                             const std::optional<AuthorizationSet>& inParams,
+                             const vector<uint8_t>& signature, const HardwareAuthToken& authToken,
+                             const vector<uint8_t>& encodedVerificationToken,
+                             const std::optional<vector<uint8_t>>& confirmationToken,
+                             AuthorizationSet* outParams, vector<uint8_t>* output);
 
     void setBufferingMode(BufferingMode bufMode) { bufferingMode_ = bufMode; }
 
@@ -116,25 +111,30 @@ class JavacardKeymasterOperation {
     keymaster_error_t abort();
 
   private:
-  keymaster_error_t handleErrorCode(keymaster_error_t err);
-  std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
+    keymaster_error_t handleErrorCode(keymaster_error_t err);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
 
-  std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, Array& request);
-  vector<uint8_t> popNextChunk(DataView& view, uint32_t chunkSize);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
+                                                                     Array& request);
+    vector<uint8_t> popNextChunk(DataView& view, uint32_t chunkSize);
 
-    keymaster_error_t updateInChunks(DataView& view, const std::optional<AuthorizationSet>& inParams, const HardwareAuthToken& authToken,
-                                  const vector<uint8_t>& encodedVerificationToken, vector<uint8_t>* output);
+    keymaster_error_t updateInChunks(DataView& view,
+                                     const std::optional<AuthorizationSet>& inParams,
+                                     const HardwareAuthToken& authToken,
+                                     const vector<uint8_t>& encodedVerificationToken,
+                                     vector<uint8_t>* output);
 
-    keymaster_error_t sendFinish(const vector<uint8_t>& data, 
+    keymaster_error_t
+    sendFinish(const vector<uint8_t>& data, const std::optional<AuthorizationSet>& inParams,
+               const vector<uint8_t>& signature, const HardwareAuthToken& authToken,
+               const vector<uint8_t>& encodedVerificationToken,
+               const std::optional<vector<uint8_t>>& confToken, vector<uint8_t>& output);
+
+    keymaster_error_t sendUpdate(const vector<uint8_t>& data,
                                  const std::optional<AuthorizationSet>& inParams,
-                                 const vector<uint8_t>& signature,
                                  const HardwareAuthToken& authToken,
                                  const vector<uint8_t>& encodedVerificationToken,
-                                 const std::optional<vector<uint8_t>>& confToken,
                                  vector<uint8_t>& output);
-
-    keymaster_error_t sendUpdate(const vector<uint8_t>& data, const std::optional<AuthorizationSet>& inParams, const HardwareAuthToken& authToken,
-                                 const vector<uint8_t>& encodedVerificationToken, vector<uint8_t>& output);
 
     inline void appendBufferedData(DataView& view) {
         if (!buffer_.empty()) {
@@ -149,8 +149,7 @@ class JavacardKeymasterOperation {
     void blockAlign(DataView& data, uint16_t blockSize);
     uint16_t getDataViewOffset(DataView& view, uint16_t blockSize);
 
-
-private:
+  private:
     vector<uint8_t> buffer_;
     BufferingMode bufferingMode_;
     uint16_t macLength_;
