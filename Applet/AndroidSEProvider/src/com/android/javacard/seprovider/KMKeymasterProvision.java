@@ -7,6 +7,7 @@ import com.android.javacard.kmdevice.KMInteger;
 import com.android.javacard.kmdevice.KMKeyParameters;
 import com.android.javacard.kmdevice.KMKeymasterDevice;
 import com.android.javacard.kmdevice.KMRepository;
+import com.android.javacard.kmdevice.KMSEProvider;
 import com.android.javacard.kmdevice.KMTag;
 import com.android.javacard.kmdevice.KMByteBlob;
 import com.android.javacard.kmdevice.KMByteTag;
@@ -14,6 +15,7 @@ import com.android.javacard.kmdevice.KMDecoder;
 import com.android.javacard.kmdevice.KMEnum;
 import com.android.javacard.kmdevice.KMEnumArrayTag;
 import com.android.javacard.kmdevice.KMEnumTag;
+import com.android.javacard.kmdevice.KMException;
 
 import javacard.framework.APDU;
 import javacard.framework.Util;
@@ -204,8 +206,30 @@ public class KMKeymasterProvision {
   }  
   
   public void processProvisionAttestationCertDataCmd(APDU apdu) {
-	    // TODO Handle this function properly
-	kmDeviceInst.processAttestationCertDataCmd(apdu);
+    // Buffer holds the corresponding offsets and lengths of the certChain, certIssuer and certExpiry
+    // in the bufferRef[0] buffer.
+    short var = KMByteBlob.instance((short) 12);
+    // These variables point to the appropriate positions in the var buffer.
+    short certChainPos = KMByteBlob.getStartOff(var);
+    short certIssuerPos = (short) (KMByteBlob.getStartOff(var) + 4);
+    short certExpiryPos = (short) (KMByteBlob.getStartOff(var) + 8);
+    short bufferLength = apdu.getIncomingLength();
+    short bufferStartOffset = kmRepositroyInst.allocReclaimableMemory(bufferLength);
+    byte[] buffer = kmRepositroyInst.getHeap();
+    kmDeviceInst.receiveIncomingCertData(apdu, buffer, bufferLength,
+    		     bufferStartOffset, KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
+    // persist data
+    seProvider.persistProvisionData(
+        (byte[]) buffer,
+        Util.getShort(KMByteBlob.getBuffer(var), certChainPos), // offset
+        Util.getShort(KMByteBlob.getBuffer(var), (short) (certChainPos + 2)), // length
+        Util.getShort(KMByteBlob.getBuffer(var), certIssuerPos), // offset
+        Util.getShort(KMByteBlob.getBuffer(var), (short) (certIssuerPos + 2)), // length
+        Util.getShort(KMByteBlob.getBuffer(var), certExpiryPos), // offset
+        Util.getShort(KMByteBlob.getBuffer(var), (short) (certExpiryPos + 2))); // length
+
+    // reclaim memory
+    kmRepositroyInst.reclaimMemory(bufferLength);	
     provisionStatus |= (PROVISION_STATUS_ATTESTATION_CERT_CHAIN |
             PROVISION_STATUS_ATTESTATION_CERT_PARAMS);
         kmDeviceInst.sendError(apdu, KMError.OK);
@@ -248,7 +272,7 @@ public class KMKeymasterProvision {
   
   public void processGetProvisionStatusCmd(APDU apdu) {
     short resp = KMArray.instance((short) 2);
-    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
+    KMArray.add(resp, (short) 0, kmDeviceInst.buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, KMInteger.uint_16(provisionStatus));
     kmDeviceInst.sendOutgoing(apdu, resp);
   }

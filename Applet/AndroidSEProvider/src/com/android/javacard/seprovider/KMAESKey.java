@@ -17,6 +17,8 @@ package com.android.javacard.seprovider;
 
 import org.globalplatform.upgrade.Element;
 
+import com.android.javacard.kmdevice.KMMasterKey;
+
 import javacard.security.AESKey;
 
 public class KMAESKey implements KMMasterKey {

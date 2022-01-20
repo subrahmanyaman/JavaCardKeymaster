@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.javacard.seprovider;
+package com.android.javacard.kmdevice;
 
 /**
- * KMAttestationKey is a marker interface and the SE Provider has to implement this interface.
- * Internally attestation key is stored as a Javacard EC key pair object, which will provide
- * additional security. The attestation key is maintained by the SEProvider.
+ * KMPreSharedKey is a marker interface and the SE Provider has to implement this interface.
+ * Internally Preshared key is stored as a Javacard HMac key object, which will provide additional
+ * security. The pre-shared key is maintained by the SEProvider.
  */
-public interface KMAttestationKey {
-}
+public interface KMPreSharedKey {
 
+}

@@ -16,10 +16,6 @@
 
 package com.android.javacard.kmdevice;
 
-import com.android.javacard.seprovider.KMAttestationCert;
-import com.android.javacard.seprovider.KMDeviceUniqueKey;
-import com.android.javacard.seprovider.KMException;
-import com.android.javacard.seprovider.KMSEProvider;
 import javacard.framework.APDU;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
@@ -91,7 +87,7 @@ public class KMKeymasterDevice {
   private static final byte INS_ABORT_OPERATION_CMD = KEYMINT_CMD_APDU_START + 19; //0x33
   private static final byte INS_DEVICE_LOCKED_CMD = KEYMINT_CMD_APDU_START + 20;//0x34
   private static final byte INS_EARLY_BOOT_ENDED_CMD = KEYMINT_CMD_APDU_START + 21; //0x35
-  private static final byte INS_GET_CERT_CHAIN_CMD = KEYMINT_CMD_APDU_START + 22; //0x36
+  protected static final byte INS_GET_CERT_CHAIN_CMD = KEYMINT_CMD_APDU_START + 22; //0x36
   private static final byte INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23; //0x37
   private static final byte INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24; //0x38
   private static final byte INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25; //0x39
@@ -150,8 +146,8 @@ public class KMKeymasterDevice {
   public static final byte TEE_PARAMETERS = 34;
   public static final byte SB_PARAMETERS = 35;
   public static final byte CONFIRMATION_TOKEN = 36;
-  public static final byte KEYMASTER_SPECIFICATION = 0x01;
-  public static final byte KEYMINT_SPECIFICATION = 0x02;
+ // public static final byte KEYMASTER_SPECIFICATION = 0x01;
+ // public static final byte KEYMINT_SPECIFICATION = 0x02;
   // Constant
 
   // AddRngEntropy
@@ -169,6 +165,8 @@ public class KMKeymasterDevice {
   // ComputeHMAC constants
   private static final short HMAC_SHARED_PARAM_MAX_SIZE = 64;
   protected static final short MAX_CERT_SIZE = 2048;
+  
+  protected static final short POWER_RESET_MASK_FLAG = (short) 0x4000;
   
 //getHardwareInfo constants.
  private static byte[] JAVACARD_KEYMASTER_DEVICE;
@@ -419,17 +417,6 @@ private static short[] ATTEST_ID_TAGS;
     }
   }
 
-  protected short validateApduHeader(APDU apdu) {
-    // Read the apdu header and buffer.
-    byte[] apduBuffer = apdu.getBuffer();
-    byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
-    // Validate whether INS can be supported
-    if (!(apduIns > KEYMINT_CMD_APDU_START && apduIns < KEYMINT_CMD_APDU_END)) {
-      ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
-    }
-    return apduIns;
-  }
-
   /**
    * Processes an incoming APDU and handles it using command objects.
    * @param apdu the incoming APDU
@@ -447,7 +434,7 @@ private static short[] ATTEST_ID_TAGS;
           sendError(apdu, KMError.OK);
           return;
         case INS_GENERATE_KEY_CMD:
-          processGenerateKey1(apdu);
+          processGenerateKey(apdu);
           break;
         case INS_ATTEST_KEY_CMD:
           processAttestKeyCmd(apdu);
@@ -683,6 +670,22 @@ private static short[] ATTEST_ID_TAGS;
     return decoder.decode(reqExp, reclamBuf, bStartOffset, bLen);
   }
   
+  public void receiveIncomingCertData(APDU apdu, byte[] reclamBuf, short bLen, short bStartOffset, byte[] outBuf, short outOff) {
+    byte[] srcBuffer = apdu.getBuffer();
+    short recvLen = apdu.setIncomingAndReceive();
+    short srcOffset = apdu.getOffsetCdata();
+    short index = bStartOffset;
+    while (recvLen > 0 && ((short) (index - bStartOffset) < bLen)) {
+      Util.arrayCopyNonAtomic(srcBuffer, srcOffset, reclamBuf, index, recvLen);
+      index += recvLen;
+      recvLen = apdu.receiveBytes(srcOffset);
+    }
+    decoder.decodeCertificateData((short) 3,
+    		reclamBuf, bStartOffset, bLen,
+            outBuf, outOff);
+  }
+  
+  
   private void processGetHwInfoCmd(APDU apdu) {
     // No arguments expected
     short respPtr = getHardwareInfo();
@@ -743,7 +746,7 @@ private static short[] ATTEST_ID_TAGS;
     }
     // make response.
     short resp = KMArray.instance((short) 2);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[KEY_CHARACTERISTICS]);
     sendOutgoing(apdu, resp);
   }
@@ -758,7 +761,7 @@ private static short[] ATTEST_ID_TAGS;
     KMHmacSharingParameters.setSeed(params, seed);
     // prepare the response
     short resp = KMArray.instance((short) 2);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, params);
     sendOutgoing(apdu, resp);
   }
@@ -927,7 +930,7 @@ private static short[] ATTEST_ID_TAGS;
     short signature = KMByteBlob.instance(scratchPad, keyLen, signLen);
     // prepare the response
     short resp = KMArray.instance((short) 2);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, signature);
     sendOutgoing(apdu, resp);
   }
@@ -1007,7 +1010,7 @@ private static short[] ATTEST_ID_TAGS;
     }
     // prepare the response
     short resp = KMArray.instance((short) 2);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[KEY_BLOB]);
     sendOutgoing(apdu, resp);
   }
@@ -1468,30 +1471,14 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   private short finishOperationCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 7);
-    KMArray.add(cmd, (short) 0, KMInteger.exp());//op handle
-    short keyParam = KMKeyParameters.exp();
-    KMArray.add(cmd, (short) 1, keyParam);// Key Parameters
-    KMArray.add(cmd, (short) 2, KMByteBlob.exp());// input data
-    KMArray.add(cmd, (short) 3, KMByteBlob.exp()); // signature
-    short authToken = KMHardwareAuthToken.exp();
-    KMArray.add(cmd, (short) 4, authToken); // auth token
-    short verToken = getKMVerificationTokenExp();
-    KMArray.add(cmd, (short) 5, verToken); // time stamp token
-    KMArray.add(cmd, (short) 6, KMByteBlob.exp()); //confirmation token
-    return receiveIncoming(apdu, cmd);
+	return receiveIncoming(apdu, prepareFinishExp());
   }
 
   private void processFinishOperationCmd(APDU apdu) {
     short cmd = finishOperationCmd(apdu);
-    byte[] scratchPad = apdu.getBuffer();
-    data[OP_HANDLE] = KMArray.get(cmd, (short) 0);
-    data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 1);
-    data[INPUT_DATA] = KMArray.get(cmd, (short) 2);
-    data[SIGNATURE] = KMArray.get(cmd, (short) 3);
-    data[HW_TOKEN] = KMArray.get(cmd, (short) 4);
-    data[VERIFICATION_TOKEN] = KMArray.get(cmd, (short) 5);
-    data[CONFIRMATION_TOKEN] = KMArray.get(cmd, (short) 6);
+    byte[] scratchPad = apdu.getBuffer(); 
+    getFinishInputParameters(cmd, data, OP_HANDLE, KEY_PARAMETERS, INPUT_DATA,
+    		       SIGNATURE, HW_TOKEN, VERIFICATION_TOKEN, CONFIRMATION_TOKEN);
     
     // Check Operation Handle
     KMOperationState op = findOperation(data[OP_HANDLE]);
@@ -1523,13 +1510,7 @@ private static short[] ATTEST_ID_TAGS;
     releaseOperation(op);
 
     // make response
-    short keyParam = KMArray.instance((short) 0);
-    keyParam = KMKeyParameters.instance(keyParam);
-    short resp = KMArray.instance((short) 3);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.add(resp, (short) 1, keyParam);
-    KMArray.add(resp, (short) 2, data[OUTPUT_DATA]);
-    sendOutgoing(apdu, resp);
+    sendOutgoing(apdu, prepareFinishResp(data[OUTPUT_DATA]));
   }
 
   private void finishEncryptOperation(KMOperationState op, byte[] scratchPad) {
@@ -1580,7 +1561,7 @@ private static short[] ATTEST_ID_TAGS;
         KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
       }
       // update aad if there is any
-      updateAAD(op, KMType.INVALID_VALUE, (byte) 0x01);
+      updateAAD(op, (byte) 0x01);
       if(op.isAesGcmUpdateAllowed()){
         op.setAesGcmUpdateComplete();
       }
@@ -1850,27 +1831,14 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   private short updateOperationCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 5);
-    // Arguments
-    short keyParams = KMKeyParameters.exp();
-    KMArray.add(cmd, (short) 0, KMInteger.exp());
-    KMArray.add(cmd, (short) 1, keyParams);
-    KMArray.add(cmd, (short) 2, KMByteBlob.exp());
-    short authToken = KMHardwareAuthToken.exp();
-    KMArray.add(cmd, (short) 3, authToken);
-    short verToken = getKMVerificationTokenExp();
-    KMArray.add(cmd, (short) 4, verToken);
-    return receiveIncoming(apdu, cmd);
+	return receiveIncoming(apdu, prepareUpdateExp());
   }
 
   private void processUpdateOperationCmd(APDU apdu) {
     short cmd = updateOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
-    data[OP_HANDLE] = KMArray.get(cmd, (short) 0);
-    data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 1); //will be passed as INVALID_VALUE from keymint HAL
-    data[INPUT_DATA] = KMArray.get(cmd, (short) 2);
-    data[HW_TOKEN] = KMArray.get(cmd, (short) 3);
-    data[VERIFICATION_TOKEN] = KMArray.get(cmd, (short) 4);
+    getUpdateInputParameters(cmd, data, OP_HANDLE, KEY_PARAMETERS,
+    		           INPUT_DATA, HW_TOKEN, VERIFICATION_TOKEN);
 
     // Input data must be present even if it is zero length.
     if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
@@ -1910,7 +1878,7 @@ private static short[] ATTEST_ID_TAGS;
           if (op.getBlockMode() == KMType.GCM) {
         	// data[KEY_PARAMETERS] will be invalid for keymint
         	if(data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
-        	  updateAAD(op, KMType.INVALID_VALUE, (byte) 0x00);
+        	  updateAAD(op, (byte) 0x00);
         	}
             // if input data present
             if (len > 0) {
@@ -1949,16 +1917,8 @@ private static short[] ATTEST_ID_TAGS;
       data[OUTPUT_DATA] = KMByteBlob.instance((short) 0);
     }
     // Persist if there are any updates.
-    //op.persist();
     // make response
-    short resp = KMArray.instance((short) 4);   
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.add(resp, (short) 1, data[OUTPUT_DATA]);
-    short keyParm = KMKeyParameters.instance(KMArray.instance((short) 0));
-    KMArray.add(resp, (short) 2, keyParm); // will be ignored in keymint HAL
-    KMArray.add(resp, (short) 3, KMInteger.uint_16(inputConsumed)); // will be ignored in keymint HAL
-     
-    sendOutgoing(apdu, resp);
+    sendOutgoing(apdu, prepareUpdateResp(data[OUTPUT_DATA], KMInteger.uint_16(inputConsumed)));
   }
 
   private short updateAadOperationCmd(APDU apdu){
@@ -1974,44 +1934,36 @@ private static short[] ATTEST_ID_TAGS;
 
   //update operation should send 0x00 for finish variable, where as finish operation
   // should send 0x01 for finish variable.
-  private void updateAAD(KMOperationState op, short associatedData, byte finish) {
-	
-	short aData = associatedData;  
-  	if(associatedData == KMType.INVALID_VALUE) {
-  	  // Is input data absent
-  	  if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
-  	    KMException.throwIt(KMError.INVALID_ARGUMENT);
-  	  }
-  	  // Update can be called either to update auth data, update input data or both.
-  	  // But if it is called for neither then return error.
-  	  short len = KMByteBlob.length(data[INPUT_DATA]);
-  	  short tag =
-  	       KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ASSOCIATED_DATA);
-  	   // For Finish operation the input data can be zero length and associated data can be
-  	   // INVALID_VALUE
-  	   // For update operation either input data or associated data should be present.
-  	  if (tag == KMType.INVALID_VALUE && len <= 0 && finish == 0x00) {
-  	     KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
-  	  }
-  	  // Check if associated data is present and update aad still allowed by the operation.
-  	  if (tag != KMType.INVALID_VALUE) {
-  		 // If allowed the update the aad
-  		 if (!op.isAesGcmUpdateAllowed()) {
-  	        KMException.throwIt(KMError.INVALID_TAG);
-  	     }
-  	     aData = KMByteTag.getValue(tag);
-  	  }
-  	}
-  	try {
-  	  if(aData != KMType.INVALID_VALUE) {     
-        op.getOperation()
-           .updateAAD(
-             KMByteBlob.getBuffer(aData),
-             KMByteBlob.getStartOff(aData),
-             KMByteBlob.length(aData));
+  public void updateAAD(KMOperationState op, byte finish) {
+    // Is input data absent
+    if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    // Update can be called either to update auth data, update input data or both.
+    // But if it is called for neither then return error.
+    short len = KMByteBlob.length(data[INPUT_DATA]);
+    short tag =
+        KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ASSOCIATED_DATA, data[KEY_PARAMETERS]);
+    // For Finish operation the input data can be zero length and associated data can be
+    // INVALID_VALUE
+    // For update operation either input data or associated data should be present.
+    if (tag == KMType.INVALID_VALUE && len <= 0 && finish == 0x00) {
+      KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+    }
+    // Check if associated data is present and update aad still allowed by the operation.
+    if (tag != KMType.INVALID_VALUE) {
+      // If allowed the update the aad
+      if (!op.isAesGcmUpdateAllowed()) {
+        KMException.throwIt(KMError.INVALID_TAG);
       }
-  	} catch(CryptoException exp){
-        KMException.throwIt(KMError.UNKNOWN_ERROR);
+      // If allowed the update the aad
+      short aData = KMByteTag.getValue(tag);
+
+      op.getOperation()
+          .updateAAD(
+              KMByteBlob.getBuffer(aData),
+              KMByteBlob.getStartOff(aData),
+              KMByteBlob.length(aData));
     }
   }
   
@@ -2047,11 +1999,19 @@ private static short[] ATTEST_ID_TAGS;
     }
     // authorize the update operation
     authorizeUpdateFinishOperation(op, scratchPad);
-    updateAAD(op, data[INPUT_DATA], (byte)0x00);
+    try {
+	  op.getOperation()
+	         .updateAAD(
+              KMByteBlob.getBuffer(data[INPUT_DATA]),
+	          KMByteBlob.getStartOff(data[INPUT_DATA]),
+              KMByteBlob.length(data[INPUT_DATA]));
+    } catch(CryptoException exp){
+      KMException.throwIt(KMError.UNKNOWN_ERROR);
+    }
     
     // make response
     short resp = KMArray.instance((short) 1);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     sendOutgoing(apdu, resp);
   }
 
@@ -2162,12 +2122,8 @@ private static short[] ATTEST_ID_TAGS;
     }
 
     short params = KMKeyParameters.instance(iv);
-    short resp  = KMArray.instance((short) 5);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
-    KMArray.add(resp, (short) 1, params);
-    KMArray.add(resp, (short) 2, data[OP_HANDLE]);
-    KMArray.add(resp, (short) 3, KMInteger.uint_8(op.getBufferingMode()));
-    KMArray.add(resp, (short) 4, KMInteger.uint_16((short) (op.getMacLength() / 8)));
+    short resp = prepareBeginResp(params, data[OP_HANDLE], KMInteger.uint_8(op.getBufferingMode()),
+    		        KMInteger.uint_16((short) (op.getMacLength() / 8)));
     sendOutgoing(apdu, resp);
   }
 
@@ -2405,6 +2361,7 @@ private static short[] ATTEST_ID_TAGS;
     authorizeDigest(op);
     authorizePadding(op);
     authorizeBlockModeAndMacLength(op);
+    assertPrivateOperation(op.getPurpose(), op.getAlgorithm());
     authorizeUserSecureIdAuthTimeout(op, scratchPad);
     authorizeDeviceUnlock(scratchPad);
     authorizeKeyUsageForCount(scratchPad);
@@ -2826,15 +2783,12 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   private short importKeyCmd(APDU apdu){
-    short cmd = KMArray.instance((short) 6);
+	short cmd = KMArray.instance((short) 3);
     // Arguments
     short params = KMKeyParameters.expAny();
     KMArray.add(cmd, (short) 0, params);
     KMArray.add(cmd, (short) 1, KMEnum.instance(KMType.KEY_FORMAT));
     KMArray.add(cmd, (short) 2, KMByteBlob.exp());
-    KMArray.add(cmd, (short) 3, KMByteBlob.exp()); //attest key
-    KMArray.add(cmd, (short) 4, params); //attest key params
-    KMArray.add(cmd, (short) 5, KMByteBlob.exp()); //issuer
     return receiveIncoming(apdu, cmd);
   }
   
@@ -2845,9 +2799,6 @@ private static short[] ATTEST_ID_TAGS;
     data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 0);
     short keyFmt = KMArray.get(cmd, (short) 1);
     data[IMPORTED_KEY_BLOB] = KMArray.get(cmd, (short) 2);
-    data[ATTEST_KEY_BLOB] = KMArray.get(cmd, (short) 3);
-    data[ATTEST_KEY_PARAMS] = KMArray.get(cmd, (short) 4);
-    data[ATTEST_KEY_ISSUER] = KMArray.get(cmd, (short) 5);
     keyFmt = KMEnum.getVal(keyFmt);
 
     data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
@@ -3048,7 +2999,7 @@ private static short[] ATTEST_ID_TAGS;
     createEncryptedKeyBlob(scratchPad);
     // prepare the response
     short resp = KMArray.instance((short) 3);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[KEY_BLOB]);
     KMArray.add(resp, (short) 2, data[KEY_CHARACTERISTICS]);
     sendOutgoing(apdu, resp);
@@ -3430,7 +3381,7 @@ private static short[] ATTEST_ID_TAGS;
     return receiveIncoming(apdu, cmd);
   }
 
-  private void processGenerateKey1(APDU apdu) {
+  private void processGenerateKey(APDU apdu) {
     // Receive the incoming request fully from the master into buffer.
     short cmd = generateKeyCmd(apdu);
     // Re-purpose the apdu buffer as scratch pad.
@@ -3474,7 +3425,7 @@ private static short[] ATTEST_ID_TAGS;
     createEncryptedKeyBlob(scratchPad);
     // prepare the response
     short resp = KMArray.instance((short) 3);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[KEY_BLOB]);
     KMArray.add(resp, (short) 2, data[KEY_CHARACTERISTICS]);
     sendOutgoing(apdu, resp);
@@ -3519,16 +3470,7 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   private short generateAttestKeyCmd(APDU apdu) {
-    short params = KMKeyParameters.expAny();
-    short blob = KMByteBlob.exp();
-    // Array of expected arguments
-    short cmd = KMArray.instance((short) 5);
-    KMArray.add(cmd, (short) 0, blob); //key blob
-    KMArray.add(cmd, (short) 1, params); //keyparamters to be attested.
-    KMArray.add(cmd, (short) 2, blob); //attest key blob
-    KMArray.add(cmd, (short) 3, params); //attest key params
-    KMArray.add(cmd, (short) 4, blob); //attest issuer
-    return receiveIncoming(apdu, cmd);
+	return receiveIncoming(apdu, generateAttestKeyExp());
   }
 
   private void processGetCertChainCmd(APDU apdu) {
@@ -3570,11 +3512,8 @@ private static short[] ATTEST_ID_TAGS;
     short cmd = generateAttestKeyCmd(apdu);
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
-    data[KEY_BLOB] = KMArray.get(cmd, (short) 0);
-    data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 1);
-    data[ATTEST_KEY_BLOB] = KMArray.get(cmd, (short) 2);
-    data[ATTEST_KEY_PARAMS] = KMArray.get(cmd, (short) 3);
-    data[ATTEST_KEY_ISSUER] = KMArray.get(cmd, (short) 4);
+    getAttestKeyInputParameters(cmd, data, KEY_BLOB, KEY_PARAMETERS, ATTEST_KEY_BLOB,
+    		        ATTEST_KEY_PARAMS, ATTEST_KEY_ISSUER);
     data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
 
     // Check for app id and app data.
@@ -3599,7 +3538,7 @@ private static short[] ATTEST_ID_TAGS;
     generateAttestation(data[ATTEST_KEY_BLOB], data[ATTEST_KEY_PARAMS], scratchPad);
 
     short resp = KMArray.instance((short) 2);
-    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[CERTIFICATE]);
     sendOutgoing(apdu, resp);
   }
@@ -4368,16 +4307,15 @@ private static short[] ATTEST_ID_TAGS;
 	}
   }
   
- 
-  
   public short getHardwareInfo() {
-    short respPtr = KMArray.instance((short) 3);
-    KMArray.add(respPtr, (short) 0, KMEnum.instance(KMType.HARDWARE_TYPE, KMType.STRONGBOX));
+	short respPtr = KMArray.instance((short) 4);
+	KMArray.add(respPtr, (short) 0, buildErrorStatus(KMError.OK));
+	KMArray.add(respPtr, (short) 1, KMEnum.instance(KMType.HARDWARE_TYPE, KMType.STRONGBOX));
     KMArray.add(respPtr, 
-        (short) 1,
+        (short) 2,
         KMByteBlob.instance(
             JAVACARD_KEYMASTER_DEVICE, (short) 0, (short) JAVACARD_KEYMASTER_DEVICE.length));
-    KMArray.add(respPtr, (short) 2, KMByteBlob.instance(GOOGLE, (short) 0, (short) GOOGLE.length));
+    KMArray.add(respPtr, (short) 3, KMByteBlob.instance(GOOGLE, (short) 0, (short) GOOGLE.length));
     return respPtr;
   }
 
@@ -4506,5 +4444,150 @@ private static short[] ATTEST_ID_TAGS;
 
   public short getMgf1Digest(short keyParams, short hwParams) {
     return KMType.SHA1;
+  }
+  
+//This function masks the error code with POWER_RESET_MASK_FLAG
+ // in case if card reset event occurred. The clients of the Applet
+ // has to extract the power reset status from the error code and
+ // process accordingly.
+  public short buildErrorStatus(short err) {
+     short int32Ptr = KMInteger.instance((short) 4);
+     short powerResetStatus = 0;
+     if (seProvider.isPowerReset(true)) {
+       powerResetStatus = POWER_RESET_MASK_FLAG;
+     }
+     Util.setShort(KMInteger.getBuffer(int32Ptr),
+       KMInteger.getStartOff(int32Ptr),
+       powerResetStatus);
+
+     Util.setShort(KMInteger.getBuffer(int32Ptr),
+       (short) (KMInteger.getStartOff(int32Ptr) + 2),
+       err);
+     return int32Ptr;
+  }
+  
+  public short generateAttestKeyExp() {
+    // Arguments
+    short keyParams = KMKeyParameters.expAny();
+    short keyBlob = KMByteBlob.exp();
+    short argsProto = KMArray.instance((short) 2);
+    KMArray.add(argsProto, (short) 0, keyBlob);
+    KMArray.add(argsProto, (short) 1, keyParams);
+    return argsProto;
+  }
+  
+  public void getAttestKeyInputParameters(short arrPtr, short[] data, byte keyBlobOff,
+	      byte keyParametersOff,
+	      byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
+    data[keyBlobOff] = KMArray.get(arrPtr, (short) 0);
+    data[keyParametersOff] = KMArray.get(arrPtr, (short) 1);
+    data[attestKeyBlobOff] = KMType.INVALID_VALUE;
+    data[attestKeyParamsOff] = KMType.INVALID_VALUE;
+    data[attestKeyIssuerOff] = KMType.INVALID_VALUE;
+  }
+
+  public short prepareBeginResp(short paramsPtr, short opHandlePtr, short bufModPtr,
+      short macLengthPtr) {
+    short resp = KMArray.instance((short) 3);
+    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 1, paramsPtr);
+    KMArray.add(resp, (short) 2, opHandlePtr);
+    return resp;
+  }
+
+  public short prepareFinishExp() {
+    short byteBlob = KMByteBlob.exp();
+    short cmd = KMArray.instance((short) 6);
+    KMArray.add(cmd, (short) 0, KMInteger.exp());//op handle
+    short keyParam = KMKeyParameters.exp();
+    KMArray.add(cmd, (short) 1, keyParam);// Key Parameters
+    KMArray.add(cmd, (short) 2, byteBlob);// input data
+    KMArray.add(cmd, (short) 3, byteBlob); // signature
+    short authToken = KMHardwareAuthToken.exp();
+    KMArray.add(cmd, (short) 4, authToken); // auth token
+    short verToken = getKMVerificationTokenExp();
+    KMArray.add(cmd, (short) 5, verToken); // time stamp token
+    return cmd;
+  }
+
+  public short prepareUpdateExp() {
+    short cmd = KMArray.instance((short) 5);
+    // Arguments
+    short keyParams = KMKeyParameters.exp();
+    KMArray.add(cmd, (short) 0, KMInteger.exp());
+    KMArray.add(cmd, (short) 1, keyParams);
+    KMArray.add(cmd, (short) 2, KMByteBlob.exp());
+    short authToken = KMHardwareAuthToken.exp();
+    KMArray.add(cmd, (short) 3, authToken);
+    short verToken = getKMVerificationTokenExp();
+    KMArray.add(cmd, (short) 4, verToken);
+    return cmd;
+  }
+  
+  public void getUpdateInputParameters(short arrPtr, short[] data, byte opHandleOff,
+      byte keyParametersOff, byte inputDataOff, byte hwTokenOff,
+      byte verToken) {
+    data[opHandleOff] = KMArray.get(arrPtr, (short) 0);
+    data[keyParametersOff] = KMArray.get(arrPtr, (short) 1);
+    data[inputDataOff] = KMArray.get(arrPtr, (short) 2);
+    data[hwTokenOff] = KMArray.get(arrPtr, (short) 3);
+    data[verToken] = KMArray.get(arrPtr, (short) 4);
+  }
+
+  public void getFinishInputParameters(short arrPtr, short[] data, byte opHandleOff,
+      byte keyParametersOff, byte inputDataOff, byte signDataOff, byte hwTokenOff, byte verToken,
+      byte confToken) {
+    data[opHandleOff] = KMArray.get(arrPtr, (short) 0);
+    data[keyParametersOff] = KMArray.get(arrPtr, (short) 1);
+    data[inputDataOff] = KMArray.get(arrPtr, (short) 2);
+    data[signDataOff] = KMArray.get(arrPtr, (short) 3);
+    data[hwTokenOff] = KMArray.get(arrPtr, (short) 4);
+    data[verToken] = KMArray.get(arrPtr, (short) 5);
+    data[confToken] = KMType.INVALID_VALUE;
+  }
+
+  public short prepareFinishResp(short outputPtr) {
+    short keyParam = KMArray.instance((short) 0);
+    keyParam = KMKeyParameters.instance(keyParam);
+    short resp = KMArray.instance((short) 3);
+    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 1, keyParam);
+    KMArray.add(resp, (short) 2, outputPtr);
+    return resp;
+  }
+
+  public short prepareUpdateResp(short outputPtr, short inputConsumedPtr) {
+    short resp = KMArray.instance((short) 4);
+    KMArray.add(resp, (short) 0, KMInteger.uint_16(KMError.OK));
+    KMArray.add(resp, (short) 1, inputConsumedPtr);
+    short keyParm = KMKeyParameters.instance(KMArray.instance((short) 0));
+    KMArray.add(resp, (short) 2, keyParm);
+    KMArray.add(resp, (short) 3, outputPtr);
+    return resp;
+  }
+
+  public short validateApduHeader(APDU apdu) {
+    return KMError.OK;
+  }
+
+  public boolean isAssociatedDataTagSupported() {
+    return true;
+  }
+  
+  void assertPrivateOperation(short purpose, short algorithm) {
+    switch(algorithm) {
+    case KMType.RSA:
+      if (purpose == KMType.ENCRYPT || purpose == KMType.VERIFY) {
+        KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
+      }
+      break;
+    case KMType.EC:
+      if (purpose == KMType.VERIFY) {
+        KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
+      }
+      break;
+    default:
+        break;
+    }
   }
 }

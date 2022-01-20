@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.javacard.seprovider;
+package com.android.javacard.kmdevice;
 
 import javacard.framework.JCSystem;
 

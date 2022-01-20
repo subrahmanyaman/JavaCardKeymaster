@@ -74,7 +74,7 @@ public class KMByteBlob extends KMType {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }
   }
-
+  
   // Add the byte
   public void add(short index, byte val) {
     short len = length();

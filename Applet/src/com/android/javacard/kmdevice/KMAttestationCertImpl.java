@@ -15,13 +15,6 @@
  */
 package com.android.javacard.kmdevice;
 
-import com.android.javacard.seprovider.KMAESKey;
-import com.android.javacard.seprovider.KMAttestationCert;
-import com.android.javacard.seprovider.KMAttestationKey;
-import com.android.javacard.seprovider.KMException;
-import com.android.javacard.seprovider.KMMasterKey;
-import com.android.javacard.seprovider.KMSEProvider;
-
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
@@ -1017,7 +1010,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
     scratchPadOff++;
 
     //Get the key data from the master key
-    KMAESKey aesKey = (KMAESKey) masterKey;
+    KMMasterKey aesKey = masterKey;
     short mKeyData = KMByteBlob.instance((short) (aesKey.getKeySizeBits() / 8));
     aesKey.getKey(
         KMByteBlob.getBuffer(mKeyData), /* Key */
