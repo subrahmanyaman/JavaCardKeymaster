@@ -38,12 +38,11 @@ import com.android.javacard.kmdevice.KMRepository;
 import com.android.javacard.kmdevice.KMTag;
 import com.android.javacard.kmdevice.KMTextString;
 import com.android.javacard.seprovider.KMAndroidSEProvider;
-import com.android.javacard.seprovider.KMDeviceUniqueKey;
 import com.android.javacard.seprovider.KMError;
-import com.android.javacard.seprovider.KMException;
+import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.seprovider.KMKeymasterProvision;
 import com.android.javacard.seprovider.KMKeymintProvision;
-import com.android.javacard.seprovider.KMSEProvider;
+import com.android.javacard.kmdevice.KMSEProvider;
 import com.android.javacard.seprovider.KMType;
 
 import javacard.framework.APDU;
@@ -83,8 +82,6 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
  // public static final byte BOOT_HASH_MAX_SIZE = 32;
 
   // Provision reporting status
-
-
  
   public static final byte KM_40 = 0x00;
   public static final byte KM_41 = 0x01;
@@ -100,7 +97,7 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
   private static KMKeymasterDevice kmDeviceInst;
 
   KMAndroidSEApplet() {
-	seProvider = new KMAndroidSEProvider();
+	seProvider = (KMSEProvider) new KMAndroidSEProvider();
 	repositoryInst = new KMRepository(seProvider.isUpgrading());
     decoderInst = new KMDecoder();
     if(kmDevice == KM_40 || kmDevice == KM_41) {
@@ -276,23 +273,15 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
     // Read the apdu header and buffer.
     byte[] apduBuffer = apdu.getBuffer();
     byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
-    short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
 
     // Validate APDU Header.
     if ((apduClass != kmDeviceInst.CLA_ISO7816_NO_SM_NO_CHAN)) {
       kmDeviceInst.sendError(apdu, KMError.UNSUPPORTED_CLA);
       return KMType.INVALID_VALUE;
     }
-
-    if (kmDevice == KMKeymasterDevice.KEYMASTER_SPECIFICATION &&
-        P1P2 != KMKeymasterDevice.KEYMASTER_HAL_VERSION) {
-      kmDeviceInst.sendError(apdu, KMError.INVALID_P1P2);
-      return KMType.INVALID_VALUE;
-    }
-    // Validate P1P2.
-    if (kmDevice == KMKeymasterDevice.KEYMINT_SPECIFICATION &&
-        P1P2 != KMKeymasterDevice.KM_HAL_VERSION) {
-      kmDeviceInst.sendError(apdu, KMError.INVALID_P1P2);
+    short err = kmDeviceInst.validateApduHeader(apdu);
+    if (err != KMError.OK) {
+    	kmDeviceInst.sendError(apdu, err);
       return KMType.INVALID_VALUE;
     }
     return apduBuffer[ISO7816.OFFSET_INS];

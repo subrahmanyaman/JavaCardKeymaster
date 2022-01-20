@@ -16,8 +16,6 @@
 
 package com.android.javacard.kmdevice;
 
-import com.android.javacard.seprovider.KMException;
-import com.android.javacard.seprovider.KMOperation;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 

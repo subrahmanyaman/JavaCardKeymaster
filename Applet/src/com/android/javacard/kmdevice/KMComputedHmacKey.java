@@ -1,4 +1,4 @@
-package com.android.javacard.seprovider;
+package com.android.javacard.kmdevice;
 
 
 public interface KMComputedHmacKey {

@@ -1,5 +1,5 @@
 /*
- * Copyright(C) 2021 The Android Open Source Project
+ * Copyright(C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.javacard.seprovider;
+package com.android.javacard.kmdevice;
 
-public interface KMDeviceUniqueKey {
-
-  short getPublicKey(byte[] buf, short offset);
+/**
+ * KMMasterKey is a marker interface and the SE Provider has to implement this interface. Internally
+ * Masterkey is stored as a Javacard AES key object, which will provide additional security. The
+ * master key is maintained by the SEProvider.
+ */
+public interface KMMasterKey {
+  
+	public byte getKey(byte[] keyData, short kOff);
+	
+	public short getKeySizeBits(); 
 }

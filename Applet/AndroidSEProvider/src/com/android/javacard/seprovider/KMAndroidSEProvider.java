@@ -18,6 +18,15 @@ package com.android.javacard.seprovider;
 import org.globalplatform.upgrade.Element;
 import org.globalplatform.upgrade.UpgradeManager;
 
+import com.android.javacard.kmdevice.KMAttestationKey;
+import com.android.javacard.kmdevice.KMComputedHmacKey;
+import com.android.javacard.kmdevice.KMDeviceUniqueKey;
+import com.android.javacard.kmdevice.KMException;
+import com.android.javacard.kmdevice.KMMasterKey;
+import com.android.javacard.kmdevice.KMOperation;
+import com.android.javacard.kmdevice.KMPreSharedKey;
+import com.android.javacard.kmdevice.KMSEProvider;
+
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.AESKey;
@@ -1239,21 +1248,22 @@ public class KMAndroidSEProvider implements KMSEProvider {
     attIdModel = null;
   }
 
+  @Override
   public boolean isPowerReset(boolean isForStatusUpdate) {
     boolean flag = false;
     if(isForStatusUpdate == false) {
 	  if (resetFlag[0] == POWER_RESET_TRUE) {
 	    resetFlag[0] = POWER_RESET_FALSE;
 	    flag = true;
+	    if (poolMgr != null) {
+	        poolMgr.powerReset();
+	    }
 	  }
     } else {
       if (resetFlag[1] == POWER_RESET_TRUE) {
     	resetFlag[1] = POWER_RESET_FALSE;
     	flag = true;
       }
-    }
-    if ((flag ==true) && (poolMgr != null)) {
-        poolMgr.powerReset();
     }
     return flag;
   }

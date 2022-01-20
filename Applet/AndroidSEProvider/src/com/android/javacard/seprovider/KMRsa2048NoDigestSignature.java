@@ -15,6 +15,8 @@
  */
 package com.android.javacard.seprovider;
 
+import com.android.javacard.kmdevice.KMException;
+
 import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.Key;

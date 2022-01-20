@@ -17,6 +17,9 @@ package com.android.javacard.seprovider;
 
 import org.globalplatform.upgrade.Element;
 
+import com.android.javacard.kmdevice.KMComputedHmacKey;
+import com.android.javacard.kmdevice.KMPreSharedKey;
+
 import javacard.security.HMACKey;
 
 public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey  {

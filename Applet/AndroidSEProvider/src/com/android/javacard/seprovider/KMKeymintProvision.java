@@ -6,10 +6,13 @@ import com.android.javacard.kmdevice.KMCose;
 import com.android.javacard.kmdevice.KMCoseHeaders;
 import com.android.javacard.kmdevice.KMCoseKey;
 import com.android.javacard.kmdevice.KMDecoder;
+import com.android.javacard.kmdevice.KMDeviceUniqueKey;
+import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.kmdevice.KMInteger;
 import com.android.javacard.kmdevice.KMKeymasterDevice;
 import com.android.javacard.kmdevice.KMMap;
 import com.android.javacard.kmdevice.KMRepository;
+import com.android.javacard.kmdevice.KMSEProvider;
 import com.android.javacard.kmdevice.KMTextString;
 
 import javacard.framework.APDU;

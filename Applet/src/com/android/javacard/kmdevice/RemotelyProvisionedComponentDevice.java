@@ -15,11 +15,6 @@
  */
 package com.android.javacard.kmdevice;
 
-import com.android.javacard.seprovider.KMDeviceUniqueKey;
-import com.android.javacard.seprovider.KMException;
-import com.android.javacard.seprovider.KMOperation;
-import com.android.javacard.seprovider.KMSEProvider;
-
 import javacard.framework.APDU;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;

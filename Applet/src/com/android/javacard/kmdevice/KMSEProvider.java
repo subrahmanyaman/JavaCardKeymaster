@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.javacard.seprovider;
+package com.android.javacard.kmdevice;
+
 
 /**
  * KMSEProvider is facade to use SE specific methods. The main intention of this interface is to
@@ -774,6 +775,8 @@ public interface KMSEProvider extends KMUpgradable {
    * @return Instance of the  KMAttestationKey.
    */
   KMAttestationKey getAttestationKey();
+  
+  public boolean isPowerReset(boolean isForStatusUpdate);
 
 
 }

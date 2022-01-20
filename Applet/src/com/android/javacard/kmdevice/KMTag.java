@@ -16,7 +16,6 @@
 
 package com.android.javacard.kmdevice;
 
-import com.android.javacard.seprovider.KMException;
 import javacard.framework.Util;
 
 /**
