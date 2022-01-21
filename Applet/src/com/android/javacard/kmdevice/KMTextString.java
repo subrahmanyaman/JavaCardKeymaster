@@ -86,7 +86,7 @@ public class KMTextString extends KMType {
   
   // Get the start of blob
   public short getStartOff() {
-    return Util.getShort(heap, (short)(getBaseOffset() + TLV_HEADER_SIZE));
+    return (short)(getBaseOffset() + TLV_HEADER_SIZE);
   }
   
   public static short length(short bPtr) {

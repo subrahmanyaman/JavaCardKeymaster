@@ -162,7 +162,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     }
     // Serial number
     short serialNum =
-        KMKeyParameters.findTag(KMType.BIGNUM_TAG, KMType.CERTIFICATE_SERIAL_NUM, keyParams);
+        KMKeyParameters.findTag(keyParams, KMType.BIGNUM_TAG, KMType.CERTIFICATE_SERIAL_NUM);
     if (serialNum != KMType.INVALID_VALUE) {
       serialNum = KMBignumTag.getValue(serialNum);
     } else {
@@ -389,7 +389,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
       case INS_GET_CERT_CHAIN_CMD:
         return KMError.UNSUPPORTED_INSTRUCTION;
     }
-    if (P1P2 != KM_HAL_VERSION) {
+    if (P1P2 != KEYMINT_HAL_VERSION) {
       return KMError.INVALID_P1P2;
     }
     return KMError.OK;

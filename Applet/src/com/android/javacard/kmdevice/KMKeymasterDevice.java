@@ -43,7 +43,7 @@ public class KMKeymasterDevice {
   public static final short BOOT_PATCH_LVL_SIZE = 4;
 
   public static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
-  public static final short KM_HAL_VERSION = (short) 0x5000;
+  public static final short KEYMINT_HAL_VERSION = (short) 0x5000;
   public static final short KEYMASTER_HAL_VERSION = (short) 0x4000;
   private static final short MAX_AUTH_DATA_SIZE = (short) 512;
   private static final short DERIVE_KEY_INPUT_SIZE = (short) 256;
@@ -427,7 +427,8 @@ private static short[] ATTEST_ID_TAGS;
       resetData();
       repository.onProcess();
       // Validate APDU Header.
-      short apduIns = validateApduHeader(apdu);
+      byte[] apduBuffer = apdu.getBuffer();
+      byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
       
       switch (apduIns) {
         case INS_INIT_STRONGBOX_CMD:
@@ -1234,7 +1235,7 @@ private static short[] ATTEST_ID_TAGS;
     short attestParam = KMArray.get(keyBlob, KEY_BLOB_PARAMS);
     attestParam = KMKeyCharacteristics.getStrongboxEnforced(attestParam);
     short attKeyPurpose =
-        KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG, KMType.PURPOSE, attestParam);
+        KMKeyParameters.findTag(attestParam, KMType.ENUM_ARRAY_TAG, KMType.PURPOSE);
     // If the attest key's purpose is not "attest key" then error.
     if (!KMEnumArrayTag.contains(attKeyPurpose, KMType.ATTEST_KEY)) {
       KMException.throwIt(KMError.INCOMPATIBLE_PURPOSE);
@@ -1243,7 +1244,7 @@ private static short[] ATTEST_ID_TAGS;
     if (KMByteBlob.length(issuer) <= 0) {
       KMException.throwIt(KMError.MISSING_ISSUER_SUBJECT_NAME);
     }
-    short alg = KMKeyParameters.findTag(KMType.ENUM_TAG, KMType.ALGORITHM, attestParam);
+    short alg = KMKeyParameters.findTag(attestParam, KMType.ENUM_TAG, KMType.ALGORITHM);
 
     if(KMEnumTag.getValue(alg) == KMType.RSA) {
       short attestationKeyPublic = KMArray.get(keyBlob, KEY_BLOB_PUB_KEY);
@@ -1259,7 +1260,7 @@ private static short[] ATTEST_ID_TAGS;
 
     // Save attestation application id - must be present.
       short attAppId =
-          KMKeyParameters.findTag( KMType.BYTES_TAG, KMType.ATTESTATION_APPLICATION_ID, data[KEY_PARAMETERS]);
+          KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_APPLICATION_ID);
       if (attAppId == KMType.INVALID_VALUE) {
         KMException.throwIt(KMError.ATTESTATION_APPLICATION_ID_MISSING);
       }
@@ -1945,7 +1946,7 @@ private static short[] ATTEST_ID_TAGS;
     // But if it is called for neither then return error.
     short len = KMByteBlob.length(data[INPUT_DATA]);
     short tag =
-        KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ASSOCIATED_DATA, data[KEY_PARAMETERS]);
+        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ASSOCIATED_DATA);
     // For Finish operation the input data can be zero length and associated data can be
     // INVALID_VALUE
     // For update operation either input data or associated data should be present.
@@ -2663,7 +2664,7 @@ private static short[] ATTEST_ID_TAGS;
         }
 
         authTimeoutTagPtr =
-            KMKeyParameters.findTag(KMType.ULONG_TAG, KMType.AUTH_TIMEOUT_MILLIS, data[HW_PARAMETERS]);
+            KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.ULONG_TAG, KMType.AUTH_TIMEOUT_MILLIS);
         if (authTimeoutTagPtr == KMType.INVALID_VALUE) {
           KMException.throwIt(KMError.INVALID_KEY_BLOB);
         }
@@ -4569,6 +4570,18 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   public short validateApduHeader(APDU apdu) {
+    byte[] apduBuffer = apdu.getBuffer();
+    byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
+    short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
+
+    // Validate APDU Header.
+    if ((apduClass != CLA_ISO7816_NO_SM_NO_CHAN)) {
+    	return ISO7816.SW_CLA_NOT_SUPPORTED;
+    }
+    // Validate P1P2.
+    if (P1P2 != KEYMASTER_HAL_VERSION) {
+      return ISO7816.SW_INCORRECT_P1P2;
+    }
     return KMError.OK;
   }
 

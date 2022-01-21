@@ -272,16 +272,9 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
   private short validateApdu(APDU apdu) {
     // Read the apdu header and buffer.
     byte[] apduBuffer = apdu.getBuffer();
-    byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
-
-    // Validate APDU Header.
-    if ((apduClass != kmDeviceInst.CLA_ISO7816_NO_SM_NO_CHAN)) {
-      kmDeviceInst.sendError(apdu, KMError.UNSUPPORTED_CLA);
-      return KMType.INVALID_VALUE;
-    }
     short err = kmDeviceInst.validateApduHeader(apdu);
     if (err != KMError.OK) {
-    	kmDeviceInst.sendError(apdu, err);
+      kmDeviceInst.sendError(apdu, err);
       return KMType.INVALID_VALUE;
     }
     return apduBuffer[ISO7816.OFFSET_INS];

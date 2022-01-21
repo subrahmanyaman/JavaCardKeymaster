@@ -20,7 +20,7 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
 
-public class KMNInteger extends KMInteger {
+public class KMNInteger extends KMType {
   private static KMNInteger prototype;
   public static final byte SIGNED_MASK = (byte) 0x80;
 
@@ -111,14 +111,69 @@ public class KMNInteger extends KMInteger {
     Util.arrayCopy(num, offset, heap, (short) (ptr + TLV_HEADER_SIZE), KMInteger.UINT_64);
     return ptr;
   }
-
-  @Override
-  protected short getBaseOffset() {
+  
+  private short getStartOff() {
+    return (short) (getBaseOffset() + TLV_HEADER_SIZE);
+  }
+  
+  private short getShort() {
+	return Util.getShort(heap, (short) (getStartOff() + 2));
+  }
+  
+  private short getBaseOffset() {
     return instanceTable[KM_NEG_INTEGER_OFFSET];
   }
-
+  
+  private short length() {
+    return Util.getShort(heap, (short) (getBaseOffset() + 1));
+  }
+  
+  private short getSignificantShort() {
+	 return Util.getShort(heap, getStartOff());
+  }
+  
+  private void getValue(byte[] dest, short destOff, short length) {
+    if (length < length()) {
+      KMException.throwIt(KMError.UNKNOWN_ERROR);
+    }
+    if (length > length()) {
+      length = length();
+      destOff += length;
+    }
+    Util.arrayCopyNonAtomic(heap, getStartOff(), dest, destOff, length);
+  }
+  
+  private byte[] getBuffer() {
+	    return heap;
+  }
+  
   public static boolean isSignedInteger(byte[] num, short offset) {
     byte val = num[offset];
     return SIGNED_MASK == (val & SIGNED_MASK);
   }
+  
+  public static short getShort(short bPtr) {
+		return KMNInteger.cast(bPtr).getShort();
+  }
+ 
+  public static short getStartOff(short bPtr) {
+    return KMNInteger.cast(bPtr).getStartOff();
+  }
+  
+  public static short getSignificantShort(short bPtr) {
+	    return KMNInteger.cast(bPtr).getSignificantShort();
+  }
+  
+  public static void getValue(short bPtr, byte[] dest, short destOff, short length) {
+	  KMNInteger.cast(bPtr).getValue(dest, destOff, length);
+  }
+  
+  public static short length(short bPtr) {
+    return KMNInteger.cast(bPtr).length();
+  }
+  
+  public static byte[] getBuffer(short bPtr) {
+    return  KMNInteger.cast(bPtr).getBuffer();
+  }
+
 }
