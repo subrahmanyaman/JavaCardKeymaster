@@ -298,6 +298,7 @@ private static short[] ATTEST_ID_TAGS;
     KMUtils.initStatics();
     KMBoolTag.initStatics();
     KMPKCS8Decoder.initStatics();
+    KMEnumArrayTag.initStatics();
   }
   
   
@@ -648,16 +649,17 @@ private static short[] ATTEST_ID_TAGS;
    * Receives data, which can be extended data, as requested by the command instance.
    */
   public short receiveIncoming(APDU apdu, short reqExp) {
+	short recvLen = apdu.setIncomingAndReceive();  
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);
-    short req = receiveIncoming(apdu, reqExp, repository.getHeap(), bufferLength, bufferStartOffset);
+    short req = receiveIncoming(apdu, reqExp, repository.getHeap(), bufferLength, bufferStartOffset, recvLen);
     repository.reclaimMemory(bufferLength);
     return req;
   }
   
-  public short receiveIncoming(APDU apdu, short reqExp, byte[] reclamBuf, short bLen, short bStartOffset) {
+  public short receiveIncoming(APDU apdu, short reqExp, byte[] reclamBuf, short bLen, short bStartOffset, short incomingReceivedLen) {
     byte[] srcBuffer = apdu.getBuffer();
-    short recvLen = apdu.setIncomingAndReceive();
+    short recvLen = incomingReceivedLen;
     short srcOffset = apdu.getOffsetCdata();
     // TODO add logic to handle the extended length buffer. In this case the memory can be reused
     //  from extended buffer.
@@ -670,9 +672,9 @@ private static short[] ATTEST_ID_TAGS;
     return decoder.decode(reqExp, reclamBuf, bStartOffset, bLen);
   }
   
-  public void receiveIncomingCertData(APDU apdu, byte[] reclamBuf, short bLen, short bStartOffset, byte[] outBuf, short outOff) {
+  public void receiveIncomingCertData(APDU apdu, byte[] reclamBuf, short bLen, short bStartOffset, short incomingReceivedLen, byte[] outBuf, short outOff) {
     byte[] srcBuffer = apdu.getBuffer();
-    short recvLen = apdu.setIncomingAndReceive();
+    short recvLen = incomingReceivedLen;
     short srcOffset = apdu.getOffsetCdata();
     short index = bStartOffset;
     while (recvLen > 0 && ((short) (index - bStartOffset) < bLen)) {

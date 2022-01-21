@@ -135,9 +135,10 @@ public class KMKeymasterProvision {
     KMArray.add(argsProto, (short) 1, keyFormatPtr);
     KMArray.add(argsProto, (short) 2, blob);
 
-    short args = kmDeviceInst.receiveIncoming(apdu, argsProto);
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
+    
+    short args = kmDeviceInst.receiveIncoming(apdu, argsProto);
 
     // key params should have os patch, os version and verified root of trust
     short keyParams = KMArray.get(args, (short) 0);
@@ -213,11 +214,12 @@ public class KMKeymasterProvision {
     short certChainPos = KMByteBlob.getStartOff(var);
     short certIssuerPos = (short) (KMByteBlob.getStartOff(var) + 4);
     short certExpiryPos = (short) (KMByteBlob.getStartOff(var) + 8);
+    short recvLen = apdu.setIncomingAndReceive();
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = kmRepositroyInst.allocReclaimableMemory(bufferLength);
     byte[] buffer = kmRepositroyInst.getHeap();
     kmDeviceInst.receiveIncomingCertData(apdu, buffer, bufferLength,
-    		     bufferStartOffset, KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
+    		     bufferStartOffset, recvLen,  KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
     // persist data
     seProvider.persistProvisionData(
         (byte[]) buffer,
