@@ -70,10 +70,11 @@ public class KMKeymintProvision extends KMKeymasterProvision{
     KMMap.add(map, (short) 0, KMTextString.exp(), coseSignArr);
     // receive incoming data and decode it.
     byte[] srcBuffer = apdu.getBuffer();
+    short recvLen = apdu.setIncomingAndReceive(); 
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = kmRepositroyInst.allocReclaimableMemory(bufferLength);
     byte[] buffer = kmRepositroyInst.getHeap();
-    map = kmDeviceInst.receiveIncoming(apdu, map, buffer, bufferLength, bufferStartOffset);
+    map = kmDeviceInst.receiveIncoming(apdu, map, buffer, bufferLength, bufferStartOffset, recvLen);
     arrInst = KMMap.getKeyValue(map, (short) 0);
     // Validate Additional certificate chain.
     short leafCoseKey =

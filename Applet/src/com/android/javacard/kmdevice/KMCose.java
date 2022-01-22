@@ -527,7 +527,7 @@ public class KMCose {
       KMArray.add(arrPtr, (short) (KMArray.length(arrPtr) - 1), testKey);
     }
     arrPtr = KMCoseKey.instance(arrPtr);
-    KMCoseKey.canonicalize(arrPtr);
+    KMCoseKey.cast(arrPtr).canonicalize();
     return arrPtr;
   }
 
