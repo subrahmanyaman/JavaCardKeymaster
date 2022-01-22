@@ -2956,6 +2956,7 @@ private static short[] ATTEST_ID_TAGS;
   }
   
   private void validateImportKey(short params, short keyFmt){
+	validatePurpose(params);
     // Rollback protection not supported
     KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE, KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
     // As per specification, Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
@@ -2974,6 +2975,10 @@ private static short[] ATTEST_ID_TAGS;
     }
   }
 
+  public void validatePurpose(short params) {
+    return;
+  }
+  
   private void importKey(APDU apdu, short keyFmt, byte[] scratchPad) {
     validateImportKey(data[KEY_PARAMETERS], keyFmt);
     // Check algorithm and dispatch to appropriate handler.
@@ -3033,20 +3038,18 @@ private static short[] ATTEST_ID_TAGS;
     // check whether the key size tag is present in key parameters.
     short keySize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
+    short SecretLen = (short) (KMByteBlob.length(data[SECRET]) * 8);
     if (keySize != KMType.INVALID_VALUE) {
       // As per NIST.SP.800-186 page 9,  secret for 256 curve should be between
       // 256-383
-      if (((256 <= (short) (KMByteBlob.length(data[SECRET]) * 8))
-          && (383 >= (short) (KMByteBlob.length(data[SECRET]) * 8)))
-          ^ keySize == 256) {
+      if (((256 <= SecretLen) && (383 >= SecretLen)) ^ keySize == 256) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
       if (keySize != 256) {
         KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       }
     } else {
-      if ((256 <= (short) (KMByteBlob.length(data[SECRET]) * 8))
-    	          && (383 >= (short) (KMByteBlob.length(data[SECRET]) * 8))){
+      if ((256 > SecretLen) || (383 < SecretLen)){
           KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);    		 
       }
       // add the key size to scratchPad
@@ -3060,17 +3063,14 @@ private static short[] ATTEST_ID_TAGS;
     if (curve != KMType.INVALID_VALUE) {
       // As per NIST.SP.800-186 page 9,  secret length for 256 curve should be between
       // 256-383
-      if (((256 <= (short) (KMByteBlob.length(data[SECRET]) * 8))
-          && (383 >= (short) (KMByteBlob.length(data[SECRET]) * 8)))
-          ^ curve == KMType.P_256) {
+      if (((256 <= SecretLen) && (383 >= SecretLen)) ^ curve == KMType.P_256) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
       if (curve != KMType.P_256) {
         KMException.throwIt(KMError.UNSUPPORTED_EC_CURVE);
       }
     } else {
-      if ((256 <= (short) (KMByteBlob.length(data[SECRET]) * 8))
-  	          && (383 >= (short) (KMByteBlob.length(data[SECRET]) * 8))){
+      if ((256 > SecretLen) || (383 < SecretLen)){
         KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);    		 
       }	
       // add the curve to scratchPad
@@ -3398,6 +3398,7 @@ private static short[] ATTEST_ID_TAGS;
     // As per specification Early boot keys may be created after early boot ended.
     validateEarlyBoot();
     // Algorithm must be present
+    validatePurpose(data[KEY_PARAMETERS]);
     KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[KEY_PARAMETERS]);
     // Check algorithm and dispatch to appropriate handler.

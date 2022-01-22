@@ -266,7 +266,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
         KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
     } else {
       if (eccurve != KMType.P_256) {
-         KMException.throwIt(KMError.UNSUPPORTED_EC_CURVE);
+         KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       }
     }
   }
@@ -398,6 +398,18 @@ public class KMKeymintDevice extends KMKeymasterDevice {
   @Override
   public void updateAAD(KMOperationState op, byte finish) {
 	  return;
+  }
+  
+  @Override
+  public void validatePurpose(short params) {
+    short attKeyPurpose =
+            KMKeyParameters.findTag(params, KMType.ENUM_ARRAY_TAG, KMType.PURPOSE);
+    // ATTEST_KEY cannot be combined with any other purpose.
+    if (attKeyPurpose != KMType.INVALID_VALUE
+    	    && KMEnumArrayTag.contains(attKeyPurpose, KMType.ATTEST_KEY) 
+            && KMEnumArrayTag.length(attKeyPurpose) > 1) {
+      KMException.throwIt(KMError.INCOMPATIBLE_PURPOSE);
+    }
   }
 
 }
