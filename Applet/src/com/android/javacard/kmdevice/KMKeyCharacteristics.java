@@ -35,18 +35,8 @@ public class KMKeyCharacteristics extends KMType {
 
   private KMKeyCharacteristics() {
   }
-
-  public static short keymasterExp() {
-    short sb = KMKeyParameters.exp();
-    short keystore = KMKeyParameters.exp();
-    short arrPtr = KMArray.instance((short) 2);
-
-    KMArray.add(arrPtr, STRONGBOX_ENFORCED, sb);
-    KMArray.add(arrPtr, KEYSTORE_ENFORCED, keystore);
-    return instance(arrPtr);
-  }
-
-  public static short keymintExp() {
+  
+  public static short exp() {
     short sb = KMKeyParameters.exp();
     short tee = KMKeyParameters.exp();
     short keystore = KMKeyParameters.exp();
@@ -65,22 +55,16 @@ public class KMKeyCharacteristics extends KMType {
     KMType.instanceTable[KM_KEY_CHARACTERISTICS_OFFSET] = ptr;
     return prototype;
   }
-
-  public static short instance2() {
-    short arrPtr = KMArray.instance((short) 2);
-    return instance(arrPtr);
-  }
-
+  
   public static short instance() {
     short arrPtr = KMArray.instance((short) 3);
     return instance(arrPtr);
   }
 
   public static short instance(short vals) {
-    short length = KMArray.length(vals);
-    short ptr = KMType.instance(KEY_CHAR_TYPE, length);
-    if (length != 3 && length != 2) {
-      ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+    short ptr = KMType.instance(KEY_CHAR_TYPE, (short) 3);
+	if (KMArray.length(vals) != 3) {
+	  ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE), vals);
     return ptr;
@@ -113,9 +97,6 @@ public class KMKeyCharacteristics extends KMType {
 
   public short getTeeEnforced() {
     short arrPtr = getVals();
-    if (length() <= TEE_ENFORCED) {
-      return KMType.INVALID_VALUE;
-    }
     return KMArray.get(arrPtr, TEE_ENFORCED);
   }
 
