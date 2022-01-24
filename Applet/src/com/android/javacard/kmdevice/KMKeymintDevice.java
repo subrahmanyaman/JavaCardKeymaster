@@ -85,7 +85,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
 
   @Override
   public short getKeyCharacteristicsExp() {
-    return KMKeyCharacteristics.keymintExp();
+    return KMKeyCharacteristics.exp();
   }
 
   @Override

@@ -4330,21 +4330,25 @@ private static short[] ATTEST_ID_TAGS;
     short teeParams = KMKeyParameters.makeTeeEnforced(keyParams, scratchPad);
     short swParams = KMKeyParameters.makeKeystoreEnforced(keyParams, scratchPad);
     short hwParams = KMKeyParameters.makeHwEnforced(strongboxParams, teeParams);
-    short keyCharacteristics = KMKeyCharacteristics.instance2();
+    short arr = KMArray.instance((short) 0);
+    short emptyParams = KMKeyParameters.instance(arr);
+    short keyCharacteristics = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.setStrongboxEnforced(keyCharacteristics, hwParams);
     KMKeyCharacteristics.setKeystoreEnforced(keyCharacteristics, swParams);
+    KMKeyCharacteristics.setTeeEnforced(keyCharacteristics, emptyParams);
     return keyCharacteristics;
   }
 
   public short makeKeyCharacteristicsForKeyblob(short swParams, short sbParams, short teeParams) {
-    short keyChars = KMKeyCharacteristics.instance2();
+	short keyChars = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.setStrongboxEnforced(keyChars, sbParams);
     KMKeyCharacteristics.setKeystoreEnforced(keyChars, swParams);
+    KMKeyCharacteristics.setTeeEnforced(keyChars, teeParams);
     return keyChars;
   }
 
   public short getKeyCharacteristicsExp() {
-    return KMKeyCharacteristics.keymasterExp();
+    return KMKeyCharacteristics.exp();
   }
 
   public void validateEarlyBoot() {
