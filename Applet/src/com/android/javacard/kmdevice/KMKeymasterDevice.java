@@ -299,6 +299,7 @@ private static short[] ATTEST_ID_TAGS;
     KMBoolTag.initStatics();
     KMPKCS8Decoder.initStatics();
     KMEnumArrayTag.initStatics();
+    KMIntegerArrayTag.initStatics();
   }
   
   
@@ -2897,6 +2898,7 @@ private static short[] ATTEST_ID_TAGS;
             KMByteBlob.length(tmpVariables[0]),
             scratchPad,
             (short) 0);
+    data[PUB_KEY] = KMType.INVALID_VALUE;
     data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, tmpVariables[1]);
 
     // Step 3 - XOR the decrypted AES-GCM key with with masking key
