@@ -1173,10 +1173,10 @@ private static short[] ATTEST_ID_TAGS;
   //TODO remove cmd later on
   private void processFinishImportWrappedKeyCmd(APDU apdu){
     short cmd = finishImportWrappedKeyCmd(apdu);
-    short keyParameters = KMArray.get(cmd, (short) 0);
+    data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 0);
     short keyFmt = KMArray.get(cmd, (short) 1);
     keyFmt = KMEnum.getVal(keyFmt);
-    validateImportKey(keyParameters, keyFmt);
+    validateImportKey(data[KEY_PARAMETERS], keyFmt);
     byte[] scratchPad = apdu.getBuffer();
     // Step 4 - AES-GCM decrypt the wrapped key
     data[INPUT_DATA] = KMArray.get(cmd, (short) 2);
@@ -1190,8 +1190,7 @@ private static short[] ATTEST_ID_TAGS;
     data[IMPORTED_KEY_BLOB] = aesGCMDecrypt(getWrappingKey(),data[INPUT_DATA],data[NONCE],data[AUTH_DATA], data[AUTH_TAG],scratchPad);
     resetWrappingKey();
     // Step 5 - Import decrypted key
-    data[ORIGIN] = KMType.SECURELY_IMPORTED;
-    data[KEY_PARAMETERS] = keyParameters;
+    data[ORIGIN] = KMType.SECURELY_IMPORTED; 
     // create key blob array
     importKey(apdu, keyFmt, scratchPad);
   }
@@ -2185,7 +2184,6 @@ private static short[] ATTEST_ID_TAGS;
         KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.PADDING);
     if (paramPadding != KMType.INVALID_VALUE) {
       if (KMEnumArrayTag.length(paramPadding) != 1) {
-        //TODO vts fails because it expects UNSUPPORTED_PADDING_MODE
         KMException.throwIt(KMError.UNSUPPORTED_PADDING_MODE);
       }
       paramPadding = KMEnumArrayTag.get(paramPadding, (short) 0);
@@ -2216,7 +2214,7 @@ private static short[] ATTEST_ID_TAGS;
         KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.PADDING);
     if (param != KMType.INVALID_VALUE) {
       if (KMEnumArrayTag.length(param) != 1) {
-        KMException.throwIt(KMError.INVALID_ARGUMENT);
+        KMException.throwIt(KMError.UNSUPPORTED_PADDING_MODE);
       }
       param = KMEnumArrayTag.get(param, (short) 0);
       if (!KMEnumArrayTag.contains(paddings, param)) {
@@ -2294,9 +2292,6 @@ private static short[] ATTEST_ID_TAGS;
           default:
             KMException.throwIt(KMError.UNSUPPORTED_BLOCK_MODE);
         }
-        if (param == KMType.INVALID_VALUE) {
-          KMException.throwIt(KMError.INVALID_ARGUMENT);
-        }
         if (param == KMType.GCM) {
           if (op.getPadding() != KMType.PADDING_NONE || op.getPadding() == KMType.PKCS7) {
             KMException.throwIt(KMError.INCOMPATIBLE_PADDING_MODE);
@@ -2328,9 +2323,6 @@ private static short[] ATTEST_ID_TAGS;
           default:
             KMException.throwIt(KMError.UNSUPPORTED_BLOCK_MODE);
         }
-        if (param == KMType.INVALID_VALUE) {
-          KMException.throwIt(KMError.INVALID_ARGUMENT);
-        }
         break;
       case KMType.HMAC:
         if (macLen == KMType.INVALID_VALUE) {
@@ -2346,9 +2338,7 @@ private static short[] ATTEST_ID_TAGS;
               < KMIntegerTag.getShortValue(
               KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[HW_PARAMETERS])) {
             KMException.throwIt(KMError.INVALID_MAC_LENGTH);
-          } else if (macLen
-              > KMIntegerTag.getShortValue(
-              KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[HW_PARAMETERS])) {
+          } else if (macLen % 8 != 0 || macLen > 256) {
             KMException.throwIt(KMError.UNSUPPORTED_MAC_LENGTH);
           }
           op.setMacLength(macLen);
@@ -2964,7 +2954,10 @@ private static short[] ATTEST_ID_TAGS;
     // As per specification, Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
     // provided to IKeyMintDevice::importKey
     KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, KMError.EARLY_BOOT_ENDED);
-    
+    //Check if the tags are supported.
+    if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_TAG);
+    }
     // Algorithm must be present
     KMTag.assertPresence(params, KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, params);
@@ -3080,7 +3073,6 @@ private static short[] ATTEST_ID_TAGS;
       Util.setShort(scratchPad, index, curve);
       index += 2;
     }
-
     // Check whether key can be created
     seProvider.importAsymmetricKey(
         KMType.EC,
@@ -3107,11 +3099,18 @@ private static short[] ATTEST_ID_TAGS;
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     if (keysize != KMType.INVALID_VALUE) {
       if (!(keysize >= 64 && keysize <= 512 && keysize % 8 == 0)) {
+        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+      }
+      if (keysize != (short) (KMByteBlob.length(data[SECRET]) * 8)) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
     } else {
       // add the key size to scratchPad
-      keysize = KMInteger.uint_16((short) (KMByteBlob.length(data[SECRET]) * 8));
+      keysize = (short) (KMByteBlob.length(data[SECRET]) * 8);
+      if (!(keysize >= 64 && keysize <= 512 && keysize % 8 == 0)) {
+    	KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+      }
+      keysize = KMInteger.uint_16(keysize);
       short keySizeTag = KMIntegerTag.instance(KMType.UINT_TAG, KMType.KEYSIZE, keysize);
       Util.setShort(scratchPad, index, keySizeTag);
       index += 2;
@@ -3140,15 +3139,24 @@ private static short[] ATTEST_ID_TAGS;
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     if (keysize != KMType.INVALID_VALUE) {
       if (keysize != 168) {
-        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    	  KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+      }
+      if(192 != (short)( 8 * KMByteBlob.length(data[SECRET]))) {
+        KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
     } else {
+      keysize = (short) (KMByteBlob.length(data[SECRET]) * 8);
+      if (keysize != 192) {
+        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+      }
       // add the key size to scratchPad
       keysize = KMInteger.uint_16((short) 168);
       short keysizeTag = KMIntegerTag.instance(KMType.UINT_TAG, KMType.KEYSIZE, keysize);
       Util.setShort(scratchPad, index, keysizeTag);
       index += 2;
     }
+    // Read Minimum Mac length - it must not be present
+    KMTag.assertAbsence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,KMError.INVALID_TAG);
     // Check whether key can be created
     seProvider.importSymmetricKey(
         KMType.DES,
@@ -3158,8 +3166,6 @@ private static short[] ATTEST_ID_TAGS;
         KMByteBlob.length(data[SECRET]));
     // update the key parameters list
     updateKeyParameters(scratchPad, index);
-    // validate TDES Key parameters
-    validateTDESKey();
     data[KEY_BLOB] = KMArray.instance((short) 4);
   }
 
@@ -3178,6 +3184,9 @@ private static short[] ATTEST_ID_TAGS;
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     if (keysize != KMType.INVALID_VALUE) {
+      if(keysize != (short)( 8 * KMByteBlob.length(data[SECRET]))) {
+        KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
+      }	
       validateAesKeySize(keysize);
     } else {
       // add the key size to scratchPad
@@ -3215,7 +3224,7 @@ private static short[] ATTEST_ID_TAGS;
     }
     if(Util.arrayCompare(F4, (short)0, KMByteBlob.getBuffer(pubKeyExp),
         KMByteBlob.getStartOff(pubKeyExp), (short)F4.length) != 0){
-      KMException.throwIt(KMError.INVALID_ARGUMENT);
+      KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
     }
     short index = 0; // index in scratchPad for update parameters.
     // validate public exponent if present in key params - it must be 0x010001
@@ -3226,7 +3235,7 @@ private static short[] ATTEST_ID_TAGS;
             KMType.ULONG_TAG,
             KMType.RSA_PUBLIC_EXPONENT,
             data[KEY_PARAMETERS]);
-    if (len  != KMTag.INVALID_VALUE) {
+    if (len != KMTag.INVALID_VALUE) {
       if (len != 4
           || Util.getShort(scratchPad, (short) 10) != 0x01
           || Util.getShort(scratchPad, (short) 12) != 0x01) {
@@ -3246,12 +3255,16 @@ private static short[] ATTEST_ID_TAGS;
     // check the keysize tag if present in key parameters.
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
+    short kSize = (short) (KMByteBlob.length(data[SECRET]) * 8);
     if (keysize != KMType.INVALID_VALUE) {
       if (keysize != 2048
-          || keysize != (short) (KMByteBlob.length(data[SECRET]) * 8)) {
+          || keysize != kSize ) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
     } else {
+      if(2048 != kSize){
+    	KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);  
+      }
       // add the key size to scratchPad
       keysize = KMInteger.uint_16((short) 2048);
       keysize = KMIntegerTag.instance(KMType.UINT_TAG, KMType.KEYSIZE, keysize);
@@ -3272,7 +3285,6 @@ private static short[] ATTEST_ID_TAGS;
     // update the key parameters list
     updateKeyParameters(scratchPad, index);
     // validate RSA Key parameters
-    validateRSAKey(scratchPad);
     data[KEY_BLOB] = KMArray.instance((short) 5);
     KMArray.add(data[KEY_BLOB], KEY_BLOB_PUB_KEY, data[PUB_KEY]);
   }
@@ -3397,11 +3409,15 @@ private static short[] ATTEST_ID_TAGS;
     KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG,KMType.ROLLBACK_RESISTANCE, KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
     // BOOTLOADER_ONLY keys not supported.
     KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY, KMError.INVALID_KEY_BLOB);
+    // Algorithm must be present
+    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     // As per specification Early boot keys may be created after early boot ended.
     validateEarlyBoot();
-    // Algorithm must be present
     validatePurpose(data[KEY_PARAMETERS]);
-    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
+    //Check if the tags are supported.
+    if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_TAG);
+    }
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[KEY_PARAMETERS]);
     // Check algorithm and dispatch to appropriate handler.
     switch (alg) {
@@ -3748,7 +3764,7 @@ private static short[] ATTEST_ID_TAGS;
       KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
     }
     // Read Minimum Mac length
-    KMTag.assertPresence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, KMError.MISSING_MAC_LENGTH);
+    KMTag.assertPresence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, KMError.MISSING_MIN_MAC_LENGTH);
     short minMacLength =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[KEY_PARAMETERS]);
 

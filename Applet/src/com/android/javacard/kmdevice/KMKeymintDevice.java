@@ -404,7 +404,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
   public void validatePurpose(short params) {
     short attKeyPurpose =
             KMKeyParameters.findTag(params, KMType.ENUM_ARRAY_TAG, KMType.PURPOSE);
-    // ATTEST_KEY cannot be combined with any other purpose.
+    // ATTEST_KEY purpose cannot be combined with any other purpose.
     if (attKeyPurpose != KMType.INVALID_VALUE
     	    && KMEnumArrayTag.contains(attKeyPurpose, KMType.ATTEST_KEY) 
             && KMEnumArrayTag.length(attKeyPurpose) > 1) {
