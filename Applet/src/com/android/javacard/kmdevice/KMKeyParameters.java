@@ -198,7 +198,7 @@ public class KMKeyParameters extends KMType {
     return KMKeyParameters.cast(bPtr).findTag(tagType, tagKey);
   }
   
-  public boolean hasUnsupportedTags(short keyParamsPtr) {
+  public static boolean hasUnsupportedTags(short keyParamsPtr) {
 
     byte index = 0;
     short tagInd;

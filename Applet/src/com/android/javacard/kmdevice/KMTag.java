@@ -79,6 +79,7 @@ public class KMTag extends KMType {
     if(pubExp == KMType.INVALID_VALUE){
       return false;
     }
+    // Only exponent support is F4 - 65537 which is 0x00010001. 
     pubExp = KMIntegerTag.getValue(pubExp);
     if(!(KMInteger.getShort(pubExp) == 0x01 &&
         KMInteger.getSignificantShort(pubExp) == 0x01)){
