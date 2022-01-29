@@ -312,6 +312,7 @@ public class KMKeymasterDevice {
     KMPKCS8Decoder.initStatics();
     KMEnumArrayTag.initStatics();
     KMIntegerArrayTag.initStatics();
+    RemotelyProvisionedComponentDevice.initStatics();
   }
   
   
