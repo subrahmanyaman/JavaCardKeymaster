@@ -20,12 +20,14 @@ import org.globalplatform.upgrade.OnUpgradeListener;
 import org.globalplatform.upgrade.UpgradeManager;
 
 import com.android.javacard.kmdevice.KMArray;
+import com.android.javacard.kmdevice.KMBootDataStore;
 import com.android.javacard.kmdevice.KMByteBlob;
 import com.android.javacard.kmdevice.KMByteTag;
 import com.android.javacard.kmdevice.KMCose;
 import com.android.javacard.kmdevice.KMCoseHeaders;
 import com.android.javacard.kmdevice.KMCoseKey;
 import com.android.javacard.kmdevice.KMDecoder;
+import com.android.javacard.kmdevice.KMEncoder;
 import com.android.javacard.kmdevice.KMEnum;
 import com.android.javacard.kmdevice.KMEnumArrayTag;
 import com.android.javacard.kmdevice.KMEnumTag;
@@ -35,14 +37,18 @@ import com.android.javacard.kmdevice.KMKeymasterDevice;
 import com.android.javacard.kmdevice.KMKeymintDevice;
 import com.android.javacard.kmdevice.KMMap;
 import com.android.javacard.kmdevice.KMRepository;
+import com.android.javacard.kmdevice.KMRkpDataStore;
 import com.android.javacard.kmdevice.KMTag;
 import com.android.javacard.kmdevice.KMTextString;
+import com.android.javacard.kmdevice.RemotelyProvisionedComponentDevice;
 import com.android.javacard.seprovider.KMAndroidSEProvider;
 import com.android.javacard.seprovider.KMError;
 import com.android.javacard.kmdevice.KMException;
+import com.android.javacard.kmdevice.KMDataStore;
 import com.android.javacard.seprovider.KMKeymasterProvision;
 import com.android.javacard.seprovider.KMKeymintProvision;
 import com.android.javacard.kmdevice.KMSEProvider;
+import com.android.javacard.kmdevice.KMDataStoreConstants;
 import com.android.javacard.seprovider.KMType;
 
 import javacard.framework.APDU;
@@ -78,34 +84,44 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
   private static final byte INS_PROVISION_ADDITIONAL_CERT_CHAIN_CMD =
       INS_KEYMINT_PROVIDER_APDU_START + 11;
 
- // public static final byte BOOT_KEY_MAX_SIZE = 32;
- // public static final byte BOOT_HASH_MAX_SIZE = 32;
-
-  // Provision reporting status
- 
+  // Keymaster versions
   public static final byte KM_40 = 0x00;
   public static final byte KM_41 = 0x01;
   public static final byte KM_100 = 0x03;
   
-  private static byte keymasterState = ILLEGAL_STATE;
-  //private static byte provisionStatus = NOT_PROVISIONED;
+  private static final byte BOOT_KEY_MAX_SIZE = 32;
+  private static final byte BOOT_HASH_MAX_SIZE = 32;
+  private static final byte COMPUTED_HMAC_KEY_SIZE = 32;
+  
+    
   private static byte kmDevice;
   private static KMSEProvider seProvider;
   private static KMKeymasterProvision seProvisionInst;
   private static KMDecoder decoderInst;
+  private static KMEncoder encoderInst;
   private static KMRepository repositoryInst;
   private static KMKeymasterDevice kmDeviceInst;
+  private static KMDataStore kmDataStore;
+  private static KMRkpDataStore kmRkpDataStore;
+  private static KMBootDataStore bootParamsProvider;
 
   KMAndroidSEApplet() {
-	seProvider = (KMSEProvider) new KMAndroidSEProvider();
-	repositoryInst = new KMRepository(seProvider.isUpgrading());
+    seProvider = (KMSEProvider) new KMAndroidSEProvider();
+    repositoryInst = new KMRepository(seProvider.isUpgrading());
+    kmRkpDataStore = new KMRkpDataStoreImpl(seProvider);
     decoderInst = new KMDecoder();
-    if(kmDevice == KM_40 || kmDevice == KM_41) {
-    	kmDeviceInst = new KMKeymasterDevice(seProvider, repositoryInst, decoderInst);
-    	seProvisionInst = new KMKeymasterProvision(kmDeviceInst, seProvider, decoderInst, repositoryInst);
+    encoderInst = new KMEncoder();
+    kmDataStore = new KMKeymintDataStore(seProvider, !(kmDevice == KM_100) /* Factory attest flag*/);
+    bootParamsProvider = new KMBootParamsProviderImpl((KMKeymintDataStore) kmDataStore);
+    if (kmDevice == KM_40 || kmDevice == KM_41) {
+      kmDeviceInst = new KMKeymasterDevice(seProvider, repositoryInst, encoderInst, decoderInst, kmDataStore,
+          bootParamsProvider);
+      seProvisionInst = new KMKeymasterProvision(kmDeviceInst, seProvider, decoderInst, repositoryInst, kmDataStore);
     } else {
-    	kmDeviceInst = new KMKeymintDevice(seProvider, repositoryInst, decoderInst);
-    	seProvisionInst = new KMKeymintProvision(kmDeviceInst, seProvider, decoderInst, repositoryInst);
+      kmDeviceInst = new KMKeymintDevice(seProvider, repositoryInst, encoderInst, decoderInst, kmDataStore,
+          bootParamsProvider, kmRkpDataStore);
+      seProvisionInst = new KMKeymintProvision(kmDeviceInst, seProvider, decoderInst, repositoryInst, kmDataStore,
+          kmRkpDataStore);
     }
   }
 
@@ -127,6 +143,17 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
     kmDevice = bArray[(short) (bOffset + Li + Lc + 3)];
     new KMAndroidSEApplet().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
   }
+  
+  private boolean isProvisionLocked() {
+    short offset = repositoryInst.alloc((short) 1);
+    short len = kmDataStore.getData(KMDataStoreConstants.PROVISIONED_LOCKED,
+        repositoryInst.getHeap(), offset);
+    if (len == 0) {
+      return false;
+    }
+    return ((byte[]) repositoryInst.getHeap())[offset] == 0x01;
+  }
+
 
   @Override
   public void process(APDU apdu) {
@@ -139,24 +166,26 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
       }
       short apduIns = validateApdu(apdu);
       if (((KMAndroidSEProvider) seProvider).isPowerReset(false)) {
-    	kmDeviceInst.powerReset();
+        kmDeviceInst.powerReset();
       }
 
-      if (((KMAndroidSEProvider) seProvider).isProvisionLocked()) {
+      if (isProvisionLocked()) {
         switch (apduIns) {
-          case INS_SET_BOOT_PARAMS_CMD:
-        	seProvisionInst.processSetBootParamsCmd(apdu);
-            break;
-            
-          case INS_SET_BOOT_ENDED_CMD:
-            //set the flag to mark boot ended
-        	repositoryInst.setBootEndedStatus(true);
-        	kmDeviceInst.sendError(apdu, KMError.OK);
-            break;   
+        case INS_SET_BOOT_PARAMS_CMD:
+          processSetBootParamsCmd(apdu);
+          break;
 
-          default:
-        	kmDeviceInst.process(apdu);
-            break;
+        case INS_SET_BOOT_ENDED_CMD:
+          // set the flag to mark boot ended
+          byte[] buffer = apdu.getBuffer();
+          buffer[0] = 0x01;
+          kmDataStore.storeData(KMDataStoreConstants.BOOT_ENDED_STATUS, buffer, (short) 0, (short) 1);
+          kmDeviceInst.sendError(apdu, KMError.OK);
+          break;
+
+        default:
+          kmDeviceInst.process(apdu);
+          break;
         }
         return;
       }
@@ -165,43 +194,43 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
         return;
       }
       switch (apduIns) {
-        case INS_PROVISION_ATTESTATION_KEY_CMD: // only keymaster
-    	  seProvisionInst.processProvisionAttestationKey(apdu);
-          break;
-        case INS_PROVISION_ATTESTATION_CERT_DATA_CMD: // only keymaster
-    	  seProvisionInst.processProvisionAttestationCertDataCmd(apdu);
-    	  break;
-        case INS_PROVISION_ATTEST_IDS_CMD:
-          seProvisionInst.processProvisionAttestIdsCmd(apdu);
-          break;
+      case INS_PROVISION_ATTESTATION_KEY_CMD: // only keymaster
+        seProvisionInst.processProvisionAttestationKey(apdu);
+        break;
+      case INS_PROVISION_ATTESTATION_CERT_DATA_CMD: // only keymaster
+        seProvisionInst.processProvisionAttestationCertDataCmd(apdu);
+        break;
+      case INS_PROVISION_ATTEST_IDS_CMD:
+        seProvisionInst.processProvisionAttestIdsCmd(apdu);
+        break;
 
-        case INS_PROVISION_PRESHARED_SECRET_CMD:
-    	  seProvisionInst.processProvisionPreSharedSecretCmd(apdu);
-          break;
+      case INS_PROVISION_PRESHARED_SECRET_CMD:
+        seProvisionInst.processProvisionPreSharedSecretCmd(apdu);
+        break;
 
-        case INS_GET_PROVISION_STATUS_CMD:
-          seProvisionInst.processGetProvisionStatusCmd(apdu);
-          break;
+      case INS_GET_PROVISION_STATUS_CMD:
+        seProvisionInst.processGetProvisionStatusCmd(apdu);
+        break;
 
-        case INS_LOCK_PROVISIONING_CMD:
-    	  seProvisionInst.processLockProvisioningCmd(apdu);
-          break;
+      case INS_LOCK_PROVISIONING_CMD:
+        seProvisionInst.processLockProvisioningCmd(apdu);
+        break;
 
-        case INS_SET_BOOT_PARAMS_CMD:
-          seProvisionInst.processSetBootParamsCmd(apdu);
-          break;
+      case INS_SET_BOOT_PARAMS_CMD:
+        processSetBootParamsCmd(apdu);
+        break;
 
-        case INS_PROVISION_DEVICE_UNIQUE_KEY_CMD: //only keymint
-          seProvisionInst.processProvisionDeviceUniqueKey(apdu);
-          break;
+      case INS_PROVISION_DEVICE_UNIQUE_KEY_CMD: // only keymint
+        seProvisionInst.processProvisionDeviceUniqueKey(apdu);
+        break;
 
-        case INS_PROVISION_ADDITIONAL_CERT_CHAIN_CMD:// only keymint
-          seProvisionInst.processProvisionAdditionalCertChain(apdu);
-          break;
+      case INS_PROVISION_ADDITIONAL_CERT_CHAIN_CMD:// only keymint
+        seProvisionInst.processProvisionAdditionalCertChain(apdu);
+        break;
 
-        default:
-          kmDeviceInst.process(apdu);
-          break;
+      default:
+        kmDeviceInst.process(apdu);
+        break;
       }
     } catch (KMException exception) {
       kmDeviceInst.sendError(apdu, KMException.reason());
@@ -226,47 +255,28 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
 
   @Override
   public void onRestore(Element element) {
-    element.initRead();
-    keymasterState = element.readByte();
-    repositoryInst.onRestore(element);
-    seProvider.onRestore(element);
-    seProvisionInst.onSave(element);
+//    element.initRead();
+//    keymasterState = element.readByte();
+//    repositoryInst.onRestore(element);
+//    //seProvider.onRestore(element);
+//    seProvisionInst.onSave(element);
   }
 
   @Override
   public Element onSave() {
-    // SEProvider count
-    short primitiveCount = seProvider.getBackupPrimitiveByteCount();
-    short objectCount = seProvider.getBackupObjectCount();
+    short primitiveCount = kmDataStore.getBackupPrimitiveByteCount();
+    short objectCount = kmDataStore.getBackupObjectCount();
     
-    //Provision count
-    primitiveCount += seProvisionInst.getBackupPrimitiveByteCount();
-    objectCount += seProvisionInst.getBackupObjectCount();
-    
-    //Repository count
-    primitiveCount += repositoryInst.getBackupPrimitiveByteCount();
-    objectCount += repositoryInst.getBackupObjectCount();
-    //KMKeymasterApplet count
-    primitiveCount += computePrimitveDataSize();
-    objectCount += computeObjectCount();
+    primitiveCount += kmRkpDataStore.getBackupPrimitiveByteCount();
+    objectCount += kmRkpDataStore.getBackupObjectCount();
 
     // Create element.
     Element element = UpgradeManager.createElement(Element.TYPE_SIMPLE,
-        primitiveCount, objectCount);
-    element.write(keymasterState);
-    repositoryInst.onSave(element);
-    seProvider.onSave(element);
-    seProvisionInst.onSave(element);
+      primitiveCount, objectCount);
+    
+    kmDataStore.onSave(element);
+    kmRkpDataStore.onSave(element);
     return element;
-  }
-
-  private short computePrimitveDataSize() {
-    // provisionStatus + keymasterState
-    return (short) 2;
-  }
-
-  private short computeObjectCount() {
-    return (short) 0;
   }
 
   private short validateApdu(APDU apdu) {
@@ -278,6 +288,63 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
       return KMType.INVALID_VALUE;
     }
     return apduBuffer[ISO7816.OFFSET_INS];
+  }
+  
+  private void processSetBootParamsCmd(APDU apdu) {
+    short argsProto = KMArray.instance((short) 5);
+    
+    byte[] scratchPad = apdu.getBuffer();
+    // Array of 4 expected arguments
+    // Argument 0 Boot Patch level
+    KMArray.add(argsProto, (short) 0, KMInteger.exp());
+    // Argument 1 Verified Boot Key
+    KMArray.add(argsProto, (short) 1, KMByteBlob.exp());
+    // Argument 2 Verified Boot Hash
+    KMArray.add(argsProto, (short) 2, KMByteBlob.exp());
+    // Argument 3 Verified Boot State
+    KMArray.add(argsProto, (short) 3, KMEnum.instance(KMType.VERIFIED_BOOT_STATE));
+    // Argument 4 Device Locked
+    KMArray.add(argsProto, (short) 4, KMEnum.instance(KMType.DEVICE_LOCKED));
+
+    short args = kmDeviceInst.receiveIncoming(apdu, argsProto);
+
+    short bootParam = KMArray.get(args, (short) 0);
+
+    ((KMKeymintDataStore) kmDataStore).setBootPatchLevel(KMInteger.getBuffer(bootParam),
+        KMInteger.getStartOff(bootParam),
+        KMInteger.length(bootParam));
+
+    bootParam = KMArray.get(args, (short) 1);
+    if (KMByteBlob.length(bootParam) > BOOT_KEY_MAX_SIZE) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    ((KMKeymintDataStore) kmDataStore).setBootKey(KMByteBlob.getBuffer(bootParam),
+        KMByteBlob.getStartOff(bootParam),
+        KMByteBlob.length(bootParam));
+
+    bootParam = KMArray.get(args, (short) 2);
+    if (KMByteBlob.length(bootParam) > BOOT_HASH_MAX_SIZE) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    ((KMKeymintDataStore) kmDataStore).setVerifiedBootHash(KMByteBlob.getBuffer(bootParam),
+        KMByteBlob.getStartOff(bootParam),
+        KMByteBlob.length(bootParam));
+
+    bootParam = KMArray.get(args, (short) 3);
+    byte enumVal = KMEnum.getVal(bootParam);
+    ((KMKeymintDataStore) kmDataStore).setBootState(enumVal);
+
+    bootParam = KMArray.get(args, (short) 4);
+    enumVal = KMEnum.getVal(bootParam);
+    ((KMKeymintDataStore) kmDataStore).setDeviceLocked(enumVal == KMType.DEVICE_LOCKED_TRUE);
+
+    
+    // Clear the Computed SharedHmac and Hmac nonce from persistent memory.
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, COMPUTED_HMAC_KEY_SIZE, (byte) 0);
+    kmDataStore.storeData(KMDataStoreConstants.COMPUTED_HMAC_KEY, scratchPad, (short) 0, COMPUTED_HMAC_KEY_SIZE);
+    
+    kmDeviceInst.reboot(scratchPad, (short) 0);
+    kmDeviceInst.sendError(apdu, KMError.OK);
   }
 
   @Override

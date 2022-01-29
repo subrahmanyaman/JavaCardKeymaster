@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 package com.android.javacard.seprovider;
+import org.globalplatform.upgrade.Element;
+
 import com.android.javacard.kmdevice.KMDeviceUniqueKey;
 
 import javacard.security.ECPrivateKey;
 import javacard.security.ECPublicKey;
+import javacard.security.HMACKey;
 import javacard.security.KeyPair;
 
 public class KMECDeviceUniqueKey implements KMDeviceUniqueKey {
@@ -50,6 +53,26 @@ public class KMECDeviceUniqueKey implements KMDeviceUniqueKey {
 
   public ECPublicKey getPublicKey() {
     return (ECPublicKey) ecKeyPair.getPublic();
+  }
+
+  @Override
+  public void onSave(Element ele) {
+    ele.write(ecKeyPair);
+  }
+
+  @Override
+  public void onRestore(Element ele, short oldVersion, short currentVersion) {
+    ecKeyPair = (KeyPair) ele.readObject();
+  }
+
+  @Override
+  public short getBackupPrimitiveByteCount() {
+    return (short) 0;
+  }
+
+  @Override
+  public short getBackupObjectCount() {
+    return (short) 1;
   }
 
 }

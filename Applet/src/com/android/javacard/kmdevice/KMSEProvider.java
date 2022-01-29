@@ -15,6 +15,7 @@
  */
 package com.android.javacard.kmdevice;
 
+import org.globalplatform.upgrade.Element;
 
 /**
  * KMSEProvider is facade to use SE specific methods. The main intention of this interface is to
@@ -22,11 +23,7 @@ package com.android.javacard.kmdevice;
  * interface is created by the singleton KMSEProviderImpl class for each provider. At a time there
  * can be only one provider in the applet package.
  */
-public interface KMSEProvider extends KMUpgradable {
-  // Provision related constants.
-  public static final byte CERTIFICATE_CHAIN = 0;
-  public static final byte CERTIFICATE_EXPIRY = 1;
-  public static final byte CERTIFICATE_ISSUER = 2;
+public interface KMSEProvider {
 
   /**
    * Create a symmetric key instance. If the algorithm and/or keysize are not supported then it
@@ -572,7 +569,7 @@ public interface KMSEProvider extends KMUpgradable {
    * @param length length of the buffer.
    * @return An instance of the KMComputedHmacKey.
    */
-  KMComputedHmacKey createComputedHmacKey(byte[] keyData, short offset, short length);
+  KMComputedHmacKey createComputedHmacKey(KMComputedHmacKey createComputedHmacKey, byte[] keyData, short offset, short length);
   
   /**
    * This function generates an AES Key of keySizeBits, which is used as an master key. This
@@ -582,14 +579,9 @@ public interface KMSEProvider extends KMUpgradable {
    * @param keySizeBits key size in bits.
    * @return An instance of KMMasterKey.
    */
-  KMMasterKey createMasterKey(short keySizeBits);
-
-  /**
-   * Returns the master key.
-   *
-   * @return Instance of the KMMasterKey
-   */
-  KMMasterKey getMasterKey();
+  KMMasterKey createMasterKey(KMMasterKey masterKey, byte[] key, short offset, short length);
+  
+  KMPreSharedKey createPreSharedKey(KMPreSharedKey presharedKey, byte[] key, short offset, short length);
 
   /**
    * Returns true if factory provisioned attestation key is supported.
@@ -603,54 +595,6 @@ public interface KMSEProvider extends KMUpgradable {
   short getAttestationKeyAlgorithm();
 
   /**
-   * Returns the preshared key.
-   *
-   * @return Instance of the KMPreSharedKey.
-   */
-  KMPreSharedKey getPresharedKey();
-
-  /**
-   * Returns the value of the attestation id.
-   *
-   * @param tag - attestation id tag key as defined KMType.
-   * @param buffer - memorey buffer in which value of the id must be copied
-   * @param start - start offset in the buffer
-   * @return length - length of the returned attestation id value.
-   */
-  short getAttestationId(short tag, byte[] buffer, short start);
-
-  /**
-   * Delete the attestation ids permanently.
-   */
-  void deleteAttestationIds();
-
-  /**
-   * Get Verified Boot hash. Part of RoT. Part of data sent by the aosp bootloader.
-   */
-  short getVerifiedBootHash(byte[] buffer, short start);
-
-  /**
-   * Get Boot Key. Part of RoT. Part of data sent by the aosp bootloader.
-   */
-  short getBootKey(byte[] buffer, short start);
-
-  /**
-   * Get Boot state. Part of RoT. Part of data sent by the aosp bootloader.
-   */
-  short getBootState();
-
-  /**
-   * Returns true if device bootloader is locked. Part of RoT. Part of data sent by the aosp
-   * bootloader.
-   */
-  boolean isDeviceBootLocked();
-
-  /**
-   * Get Boot patch level. Part of data sent by the aosp bootloader.
-   */
-  short getBootPatchLevel(byte[] buffer, short start);
-
-  /**
    * Creates an ECKey instance and sets the public and private keys to it.
    *
    * @param testMode to indicate if current execution is for test or production.
@@ -662,56 +606,10 @@ public interface KMSEProvider extends KMUpgradable {
    * @param privKeyLen private key buffer length.
    * @return instance of KMDeviceUniqueKey.
    */
-  KMDeviceUniqueKey createDeviceUniqueKey(boolean testMode,
-      byte[] pubKey, short pubKeyOff, short pubKeyLen,
-      byte[] privKey, short privKeyOff, short privKeyLen);
+  KMDeviceUniqueKey createDeviceUniqueKey(KMDeviceUniqueKey key,
+      byte[] pubKey, short pubKeyOff, short pubKeyLen, byte[] privKey,
+      short privKeyOff, short privKeyLen);
 
-  /**
-   * Returns the instance KMDeviceUnique if it is created.
-   *
-   * @param testMode Indicates if current execution is for test or production.
-   * @return instance of KMDeviceUniqueKey if present; null otherwise.
-   */
-  KMDeviceUniqueKey getDeviceUniqueKey(boolean testMode);
-
-  /**
-   * Persists the additional certificate chain in persistent memory.
-   *
-   * @param buf buffer containing the cbor encoded additional certificate chain.
-   * @param offset start offset of the buffer.
-   * @param len length of the buffer.
-   */
-  void persistAdditionalCertChain(byte[] buf, short offset, short len);
-
-  /**
-   * Returns the additional certificate chain length.
-   *
-   * @return length of the encoded additional certificate chain.
-   */
-  short getAdditionalCertChainLength();
-
-  /**
-   * Returns the additional certificate chain.
-   *
-   * @return additional cert chain.
-   */
-  byte[] getAdditionalCertChain();
-
-
-  /**
-   * Returns the boot certificate chain.
-   *
-   * @return boot certificate chain.
-   */
-  byte[] getBootCertificateChain();
-  
-  /**
-   * Returns the computed Hmac key.
-   *
-   * @return Instance of the computed hmac key.
-   */
-  KMComputedHmacKey getComputedHmacKey();
-  
   /**
    * This is a one-shot operation the does digest of the input mesage.
    *
@@ -725,7 +623,6 @@ public interface KMSEProvider extends KMUpgradable {
   short messageDigest256(byte[] inBuff, short inOffset, short inLength, byte[] outBuff,
       short outOffset);
 
-  public boolean isProvisionLocked();
 
 /**
    * This function creates an ECKey and initializes the ECPrivateKey with the provided input key
@@ -737,46 +634,9 @@ public interface KMSEProvider extends KMUpgradable {
    * @param length length of the buffer.
    * @return An instance of KMAttestationKey.
    */
-  KMAttestationKey createAttestationKey(byte[] keyData, short offset, short length);
-  /**
-   * This operation persists the provision data in the persistent memory.
-   *
-   * @param buf buffer which contains all the provision data.
-   * @param certChainOff is the start of the cert chain.
-   * @param certChainLen is the length of the cert chain.
-   * @param certIssuerOff is the start of the cert issuer.
-   * @param certIssuerLen is the length of the cert issuer.
-   * @param certExpiryOff is the start of the cert expiry.
-   * @param certExpiryLen is the length of the cert expiry.
-   */
-  void persistProvisionData(byte[] buf, short certChainOff, short certChainLen,
-      short certIssuerOff, short certIssuerLen, short certExpiryOff, short certExpiryLen);
-
-  /**
-   * The operation reads the provisioned data from persistent memory.
-   *
-   * @param dataType type of the provision data to read.
-   * @param buf is the start of data buffer.
-   * @param offset is the start of the data.
-   * @return the length of the data buffer in bytes.
-   */
-  short readProvisionedData(byte dataType, byte[] buf, short offset);
-
-  /**
-   * This function returns the provisioned data length.
-   *
-   * @param dataType type of the provision data to read.
-   * @return length of the certificate chain.
-   */
-  short getProvisionedDataLength(byte dataType);
-  /**
-   * Returns the attestation key.
-   *
-   * @return Instance of the  KMAttestationKey.
-   */
-  KMAttestationKey getAttestationKey();
+  KMAttestationKey createAttestationKey(KMAttestationKey attestationKey, byte[] keyData, short offset,
+      short length);
+ 
   
-  public boolean isPowerReset(boolean isForStatusUpdate);
-
-
+  boolean isPowerReset(boolean isForStatusUpdate);
 }

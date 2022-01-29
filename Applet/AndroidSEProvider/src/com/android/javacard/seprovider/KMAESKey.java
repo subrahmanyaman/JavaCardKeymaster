@@ -20,6 +20,7 @@ import org.globalplatform.upgrade.Element;
 import com.android.javacard.kmdevice.KMMasterKey;
 
 import javacard.security.AESKey;
+import javacard.security.HMACKey;
 
 public class KMAESKey implements KMMasterKey {
 
@@ -41,21 +42,29 @@ public class KMAESKey implements KMMasterKey {
     return aesKey.getSize();
   }
 
-  public static void onSave(Element element, KMAESKey kmKey) {
-    element.write(kmKey.aesKey);
-  }
-
   public static KMAESKey onRestore(Element element) {
     AESKey aesKey = (AESKey) element.readObject();
     KMAESKey kmKey = new KMAESKey(aesKey);
     return kmKey;
   }
 
-  public static short getBackupPrimitiveByteCount() {
+  @Override
+  public void onSave(Element element) {
+    element.write(aesKey);    
+  }
+
+  @Override
+  public void onRestore(Element element, short oldVersion, short currentVersion) {
+    aesKey = (AESKey) element.readObject();
+  }
+
+  @Override
+  public short getBackupPrimitiveByteCount() {
     return (short) 0;
   }
 
-  public static short getBackupObjectCount() {
+  @Override
+  public short getBackupObjectCount() {
     return (short) 1;
   }
 

@@ -55,12 +55,28 @@ public class KMECPrivateKey implements KMAttestationKey {
     return kmKey;
   }
 
-  public static short getBackupPrimitiveByteCount() {
-    return (short) 0;
+  @Override
+  public void onSave(Element ele) {
+    // TODO Auto-generated method stub
+    
   }
 
-  public static short getBackupObjectCount() {
-    return (short) 1;
+  @Override
+  public void onRestore(Element ele, short oldVersion, short currentVersion) {
+    // TODO Auto-generated method stub
+    
+  }
+
+  @Override
+  public short getBackupPrimitiveByteCount() {
+    // TODO Auto-generated method stub
+    return 0;
+  }
+
+  @Override
+  public short getBackupObjectCount() {
+    // TODO Auto-generated method stub
+    return 0;
   }
 
 }

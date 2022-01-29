@@ -1,5 +1,5 @@
 package com.android.javacard.kmdevice;
 
 
-public interface KMComputedHmacKey {
+public interface KMComputedHmacKey extends KMUpgradable {
 }

@@ -8,9 +8,11 @@ import com.android.javacard.kmdevice.KMKeyParameters;
 import com.android.javacard.kmdevice.KMKeymasterDevice;
 import com.android.javacard.kmdevice.KMRepository;
 import com.android.javacard.kmdevice.KMSEProvider;
+import com.android.javacard.kmdevice.KMDataStoreConstants;
 import com.android.javacard.kmdevice.KMTag;
 import com.android.javacard.kmdevice.KMByteBlob;
 import com.android.javacard.kmdevice.KMByteTag;
+import com.android.javacard.kmdevice.KMDataStore;
 import com.android.javacard.kmdevice.KMDecoder;
 import com.android.javacard.kmdevice.KMEnum;
 import com.android.javacard.kmdevice.KMEnumArrayTag;
@@ -30,99 +32,44 @@ public class KMKeymasterProvision {
   private static final byte PROVISION_STATUS_ATTEST_IDS = 0x08;
   private static final byte PROVISION_STATUS_PRESHARED_SECRET = 0x10;
   private static final byte PROVISION_STATUS_PROVISIONING_LOCKED = 0x20;
-  private static final byte PROVISION_STATUS_DEVICE_UNIQUE_KEY = 0x40;
-  private static final byte PROVISION_STATUS_ADDITIONAL_CERT_CHAIN = (byte) 0x80;
+
   private static final short POWER_RESET_MASK_FLAG = (short) 0x4000;
  
-  public static final byte BOOT_KEY_MAX_SIZE = 32;
-  public static final byte BOOT_HASH_MAX_SIZE = 32;
   public static final short SHARED_SECRET_KEY_SIZE = 32;
-  protected static byte provisionStatus = NOT_PROVISIONED;
+  //protected static byte provisionStatus = NOT_PROVISIONED;
   
   protected KMKeymasterDevice kmDeviceInst;
   protected KMSEProvider seProvider;
   protected KMDecoder kmDecoder;
   protected KMRepository kmRepositroyInst;
-  
-  public short getBackupPrimitiveByteCount() {
-	    // provisionStatus 
-	    return (short) 1;
-  }
+  protected KMDataStore kmStoreDataInst;
 
-  public short getBackupObjectCount() {
-	    return (short) 0;
-  }
-  
-  public void onSave(Element ele) {
-    ele.write(provisionStatus);
-  }
-
-  public void onRestore(Element ele) {
-	provisionStatus = ele.readByte();
-  }
-  
-  public KMKeymasterProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,  KMDecoder decoder, KMRepository repoInst){
+  public KMKeymasterProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,  KMDecoder decoder, KMRepository repoInst,
+      KMDataStore storeData){
 	  kmDeviceInst = deviceInst;
 	  seProvider = provider;
 	  kmDecoder = decoder;
 	  kmRepositroyInst = repoInst;
+	  kmStoreDataInst = storeData;
+	  writeProvisionStatus(NOT_PROVISIONED);
 	}
-	
-  public void processSetBootParamsCmd(APDU apdu) {
-    short argsProto = KMArray.instance((short) 5);
-    
-    byte[] scratchPad = apdu.getBuffer();
-    // Array of 4 expected arguments
-    // Argument 0 Boot Patch level
-    KMArray.add(argsProto, (short) 0, KMInteger.exp());
-    // Argument 1 Verified Boot Key
-    KMArray.add(argsProto, (short) 1, KMByteBlob.exp());
-    // Argument 2 Verified Boot Hash
-    KMArray.add(argsProto, (short) 2, KMByteBlob.exp());
-    // Argument 3 Verified Boot State
-    KMArray.add(argsProto, (short) 3, KMEnum.instance(KMType.VERIFIED_BOOT_STATE));
-    // Argument 4 Device Locked
-    KMArray.add(argsProto, (short) 4, KMEnum.instance(KMType.DEVICE_LOCKED));
-
-    short args = kmDeviceInst.receiveIncoming(apdu, argsProto);
-
-    short bootParam = KMArray.get(args, (short) 0);
-
-    ((KMAndroidSEProvider) seProvider).setBootPatchLevel(KMInteger.getBuffer(bootParam),
-        KMInteger.getStartOff(bootParam),
-        KMInteger.length(bootParam));
-
-    bootParam = KMArray.get(args, (short) 1);
-    if (KMByteBlob.length(bootParam) > BOOT_KEY_MAX_SIZE) {
-      KMException.throwIt(KMError.INVALID_ARGUMENT);
+  
+  protected void writeProvisionStatus(byte provisionStatus) {
+    short offset = kmRepositroyInst.alloc((short) 1);
+    byte[] buffer = kmRepositroyInst.getHeap();
+    buffer[offset] = 0;
+    short len = kmStoreDataInst.getData(KMDataStoreConstants.PROVISIONED_STATUS, buffer, offset);
+    buffer[offset] |= provisionStatus;
+    kmStoreDataInst.storeData(KMDataStoreConstants.PROVISIONED_STATUS,
+        buffer, offset, (short) 1);
+  }
+  
+  private byte getProvisionStatus(byte[] buffer, short offset) {
+    short len = kmStoreDataInst.getData(KMDataStoreConstants.PROVISIONED_STATUS, buffer, offset);
+    if (len == 0) {
+      return NOT_PROVISIONED;
     }
-    ((KMAndroidSEProvider) seProvider).setBootKey(KMByteBlob.getBuffer(bootParam),
-        KMByteBlob.getStartOff(bootParam),
-        KMByteBlob.length(bootParam));
-
-    bootParam = KMArray.get(args, (short) 2);
-    if (KMByteBlob.length(bootParam) > BOOT_HASH_MAX_SIZE) {
-      KMException.throwIt(KMError.INVALID_ARGUMENT);
-    }
-    ((KMAndroidSEProvider) seProvider).setVerifiedBootHash(KMByteBlob.getBuffer(bootParam),
-        KMByteBlob.getStartOff(bootParam),
-        KMByteBlob.length(bootParam));
-
-    bootParam = KMArray.get(args, (short) 3);
-    byte enumVal = KMEnum.getVal(bootParam);
-    ((KMAndroidSEProvider) seProvider).setBootState(enumVal);
-
-    bootParam = KMArray.get(args, (short) 4);
-    enumVal = KMEnum.getVal(bootParam);
-    ((KMAndroidSEProvider) seProvider).setDeviceLocked(enumVal == KMType.DEVICE_LOCKED_TRUE);
-
-    
-    // Clear the Computed SharedHmac and Hmac nonce from persistent memory.
-    Util.arrayFillNonAtomic(scratchPad, (short) 0, KMRepository.COMPUTED_HMAC_KEY_SIZE, (byte) 0);
-    seProvider.createComputedHmacKey(scratchPad, (short) 0, KMRepository.COMPUTED_HMAC_KEY_SIZE);
-    
-    kmDeviceInst.reboot();
-    kmDeviceInst.sendError(apdu, KMError.OK);
+    return buffer[offset];
   }
   
   public void processProvisionAttestationKey(APDU apdu) {
@@ -197,12 +144,12 @@ public class KMKeymasterProvision {
         KMByteBlob.length(pubKey));
 
     // persist key
-    seProvider.createAttestationKey(
+    kmStoreDataInst.storeData(KMDataStoreConstants.ATTESTATION_KEY,
         KMByteBlob.getBuffer(secret),
         KMByteBlob.getStartOff(secret),
         KMByteBlob.length(secret));
     
-    provisionStatus |= PROVISION_STATUS_ATTESTATION_KEY;
+    writeProvisionStatus(PROVISION_STATUS_ATTESTATION_KEY);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }  
   
@@ -221,7 +168,7 @@ public class KMKeymasterProvision {
     kmDeviceInst.receiveIncomingCertData(apdu, buffer, bufferLength,
     		     bufferStartOffset, recvLen,  KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
     // persist data
-    seProvider.persistProvisionData(
+    kmStoreDataInst.persistCertificateData(
         (byte[]) buffer,
         Util.getShort(KMByteBlob.getBuffer(var), certChainPos), // offset
         Util.getShort(KMByteBlob.getBuffer(var), (short) (certChainPos + 2)), // length
@@ -232,8 +179,8 @@ public class KMKeymasterProvision {
 
     // reclaim memory
     kmRepositroyInst.reclaimMemory(bufferLength);	
-    provisionStatus |= (PROVISION_STATUS_ATTESTATION_CERT_CHAIN |
-            PROVISION_STATUS_ATTESTATION_CERT_PARAMS);
+    writeProvisionStatus((byte) (PROVISION_STATUS_ATTESTATION_CERT_CHAIN |
+            PROVISION_STATUS_ATTESTATION_CERT_PARAMS));
         kmDeviceInst.sendError(apdu, KMError.OK);
   }
   
@@ -246,7 +193,7 @@ public class KMKeymasterProvision {
     short attData = KMArray.get(args, (short) 0);
     // persist attestation Ids - if any is missing then exception occurs
     setAttestationIds(attData);
-    provisionStatus |= PROVISION_STATUS_ATTEST_IDS;
+    writeProvisionStatus(PROVISION_STATUS_ATTEST_IDS);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
 
@@ -263,24 +210,26 @@ public class KMKeymasterProvision {
       KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     // Persist shared Hmac.
-    ((KMAndroidSEProvider) seProvider).createPresharedKey(
+    kmStoreDataInst.storeData(KMDataStoreConstants.PRE_SHARED_KEY,
         KMByteBlob.getBuffer(val),
         KMByteBlob.getStartOff(val),
         KMByteBlob.length(val));
-    provisionStatus |= PROVISION_STATUS_PRESHARED_SECRET;
+    writeProvisionStatus(PROVISION_STATUS_PRESHARED_SECRET);
     kmDeviceInst.sendError(apdu, KMError.OK);
-
   }
   
   public void processGetProvisionStatusCmd(APDU apdu) {
     short resp = KMArray.instance((short) 2);
     KMArray.add(resp, (short) 0, kmDeviceInst.buildErrorStatus(KMError.OK));
-    KMArray.add(resp, (short) 1, KMInteger.uint_16(provisionStatus));
+    KMArray.add(resp, (short) 1, KMInteger.uint_16(getProvisionStatus(apdu.getBuffer(), (short) 0)));
     kmDeviceInst.sendOutgoing(apdu, resp);
   }
 
   public void processLockProvisioningCmd(APDU apdu) {
-    ((KMAndroidSEProvider) seProvider).setProvisionLocked(true);
+    byte[] buffer = apdu.getBuffer();
+    buffer[0] = 0x01;
+    kmStoreDataInst.storeData(KMDataStoreConstants.PROVISIONED_LOCKED, buffer, (short) 0, (short) 1);
+    writeProvisionStatus(PROVISION_STATUS_PROVISIONING_LOCKED);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
   
@@ -291,7 +240,39 @@ public class KMKeymasterProvision {
   public void processProvisionAdditionalCertChain(APDU apdu) {
 	kmDeviceInst.sendError(apdu, KMError.CMD_NOT_ALLOWED);	  
   }
-  
+
+  public short mapAttestIdToStoreId(short tag) {
+    switch (tag) {
+      // Attestation Id Brand
+      case KMType.ATTESTATION_ID_BRAND:
+        return KMDataStoreConstants.ATT_ID_BRAND;
+      // Attestation Id Device
+      case KMType.ATTESTATION_ID_DEVICE:
+        return KMDataStoreConstants.ATT_ID_DEVICE;
+      // Attestation Id Product
+      case KMType.ATTESTATION_ID_PRODUCT:
+        return KMDataStoreConstants.ATT_ID_PRODUCT;
+      // Attestation Id Serial
+      case KMType.ATTESTATION_ID_SERIAL:
+        return KMDataStoreConstants.ATT_ID_SERIAL;
+      // Attestation Id IMEI
+      case KMType.ATTESTATION_ID_IMEI:
+        return KMDataStoreConstants.ATT_ID_IMEI;
+      // Attestation Id MEID
+      case KMType.ATTESTATION_ID_MEID:
+        return KMDataStoreConstants.ATT_ID_MEID;
+      // Attestation Id Manufacturer
+      case KMType.ATTESTATION_ID_MANUFACTURER:
+        return KMDataStoreConstants.ATT_ID_MANUFACTURER;
+      // Attestation Id Model
+      case KMType.ATTESTATION_ID_MODEL:
+        return KMDataStoreConstants.ATT_ID_MODEL;
+      default:
+          KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    return KMType.INVALID_VALUE;
+  }
+
   protected void setAttestationIds(short attIdVals) {
     short vals = KMKeyParameters.getVals(attIdVals);
     short index = 0;
@@ -308,8 +289,8 @@ public class KMKeymasterProvision {
         KMException.throwIt(KMError.INVALID_ARGUMENT);
       }
       obj = KMByteTag.getValue(obj);
-      ((KMAndroidSEProvider) seProvider).setAttestationId(key, KMByteBlob.getBuffer(obj),
-          KMByteBlob.getStartOff(obj),KMByteBlob.length(obj));
+      kmStoreDataInst.storeData((byte)mapAttestIdToStoreId(key), KMByteBlob.getBuffer(obj),
+        KMByteBlob.getStartOff(obj),KMByteBlob.length(obj));
       index++;
     }
   }

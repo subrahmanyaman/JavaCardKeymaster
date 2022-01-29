@@ -35,13 +35,11 @@ public class KMKeymasterDevice {
   public static final byte AES_BLOCK_SIZE = 16;
   public static final byte DES_BLOCK_SIZE = 8;
   public static final short MAX_LENGTH = 15000;
-  public static final short MASTER_KEY_SIZE = 128;
   public static final short WRAPPING_KEY_SIZE = 32;
   public static final short MAX_OPERATIONS_COUNT = 4;
   public static final short VERIFIED_BOOT_KEY_SIZE = 32;
   public static final short VERIFIED_BOOT_HASH_SIZE = 32;
   public static final short BOOT_PATCH_LVL_SIZE = 4;
-
   public static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
   public static final short KEYMINT_HAL_VERSION = (short) 0x5000;
   public static final short KEYMASTER_HAL_VERSION = (short) 0x4000;
@@ -65,6 +63,10 @@ public class KMKeymasterDevice {
   public static final short MAX_COSE_BUF_SIZE = (short) 1024;
   // Top 32 commands are reserved for provisioning.
   private static final byte KEYMINT_CMD_APDU_START = 0x20;
+
+  // Master key size
+  private static final short MASTER_KEY_SIZE = 16;
+  private static final short HMAC_SEED_NONCE_SIZE = 32;
 
   private static final byte INS_GENERATE_KEY_CMD = KEYMINT_CMD_APDU_START + 1;  //0x21
   private static final byte INS_IMPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 2;    //0x22
@@ -146,9 +148,6 @@ public class KMKeymasterDevice {
   public static final byte TEE_PARAMETERS = 34;
   public static final byte SB_PARAMETERS = 35;
   public static final byte CONFIRMATION_TOKEN = 36;
- // public static final byte KEYMASTER_SPECIFICATION = 0x01;
- // public static final byte KEYMINT_SPECIFICATION = 0x02;
-  // Constant
 
   // AddRngEntropy
   protected static final short MAX_SEED_SIZE = 2048;
@@ -173,51 +172,65 @@ public class KMKeymasterDevice {
  private static byte[] GOOGLE;
  private static byte[] X509Subject;
  
-private static short[] ATTEST_ID_TAGS;
+ private static short[] ATTEST_ID_TAGS;
  private static final byte SERIAL_NUM = (byte) 0x01;
 
-  protected static RemotelyProvisionedComponentDevice rkp;
-  protected static KMDecoder decoder;
-  protected static KMRepository repository;
+  protected KMDecoder decoder;
+  protected KMRepository repository;
+  // TODO Remove static
   protected static KMEncoder encoder;
-  protected static KMSEProvider seProvider;
-  protected static KMOperationState[] opTable;
-  protected static short[] tmpVariables;
+  protected KMSEProvider seProvider;
+  protected KMDataStore storeDataInst;
+  protected KMBootDataStore bootParamsProv;
+  protected KMOperationState[] opTable;
+  protected short[] tmpVariables;
   protected static short[] data;
-  protected static byte[] wrappingKey;
-  private KMCose kmCoseInst;
+  protected byte[] wrappingKey;
+  
   
   /**
    * Registers this applet.
    */
-  public KMKeymasterDevice(KMSEProvider seImpl, KMRepository repoInst, KMDecoder decoderInst) {
-	initKMDeviceStatics();
-	seProvider = seImpl;
-    boolean isUpgrading = seProvider.isUpgrading();
-    if (!isUpgrading) {
-      seProvider.createMasterKey(MASTER_KEY_SIZE);
-    }
+  public KMKeymasterDevice(KMSEProvider seImpl, KMRepository repoInst, KMEncoder encoderInst, KMDecoder decoderInst, KMDataStore storeData,
+      KMBootDataStore bootParamsProvider) {
+    initKMDeviceStatics();
+    seProvider = seImpl;
+    bootParamsProv = bootParamsProvider;
+    storeDataInst = storeData;
     repository = repoInst;
-    encoder = new KMEncoder();
+    encoder = encoderInst;
     decoder = decoderInst;
     data = JCSystem.makeTransientShortArray(DATA_ARRAY_SIZE, JCSystem.CLEAR_ON_DESELECT);
-    tmpVariables =
-        JCSystem.makeTransientShortArray(TMP_VARIABLE_ARRAY_SIZE, JCSystem.CLEAR_ON_DESELECT);
-    wrappingKey = JCSystem.makeTransientByteArray((short)(WRAPPING_KEY_SIZE+1), JCSystem.CLEAR_ON_RESET);
+    tmpVariables = JCSystem.makeTransientShortArray(TMP_VARIABLE_ARRAY_SIZE, JCSystem.CLEAR_ON_DESELECT);
+    wrappingKey = JCSystem.makeTransientByteArray((short) (WRAPPING_KEY_SIZE + 1), JCSystem.CLEAR_ON_RESET);
     resetWrappingKey();
     opTable = new KMOperationState[MAX_OPERATIONS_COUNT];
     short index = 0;
-    while(index < MAX_OPERATIONS_COUNT){
+    while (index < MAX_OPERATIONS_COUNT) {
       opTable[index] = new KMOperationState();
       index++;
     }
     KMType.initialize();
+    if (!seProvider.isUpgrading()) {
+      initializeDefaultValues();
+    }
 
+  }
+  
+  private void initializeDefaultValues() {
+    short offset = repository.alloc((short) 32);
+    // Initialize master key
+    byte[] buffer = repository.getHeap();
+    seProvider.getTrueRandomNumber(buffer, offset, MASTER_KEY_SIZE);
+    storeDataInst.storeData(KMDataStoreConstants.MASTER_KEY, buffer, offset, MASTER_KEY_SIZE);
     // initialize default values
-    initHmacNonceAndSeed();
-    initSystemBootParams((short)0,(short)0,(short)0,(short)0);
-    kmCoseInst = KMCose.getInstance();
-    rkp = new RemotelyProvisionedComponentDevice(this, encoder, decoder, repository, seProvider);
+    initHmacNonceAndSeed(buffer, offset);
+    initSystemBootParams();
+    writeBoolean(KMDataStoreConstants.DEVICE_LOCKED, false, buffer, offset);
+    writeBoolean(KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY, false, buffer, offset);
+    writeBoolean(KMDataStoreConstants.BOOT_ENDED_STATUS, false, buffer, offset);
+    writeBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, false, buffer, offset);
+    writeBoolean(KMDataStoreConstants.PROVISIONED_LOCKED, false, buffer, offset);
   }
   
   public static void initStatics(){
@@ -285,7 +298,6 @@ private static short[] ATTEST_ID_TAGS;
   private static void initKMDeviceStatics() {
 	initStatics();  
     KMAttestationCertImpl.initStatics();
-    KMRepository.initStatics();
     KMBignumTag.initStatics();
     KMCosePairCoseKeyTag.initStatics();
     KMEnumTag.initStatics();
@@ -307,10 +319,9 @@ private static short[] ATTEST_ID_TAGS;
 	repository.clean();
   }
   
-  protected void initHmacNonceAndSeed(){
-    short nonce = repository.alloc((short)32);
-    seProvider.newRandomNumber(repository.getHeap(), nonce, KMRepository.HMAC_SEED_NONCE_SIZE);
-    repository.initHmacNonce(repository.getHeap(), nonce, KMRepository.HMAC_SEED_NONCE_SIZE);
+  protected void initHmacNonceAndSeed(byte[] scratchPad, short offset) {
+    seProvider.newRandomNumber(scratchPad, offset, HMAC_SEED_NONCE_SIZE);
+    storeDataInst.storeData(KMDataStoreConstants.HMAC_NONCE, scratchPad, offset, HMAC_SEED_NONCE_SIZE);
   }
 
   private void releaseAllOperations(){
@@ -511,16 +522,6 @@ private static short[] ATTEST_ID_TAGS;
         case INS_GET_CERT_CHAIN_CMD:
           processGetCertChainCmd(apdu);
           break;
-        case INS_GENERATE_RKP_KEY_CMD:
-        case INS_BEGIN_SEND_DATA_CMD:
-        case INS_UPDATE_CHALLENGE_CMD:
-        case INS_UPDATE_EEK_CHAIN_CMD:
-        case INS_UPDATE_KEY_CMD:
-        case INS_FINISH_SEND_DATA_CMD:
-        case INS_GET_RESPONSE_CMD:
-        case INS_GET_RKP_HARDWARE_INFO:
-          rkp.process(apduIns, apdu);
-          break;
         default:
           ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
       }
@@ -561,7 +562,7 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   private void processEarlyBootEndedCmd(APDU apdu) {
-    repository.setEarlyBootEndedStatus(true);
+    writeBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, true);
   }
 
   private short deviceLockedCmd(APDU apdu){
@@ -572,6 +573,60 @@ private static short[] ATTEST_ID_TAGS;
     KMArray.add(cmd, (short) 1, getKMVerificationTokenExp());
     return receiveIncoming(apdu, cmd);
   }
+  
+  protected boolean isProvisionLocked(byte[] scratchPad, short scratchPadOff) {
+    return readBoolean(KMDataStoreConstants.PROVISIONED_LOCKED, scratchPad, scratchPadOff);
+  }
+
+  protected boolean readBoolean(byte storeDataId, byte[] scratchPad, short scratchPadOff) {
+    short len = storeDataInst.getData(storeDataId, scratchPad, scratchPadOff);
+    if (len == 0) {
+      KMException.throwIt(KMError.INVALID_DATA);
+    }
+    return scratchPad[scratchPadOff] == 0x01;
+  }
+  
+  protected void writeBoolean(byte storeDataId, boolean flag, byte[] scratchPad, short offset) {
+    if (flag) {
+      scratchPad[offset] = (byte) 0x01;
+    } else {
+      scratchPad[offset] = (byte) 0x00;
+    }
+    storeDataInst.storeData(storeDataId, scratchPad, offset, (short) 1);
+  }
+
+  protected void writeBoolean(byte storeDataId, boolean flag) {
+    short start = repository.alloc((short) 1);
+    byte[] buffer = repository.getHeap();
+    writeBoolean(storeDataId, flag, buffer, start);
+  }
+
+  protected void writeData(byte storeDataId, byte[] data, short offset, short len) {
+    storeDataInst.storeData(storeDataId, data, offset, len);
+  }
+
+  protected short readData(byte storeDataId, byte[] scratchPad, short offset) {
+    short len = storeDataInst.getData(storeDataId, scratchPad, offset);
+    if (len == 0) {
+      KMException.throwIt(KMError.INVALID_DATA);
+    }
+    return len;
+  }
+
+  protected short readBlob(byte storeDataId, byte[] scratchPad, short offset) {
+    short len = readData(storeDataId, scratchPad, offset);
+    return KMByteBlob.instance(scratchPad, offset, len);
+  }
+
+  protected short readInteger32(byte storeDataId, byte[] scratchPad, short offset) {
+    readData(storeDataId, scratchPad, offset);
+    return KMInteger.uint_32(scratchPad, offset);
+  }
+
+  protected short readInteger64(byte storeDataId, byte[] scratchPad, short offset) {
+    readData(storeDataId, scratchPad, offset);
+    return KMInteger.uint_64(scratchPad, offset);
+  }
 
   private void processDeviceLockedCmd(APDU apdu) {
     short cmd = deviceLockedCmd(apdu);
@@ -581,13 +636,14 @@ private static short[] ATTEST_ID_TAGS;
     passwordOnly = KMInteger.getByte(passwordOnly);
     validateVerificationToken(verToken, scratchPad);
     short verTime = KMVerificationToken.getTimestamp(verToken);
-    short lastDeviceLockedTime = repository.getDeviceTimeStamp();
+    short len = storeDataInst.getData(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad, (short) 0);
+    short lastDeviceLockedTime = KMByteBlob.instance(scratchPad, (short) 0, len);
     if (KMInteger.compare(verTime, lastDeviceLockedTime) > 0) {
       Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 8, (byte) 0);
       KMInteger.getValue(verTime, scratchPad, (short) 0, (short) 8);
-      repository.setDeviceLock(true);
-      repository.setDeviceLockPasswordOnly(passwordOnly == 0x01);
-      repository.setDeviceLockTimestamp(scratchPad, (short) 0, (short) 8);
+      writeBoolean(KMDataStoreConstants.DEVICE_LOCKED, true);
+      writeBoolean(KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY, passwordOnly == 0x01);
+      storeDataInst.storeData(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad,(short) 0, (short) 8);
     }
     sendError(apdu, KMError.OK);
   }
@@ -631,7 +687,7 @@ private static short[] ATTEST_ID_TAGS;
   /**
    * Sends a response, may be extended response, as requested by the command.
    */
-  public static void sendOutgoing(APDU apdu, short resp) {
+  public void sendOutgoing(APDU apdu, short resp) {
     //TODO handle the extended buffer stuff. We can reuse this.
     short bufferStartOffset = repository.allocAvailableMemory();
     byte[] buffer = repository.getHeap();
@@ -758,8 +814,9 @@ private static short[] ATTEST_ID_TAGS;
   private void processGetHmacSharingParamCmd(APDU apdu) {
     // No Arguments
     // Create HMAC Sharing Parameters
+    byte[] scratchPad = apdu.getBuffer();
     short params = KMHmacSharingParameters.instance();
-    short nonce = repository.getHmacNonce();
+    short nonce = readBlob(KMDataStoreConstants.HMAC_NONCE, scratchPad, (short) 0);
     short seed = KMByteBlob.instance((short) 0);
     KMHmacSharingParameters.setNonce(params, nonce);
     KMHmacSharingParameters.setSeed(params, seed);
@@ -840,7 +897,7 @@ private static short[] ATTEST_ID_TAGS;
     //tmpVariables[7] = 0;
     short found = 0;
     //tmpVariables[9]
-    short nonce = repository.getHmacNonce();
+    short nonce = readBlob(KMDataStoreConstants.HMAC_NONCE, scratchPad, (short) 0);
 
     while (paramIndex < paramsLen) {
       // read HmacSharingParam
@@ -905,7 +962,7 @@ private static short[] ATTEST_ID_TAGS;
     //tmpVariables[6]
     short keyLen =
         seProvider.cmacKDF(
-            seProvider.getPresharedKey(),
+            storeDataInst.getPresharedKey(),
             ckdfLable,
             (short) 0,
             (short) ckdfLable.length,
@@ -916,7 +973,7 @@ private static short[] ATTEST_ID_TAGS;
             (short) 0);
 
     // persist the computed hmac key.
-    seProvider.createComputedHmacKey(scratchPad, (short) 0, keyLen);
+    writeData(KMDataStoreConstants.COMPUTED_HMAC_KEY, scratchPad, (short) 0, keyLen);
     // Generate sharingKey verification signature and store that in scratch pad.
     //tmpVariables[5]
     short signLen =
@@ -994,12 +1051,12 @@ private static short[] ATTEST_ID_TAGS;
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
     boolean isKeyUpgradeRequired = false;
     // Check if key requires upgrade.
-    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_VERSION, repository.getOsVersion());
-    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_PATCH_LEVEL, repository.getOsPatch());
+    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_VERSION, readInteger32(KMDataStoreConstants.OS_VERSION, scratchPad, (short) 0));
+    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_PATCH_LEVEL, readInteger32(KMDataStoreConstants.OS_PATCH_LEVEL, scratchPad, (short) 0));
     isKeyUpgradeRequired |=
-        isKeyUpgradeRequired(KMType.VENDOR_PATCH_LEVEL, repository.getVendorPatchLevel());
+        isKeyUpgradeRequired(KMType.VENDOR_PATCH_LEVEL, readInteger32(KMDataStoreConstants.VENDOR_PATCH_LEVEL, scratchPad, (short) 0));
     // Get boot patch level.
-    seProvider.getBootPatchLevel(scratchPad, (short) 0);
+    bootParamsProv.getBootPatchLevel(scratchPad, (short) 0);
     isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.BOOT_PATCH_LEVEL,
         KMInteger.uint_32(scratchPad, (short) 0));
 
@@ -1274,11 +1331,11 @@ private static short[] ATTEST_ID_TAGS;
       addTags(hwParameters, true, cert);
       addTags(swParameters, false, cert);
       // Add Device Boot locked status
-      cert.deviceLocked(seProvider.isDeviceBootLocked());
+      cert.deviceLocked(bootParamsProv.isDeviceBootLocked());
       // VB data
       cert.verifiedBootHash(getVerifiedBootHash(scratchPad));
       cert.verifiedBootKey(getBootKey(scratchPad));
-      cert.verifiedBootState((byte)seProvider.getBootState());
+      cert.verifiedBootState((byte)bootParamsProv.getBootState());
 
     //TODO remove the following line
     makeKeyCharacteristics(scratchPad);
@@ -1291,7 +1348,7 @@ private static short[] ATTEST_ID_TAGS;
         data[KEY_PARAMETERS], scratchPad, seProvider);
     cert.attestationChallenge(attChallenge);
     cert.publicKey(data[PUB_KEY]);
-    cert.factoryAttestKey(seProvider.getAttestationKey(), KMType.FACTORY_PROVISIONED_ATTEST_CERT);
+    cert.factoryAttestKey(storeDataInst.getAttestationKey(), KMType.FACTORY_PROVISIONED_ATTEST_CERT);
 
     // Save attestation application id - must be present.
     short attAppId =
@@ -1309,11 +1366,11 @@ private static short[] ATTEST_ID_TAGS;
     addTags(data[HW_PARAMETERS], true, cert);
     addTags(data[SW_PARAMETERS], false, cert);
     // Add Device Boot locked status
-    cert.deviceLocked(seProvider.isDeviceBootLocked());
+    cert.deviceLocked(bootParamsProv.isDeviceBootLocked());
     // VB data
     cert.verifiedBootHash(getVerifiedBootHash(scratchPad));
     cert.verifiedBootKey(getBootKey(scratchPad));
-    cert.verifiedBootState((byte)seProvider.getBootState());
+    cert.verifiedBootState((byte)bootParamsProv.getBootState());
 
     //TODO remove the following line
     //makeKeyCharacteristics(scratchPad);
@@ -1352,7 +1409,7 @@ private static short[] ATTEST_ID_TAGS;
 
   protected short getBootKey(byte[] scratchPad){
     Util.arrayFillNonAtomic(scratchPad, (short)0, VERIFIED_BOOT_KEY_SIZE, (byte)0);
-    short len = seProvider.getBootKey(scratchPad, (short) 0);
+    short len = bootParamsProv.getBootKey(scratchPad, (short) 0);
     if(len != VERIFIED_BOOT_KEY_SIZE) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
@@ -1361,11 +1418,43 @@ private static short[] ATTEST_ID_TAGS;
 
   protected short getVerifiedBootHash(byte[] scratchPad){
     Util.arrayFillNonAtomic(scratchPad, (short)0, VERIFIED_BOOT_HASH_SIZE, (byte)0);
-    short len = seProvider.getVerifiedBootHash(scratchPad, (short) 0);
+    short len = bootParamsProv.getVerifiedBootHash(scratchPad, (short) 0);
     if(len != VERIFIED_BOOT_HASH_SIZE) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
     return KMByteBlob.instance(scratchPad,(short)0, VERIFIED_BOOT_HASH_SIZE);
+  }
+  
+  public short mapAttestIdToStoreId(short tag) {
+    switch (tag) {
+      // Attestation Id Brand
+      case KMType.ATTESTATION_ID_BRAND:
+        return KMDataStoreConstants.ATT_ID_BRAND;
+      // Attestation Id Device
+      case KMType.ATTESTATION_ID_DEVICE:
+        return KMDataStoreConstants.ATT_ID_DEVICE;
+      // Attestation Id Product
+      case KMType.ATTESTATION_ID_PRODUCT:
+        return KMDataStoreConstants.ATT_ID_PRODUCT;
+      // Attestation Id Serial
+      case KMType.ATTESTATION_ID_SERIAL:
+        return KMDataStoreConstants.ATT_ID_SERIAL;
+      // Attestation Id IMEI
+      case KMType.ATTESTATION_ID_IMEI:
+        return KMDataStoreConstants.ATT_ID_IMEI;
+      // Attestation Id MEID
+      case KMType.ATTESTATION_ID_MEID:
+        return KMDataStoreConstants.ATT_ID_MEID;
+      // Attestation Id Manufacturer
+      case KMType.ATTESTATION_ID_MANUFACTURER:
+        return KMDataStoreConstants.ATT_ID_MANUFACTURER;
+      // Attestation Id Model
+      case KMType.ATTESTATION_ID_MODEL:
+        return KMDataStoreConstants.ATT_ID_MODEL;
+      default:
+          KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    return KMType.INVALID_VALUE;
   }
   // --------------------------------
   // Only add the Attestation ids which are requested in the attestation parameters.
@@ -1382,7 +1471,8 @@ private static short[] ATTEST_ID_TAGS;
       attIdTag = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, ATTEST_ID_TAGS[index]);
       if (attIdTag != KMType.INVALID_VALUE) {
         attIdTagValue = KMByteTag.getValue(attIdTag);
-        storedAttIdLen = seProvider.getAttestationId(ATTEST_ID_TAGS[index],scratchPad, (short)0);
+        storedAttIdLen = storeDataInst.getData((byte)mapAttestIdToStoreId(ATTEST_ID_TAGS[index]),
+            scratchPad, (short)0);
         // Return CANNOT_ATTEST_IDS if Attestation IDs are not provisioned or
         // Attestation IDs are deleted.
         if (storedAttIdLen == 0) {
@@ -1443,11 +1533,22 @@ private static short[] ATTEST_ID_TAGS;
     cert.makeUniqueId(scratchPad, (short) 0, KMInteger.getBuffer(time),
         KMInteger.getStartOff(time), KMInteger.length(time),
         KMByteBlob.getBuffer(appId), KMByteBlob.getStartOff(appId), KMByteBlob.length(appId), resetAfterRotation,
-        seProvider.getMasterKey());
+        storeDataInst.getMasterKey());
+  }
+  
+  private void deleteAttestationIds() {
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_BRAND);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_DEVICE);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_IMEI);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_MEID);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_MANUFACTURER);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_PRODUCT);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_MODEL);
+    storeDataInst.clearData(KMDataStoreConstants.ATT_ID_SERIAL);
   }
 
   private void processDestroyAttIdsCmd(APDU apdu) {
-    seProvider.deleteAttestationIds();
+    deleteAttestationIds();
     sendError(apdu, KMError.OK);
   }
 
@@ -1715,11 +1816,14 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   private void authorizeKeyUsageForCount(byte[] scratchPad) {
+    // Allocate first 12 bytes in scratchpad required for integer
+    // operations.
     short scratchPadOff = 0;
-    Util.arrayFillNonAtomic(scratchPad, scratchPadOff, (short) 12, (byte) 0);
+    short requiredScratchBufLen = 12;
+    Util.arrayFillNonAtomic(scratchPad, scratchPadOff, requiredScratchBufLen, (byte) 0);
 
     short usageLimitBufLen = KMIntegerTag.getValue(scratchPad, scratchPadOff,
-        KMType.UINT_TAG, KMType.MAX_USES_PER_BOOT, data[HW_PARAMETERS]);
+       KMType.UINT_TAG, KMType.MAX_USES_PER_BOOT, data[HW_PARAMETERS]);
 
     if (usageLimitBufLen == KMType.INVALID_VALUE) {
       return;
@@ -1729,10 +1833,14 @@ private static short[] ATTEST_ID_TAGS;
       KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
 
-    if (repository.isAuthTagPersisted(data[AUTH_TAG])) {
+    if (storeDataInst.isAuthTagPersisted(KMByteBlob.getBuffer(data[AUTH_TAG]),
+        KMByteBlob.getStartOff(data[AUTH_TAG]),
+        KMByteBlob.length(data[AUTH_TAG]), scratchPad, requiredScratchBufLen)) {
       // Get current counter, update and increment it.
-      short len = repository
-          .getRateLimitedKeyCount(data[AUTH_TAG], scratchPad, (short) (scratchPadOff + 4));
+      short len = storeDataInst
+          .getRateLimitedKeyCount(KMByteBlob.getBuffer(data[AUTH_TAG]),
+              KMByteBlob.getStartOff(data[AUTH_TAG]),
+              KMByteBlob.length(data[AUTH_TAG]), scratchPad, (short) (scratchPadOff + 4));
       if (len != 4) {
         KMException.throwIt(KMError.UNKNOWN_ERROR);
       }
@@ -1746,12 +1854,16 @@ private static short[] ATTEST_ID_TAGS;
       KMUtils.add(scratchPad, scratchPadOff, (short) (scratchPadOff + len),
           (short) (scratchPadOff + len * 2));
 
-      repository
-          .setRateLimitedKeyCount(data[AUTH_TAG], scratchPad, (short) (scratchPadOff + len * 2),
-              len);
+      storeDataInst.setRateLimitedKeyCount(KMByteBlob.getBuffer(data[AUTH_TAG]),
+          KMByteBlob.getStartOff(data[AUTH_TAG]),
+          KMByteBlob.length(data[AUTH_TAG]),
+          scratchPad, (short) (scratchPadOff + len * 2), len, scratchPad, 
+          requiredScratchBufLen);
     } else {
       // Persist auth tag.
-      if (!repository.persistAuthTag(data[AUTH_TAG])) {
+      if (!storeDataInst.storeAuthTag(KMByteBlob.getBuffer(data[AUTH_TAG]),
+          KMByteBlob.getStartOff(data[AUTH_TAG]),
+          KMByteBlob.length(data[AUTH_TAG]), scratchPad, scratchPadOff)) {
         KMException.throwIt(KMError.TOO_MANY_OPERATIONS);
       }
     }
@@ -1763,19 +1875,19 @@ private static short[] ATTEST_ID_TAGS;
     short ptr =
         KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.UNLOCKED_DEVICE_REQUIRED);
 
-    if (ptr != KMType.INVALID_VALUE && repository.getDeviceLock()) {
+    if (ptr != KMType.INVALID_VALUE && readBoolean(KMDataStoreConstants.DEVICE_LOCKED, scratchPad, (short) 0)) {
       if (!validateHwToken(data[HW_TOKEN], scratchPad)) {
         KMException.throwIt(KMError.DEVICE_LOCKED);
       }
       ptr = KMHardwareAuthToken.getTimestamp(data[HW_TOKEN]);
       // Check if the current auth time stamp is greater than device locked time stamp
-      short ts = repository.getDeviceTimeStamp();
+      short ts = readInteger64(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad, (short) 0);
       if (KMInteger.compare(ptr, ts) <= 0) {
         KMException.throwIt(KMError.DEVICE_LOCKED);
       }
       // Now check if the device unlock requires password only authentication and whether
       // auth token is generated through password authentication or not.
-      if (repository.getDeviceLockPasswordOnly()) {
+      if (readBoolean(KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY, scratchPad, (short) 0)) {
         ptr = KMHardwareAuthToken.getHwAuthenticatorType(data[HW_TOKEN]);
         ptr = KMEnum.getVal(ptr);
         if (((byte) ptr & KMType.PASSWORD) == 0) {
@@ -1784,8 +1896,8 @@ private static short[] ATTEST_ID_TAGS;
       }
       // Unlock the device
       // repository.deviceLockedFlag = false;
-      repository.setDeviceLock(false);
-      repository.clearDeviceLockTimeStamp();
+      writeBoolean(KMDataStoreConstants.DEVICE_LOCKED, false);
+      storeDataInst.clearData(KMDataStoreConstants.DEVICE_LOCKED_TIME);
     }
   }
 
@@ -1812,7 +1924,7 @@ private static short[] ATTEST_ID_TAGS;
     ptr = getMacFromVerificationToken(verToken);
 
     return seProvider.hmacVerify(
-        seProvider.getComputedHmacKey(),
+        storeDataInst.getComputedHmacKey(),
         scratchPad,
         (short) 0,
         len,
@@ -2361,13 +2473,13 @@ private static short[] ATTEST_ID_TAGS;
     authorizeKeyUsageForCount(scratchPad);
 
     //Validate early boot
-    if (repository.getEarlyBootEndedStatus()) {
+    if (readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, scratchPad, (short) 0)) {
       KMTag.assertAbsence(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY,
           KMError.INVALID_KEY_BLOB);
     }
  
     //Validate bootloader only 
-    if (repository.getBootEndedStatus()) {
+    if (readBoolean(KMDataStoreConstants.BOOT_ENDED_STATUS, scratchPad, (short) 0)) {
       KMTag.assertAbsence(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY,
     	  KMError.INVALID_KEY_BLOB);
     }
@@ -2497,7 +2609,7 @@ private static short[] ATTEST_ID_TAGS;
     if (KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.TRUSTED_CONFIRMATION_REQUIRED) != KMType.INVALID_VALUE) {
 
       op.setTrustedConfirmationSigner(
-          seProvider.initTrustedConfirmationSymmetricOperation(seProvider.getComputedHmacKey()));
+          seProvider.initTrustedConfirmationSymmetricOperation(storeDataInst.getComputedHmacKey()));
 
       op.getTrustedConfirmationSigner().update(
           confirmationToken,
@@ -2713,7 +2825,7 @@ private static short[] ATTEST_ID_TAGS;
     ptr = KMHardwareAuthToken.getMac(hwToken);
 
     return seProvider.hmacVerify(
-        seProvider.getComputedHmacKey(),
+        storeDataInst.getComputedHmacKey(),
         scratchPad,
         (short) 0,
         len,
@@ -2753,7 +2865,7 @@ private static short[] ATTEST_ID_TAGS;
     ptr = KMHardwareAuthToken.getMac(hwToken);
 
     return seProvider.hmacVerify(
-        seProvider.getComputedHmacKey(),
+        storeDataInst.getComputedHmacKey(),
         scratchPad,
         (short) 0,
         len,
@@ -3345,47 +3457,41 @@ private static short[] ATTEST_ID_TAGS;
     setVendorPatchLevel(vendorPatchLevel);
   }
 
-  public void reboot() {
-    repository.clearHmacNonce();
+  public void reboot(byte[] scratchPad, short offset) {
+    storeDataInst.clearData(KMDataStoreConstants.HMAC_NONCE);
     //flag to maintain the boot state
-    repository.setBootEndedStatus(false);
+    storeDataInst.clearData(KMDataStoreConstants.BOOT_ENDED_STATUS);
     //flag to maintain early boot ended state
-    repository.setEarlyBootEndedStatus(false);  
+    storeDataInst.clearData(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS);
     //Clear all the operation state.
     releaseAllOperations();
     // Hmac is cleared, so generate a new Hmac nonce.
-    initHmacNonceAndSeed();
+    initHmacNonceAndSeed(scratchPad, offset);
     // Clear all auth tags.
-    repository.removeAllAuthTags();
+    storeDataInst.clearAllAuthTags();
   }
 
-  protected void initSystemBootParams(short osVersion,
-      short osPatchLevel, short vendorPatchLevel, short bootPatchLevel){
-      osVersion = KMInteger.uint_16(osVersion);
-      osPatchLevel = KMInteger.uint_16(osPatchLevel);
-      vendorPatchLevel = KMInteger.uint_16((short) vendorPatchLevel);
-      setOsVersion(osVersion);
-      setOsPatchLevel(osPatchLevel);
-      setVendorPatchLevel(vendorPatchLevel);
+  protected void initSystemBootParams() {
+      short empty = KMInteger.uint_16((short) 0);
+      setOsVersion(empty);
+      setOsPatchLevel(empty);
+      setVendorPatchLevel(empty);
   }
 
   protected void setOsVersion(short version){
-    repository.setOsVersion(
-        KMInteger.getBuffer(version),
+    writeData(KMDataStoreConstants.OS_VERSION, KMInteger.getBuffer(version),
         KMInteger.getStartOff(version),
         KMInteger.length(version));
   }
 
   protected void setOsPatchLevel(short patch){
-    repository.setOsPatch(
-        KMInteger.getBuffer(patch),
+    writeData(KMDataStoreConstants.OS_PATCH_LEVEL, KMInteger.getBuffer(patch),
         KMInteger.getStartOff(patch),
         KMInteger.length(patch));
   }
 
   protected void setVendorPatchLevel(short patch){
-    repository.setVendorPatchLevel(
-        KMInteger.getBuffer(patch),
+    writeData(KMDataStoreConstants.VENDOR_PATCH_LEVEL, KMInteger.getBuffer(patch),
         KMInteger.getStartOff(patch),
         KMInteger.length(patch));
   }
@@ -3412,7 +3518,7 @@ private static short[] ATTEST_ID_TAGS;
     // Algorithm must be present
     KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     // As per specification Early boot keys may be created after early boot ended.
-    validateEarlyBoot();
+    validateEarlyBoot(scratchPad);
     validatePurpose(data[KEY_PARAMETERS]);
     //Check if the tags are supported.
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
@@ -3478,7 +3584,7 @@ private static short[] ATTEST_ID_TAGS;
         buffer, bufferStartOffset, bufferLength,
         KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
     // persist data
-    seProvider.persistProvisionData(
+    storeDataInst.persistCertificateData(
         (byte[]) buffer,
         Util.getShort(KMByteBlob.getBuffer(var), certChainPos), // offset
         Util.getShort(KMByteBlob.getBuffer(var), (short) (certChainPos + 2)), // length
@@ -3497,7 +3603,7 @@ private static short[] ATTEST_ID_TAGS;
 
   private void processGetCertChainCmd(APDU apdu) {
     // Make the response
-    short certChainLen = seProvider.getProvisionedDataLength(KMSEProvider.CERTIFICATE_CHAIN);
+    short certChainLen = storeDataInst.getCertificateDataLength(KMDataStoreConstants.CERTIFICATE_CHAIN);
     short int32Ptr = KMInteger.uint_16(KMError.OK);
     short maxByteHeaderLen = 3; // Maximum possible ByteBlob header len.
     short arrayHeaderLen = 1;
@@ -3506,12 +3612,9 @@ private static short[] ATTEST_ID_TAGS;
     encoder.getEncodedLength(int32Ptr);
     short totalLen = (short) (arrayHeaderLen + encoder.getEncodedLength(int32Ptr) + maxByteHeaderLen + certChainLen);
     short certChain = KMByteBlob.instance(totalLen);
-    //bufferRef[0] = (tmpVariables[1]).getBuffer();
-    //bufferProp[BUF_START_OFFSET] = (tmpVariables[1]).getStartOff();
-    //bufferProp[BUF_LEN_OFFSET] = (tmpVariables[1]).length();
     // copy the certificate chain to the end of the buffer.
-    seProvider.readProvisionedData(
-        KMSEProvider.CERTIFICATE_CHAIN,
+    storeDataInst.readCertificateData(
+        KMDataStoreConstants.CERTIFICATE_CHAIN,
         KMByteBlob.getBuffer(certChain),
         (short) (KMByteBlob.getStartOff(certChain) + totalLen - certChainLen));
     // Encode cert chain.
@@ -3706,7 +3809,7 @@ private static short[] ATTEST_ID_TAGS;
     }
   }
 
-  private static void generateAESKey(byte[] scratchPad) {
+  private void generateAESKey(byte[] scratchPad) {
     validateAESKey();
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
@@ -3747,14 +3850,14 @@ private static short[] ATTEST_ID_TAGS;
     KMTag.assertAbsence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,KMError.INVALID_TAG);
   }
 
-  private static void generateTDESKey(byte[] scratchPad) {
+  private void generateTDESKey(byte[] scratchPad) {
     validateTDESKey();
     short len = seProvider.createSymmetricKey(KMType.DES, (short) 168, scratchPad, (short) 0);
     data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, len);
     data[KEY_BLOB] = KMArray.instance((short) 4);
   }
 
-  private static void validateHmacKey() {
+  private void validateHmacKey() {
     // If params does not contain any digest throw unsupported digest error.
     KMTag.assertPresence(data[KEY_PARAMETERS],KMType.ENUM_ARRAY_TAG,KMType.DIGEST,KMError.UNSUPPORTED_DIGEST);
 
@@ -3779,7 +3882,7 @@ private static short[] ATTEST_ID_TAGS;
     }
   }
 
-  private static void generateHmacKey(byte[] scratchPad) {
+  private void generateHmacKey(byte[] scratchPad) {
     validateHmacKey();
     short keysize = KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     // generate HMAC Key
@@ -3793,7 +3896,7 @@ private static short[] ATTEST_ID_TAGS;
         KMIntegerTag.getValue(
             scratchPad, (short) 0, KMType.UINT_TAG, KMType.OS_VERSION, data[HW_PARAMETERS]);
     if (len != KMType.INVALID_VALUE) {
-      short provOsVersion = repository.getOsVersion();
+      short provOsVersion = readInteger32(KMDataStoreConstants.OS_VERSION, scratchPad, len);
       short status =
           KMInteger.unsignedByteArrayCompare(
               KMInteger.getBuffer(provOsVersion),
@@ -3812,7 +3915,7 @@ private static short[] ATTEST_ID_TAGS;
         KMIntegerTag.getValue(
             scratchPad, (short) 0, KMType.UINT_TAG, KMType.OS_PATCH_LEVEL, data[HW_PARAMETERS]);
     if (len != KMType.INVALID_VALUE) {
-      short osPatch = repository.getOsPatch();
+      short osPatch = readInteger32(KMDataStoreConstants.OS_PATCH_LEVEL, scratchPad, len);
       short status =
           KMInteger.unsignedByteArrayCompare(
               KMInteger.getBuffer(osPatch),
@@ -3827,10 +3930,10 @@ private static short[] ATTEST_ID_TAGS;
       }
     }
   }
-  
-  protected static short getBootPatchLevel(byte[] scratchPad){
+
+  protected short getBootPatchLevel(byte[] scratchPad){
     Util.arrayFillNonAtomic(scratchPad,(short)0, BOOT_PATCH_LVL_SIZE, (byte)0);
-    short len = seProvider.getBootPatchLevel(scratchPad,(short)0);
+    short len = bootParamsProv.getBootPatchLevel(scratchPad,(short)0);
     if(len != BOOT_PATCH_LVL_SIZE){
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
@@ -3841,9 +3944,9 @@ private static short[] ATTEST_ID_TAGS;
     data[KEY_CHARACTERISTICS] =
         makeKeyCharacteristics(
             data[KEY_PARAMETERS],
-            repository.getOsVersion(),
-            repository.getOsPatch(),
-            repository.getVendorPatchLevel(),
+            readInteger32(KMDataStoreConstants.OS_VERSION, scratchPad, (short) 0),
+            readInteger32(KMDataStoreConstants.OS_PATCH_LEVEL, scratchPad, (short) 0),
+            readInteger32(KMDataStoreConstants.VENDOR_PATCH_LEVEL, scratchPad, (short) 0),
             getBootPatchLevel(scratchPad),
             data[ORIGIN],
             scratchPad);
@@ -3933,13 +4036,13 @@ private static short[] ATTEST_ID_TAGS;
   }
 
   // Read RoT
-  public static short readROT(byte[] scratchPad) {
+  public short readROT(byte[] scratchPad) {
     Util.arrayFillNonAtomic(scratchPad,(short)0, (short)256,(byte)0);
-    short len = seProvider.getBootKey(scratchPad, (short)0);
-    len += seProvider.getVerifiedBootHash(scratchPad, (short)len);
-    short bootState = seProvider.getBootState();
+    short len = bootParamsProv.getBootKey(scratchPad, (short)0);
+    len += bootParamsProv.getVerifiedBootHash(scratchPad, (short)len);
+    short bootState = bootParamsProv.getBootState();
     len = Util.setShort(scratchPad, len, bootState);
-    if(seProvider.isDeviceBootLocked()){
+    if(bootParamsProv.isDeviceBootLocked()){
       scratchPad[len] = (byte)1;
     }else{
       scratchPad[len] = (byte)0;
@@ -4058,7 +4161,7 @@ private static short[] ATTEST_ID_TAGS;
     // Consume only first 16 bytes as derived key.
     // Hmac sign.
     short len = seProvider.hmacKDF(
-        seProvider.getMasterKey(),
+        storeDataInst.getMasterKey(),
         repository.getHeap(),
         data[AUTH_DATA],
         data[AUTH_DATA_LENGTH],
@@ -4134,7 +4237,7 @@ private static short[] ATTEST_ID_TAGS;
    * @param maxLen  Max value of the expected out length.
    * @return length of the encoded buffer.
    */
-  public static short encodeToApduBuffer(short object, byte[] apduBuf, short apduOff,
+  public short encodeToApduBuffer(short object, byte[] apduBuf, short apduOff,
       short maxLen) {
     short offset = repository.allocReclaimableMemory(maxLen);
     short len = encoder.encode(object, repository.getHeap(), offset);
@@ -4144,168 +4247,7 @@ private static short[] ATTEST_ID_TAGS;
     return len;
   }
 
-  public short validateCertChain(boolean validateEekRoot, byte expCertAlg,
-      byte expLeafCertAlg, short certChainArr, byte[] scratchPad, Object[] authorizedEekRoots) {
-    short len = KMArray.length(certChainArr);
-    short coseHeadersExp = KMCoseHeaders.exp();
-    //prepare exp for coseky
-    short coseKeyExp = KMCoseKey.exp();
-    short ptr1;
-    short ptr2;
-    short signStructure;
-    short encodedLen;
-    short prevCoseKey = 0;
-    short keySize;
-    short alg = expCertAlg;
-    short index;
-    for (index = 0; index < len; index++) {
-      ptr1 = KMArray.get(certChainArr, index);
 
-      // validate protected Headers
-      ptr2 = KMArray.get(ptr1, KMCose.COSE_SIGN1_PROTECTED_PARAMS_OFFSET);
-      ptr2 = decoder.decode(coseHeadersExp, KMByteBlob.getBuffer(ptr2),
-          KMByteBlob.getStartOff(ptr2), KMByteBlob.length(ptr2));
-      if (!KMCoseHeaders.cast(ptr2).isDataValid(alg, KMType.INVALID_VALUE)) {
-        KMException.throwIt(KMError.STATUS_FAILED);
-      }
-
-      // parse and get the public key from payload.
-      ptr2 = KMArray.get(ptr1, KMCose.COSE_SIGN1_PAYLOAD_OFFSET);
-      ptr2 = decoder.decode(coseKeyExp, KMByteBlob.getBuffer(ptr2),
-          KMByteBlob.getStartOff(ptr2), KMByteBlob.length(ptr2));
-      if ((index == (short) (len - 1)) && len > 1) {
-        alg = expLeafCertAlg;
-      }
-      if (!KMCoseKey.cast(ptr2).isDataValid(KMCose.COSE_KEY_TYPE_EC2, KMType.INVALID_VALUE, alg,
-          KMType.INVALID_VALUE, KMCose.COSE_ECCURVE_256)) {
-        KMException.throwIt(KMError.STATUS_FAILED);
-      }
-      if (prevCoseKey == 0) {
-        prevCoseKey = ptr2;
-      }
-      // Get the public key.
-      keySize = KMCoseKey.cast(prevCoseKey).getEcdsa256PublicKey(scratchPad, (short) 0);
-      if (keySize != 65) {
-        KMException.throwIt(KMError.STATUS_FAILED);
-      }
-      if (validateEekRoot && (index == 0)) {
-        boolean found = false;
-        // In prod mode the first pubkey should match a well-known Google public key.
-        for (short i = 0; i < (short) authorizedEekRoots.length; i++) {
-          if (0 == Util.arrayCompare(scratchPad, (short) 0, (byte[]) authorizedEekRoots[i],
-              (short) 0, (short) ((byte[]) authorizedEekRoots[i]).length)) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          KMException.throwIt(KMError.STATUS_FAILED);
-        }
-      }
-      // Validate signature.
-      signStructure =
-          kmCoseInst.constructCoseSignStructure(
-              KMArray.get(ptr1, KMCose.COSE_SIGN1_PROTECTED_PARAMS_OFFSET),
-              KMByteBlob.instance((short) 0),
-              KMArray.get(ptr1, KMCose.COSE_SIGN1_PAYLOAD_OFFSET));
-      encodedLen = KMKeymasterDevice.encodeToApduBuffer(signStructure, scratchPad,
-          keySize, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
-
-      if (!seProvider.ecVerify256(scratchPad, (short) 0, keySize, scratchPad, keySize, encodedLen,
-          KMByteBlob.getBuffer(KMArray.get(ptr1, KMCose.COSE_SIGN1_SIGNATURE_OFFSET)),
-          KMByteBlob.getStartOff(KMArray.get(ptr1, KMCose.COSE_SIGN1_SIGNATURE_OFFSET)),
-          KMByteBlob.length(KMArray.get(ptr1, KMCose.COSE_SIGN1_SIGNATURE_OFFSET)))) {
-        KMException.throwIt(KMError.STATUS_FAILED);
-      }
-      prevCoseKey = ptr2;
-    }
-    return prevCoseKey;
-  }
-
-
-  public short generateBcc(boolean testMode, byte[] scratchPad) {
-    if (!testMode && seProvider.isProvisionLocked()) {
-      KMException.throwIt(KMError.STATUS_FAILED);
-    }
-    KMDeviceUniqueKey deviceUniqueKey = seProvider.getDeviceUniqueKey(testMode);
-    short temp = deviceUniqueKey.getPublicKey(scratchPad, (short) 0);
-    short coseKey =
-    	kmCoseInst.constructCoseKey(
-            KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
-            KMType.INVALID_VALUE,
-            KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-            KMInteger.uint_8(KMCose.COSE_KEY_OP_VERIFY),
-            KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
-            scratchPad,
-            (short) 0,
-            temp,
-            KMType.INVALID_VALUE,
-            false
-        );
-    temp = KMKeymasterDevice.encodeToApduBuffer(coseKey, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
-    // Construct payload.
-    short payload =
-    	kmCoseInst.constructCoseCertPayload(
-            KMCosePairTextStringTag.instance(KMInteger.uint_8(KMCose.ISSUER),
-                KMTextString.instance(KMCose.TEST_ISSUER_NAME, (short) 0,
-                    (short) KMCose.TEST_ISSUER_NAME.length)),
-            KMCosePairTextStringTag.instance(KMInteger.uint_8(KMCose.SUBJECT),
-                KMTextString.instance(KMCose.TEST_SUBJECT_NAME, (short) 0,
-                    (short) KMCose.TEST_SUBJECT_NAME.length)),
-            KMCosePairByteBlobTag.instance(KMNInteger.uint_32(KMCose.SUBJECT_PUBLIC_KEY, (short) 0),
-                KMByteBlob.instance(scratchPad, (short) 0, temp)),
-            KMCosePairByteBlobTag.instance(KMNInteger.uint_32(KMCose.KEY_USAGE, (short) 0),
-                KMByteBlob.instance(KMCose.KEY_USAGE_SIGN, (short) 0,
-                    (short) KMCose.KEY_USAGE_SIGN.length))
-        );
-    // temp temporarily holds the length of encoded cert payload.
-    temp = KMKeymasterDevice.encodeToApduBuffer(payload, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
-    payload = KMByteBlob.instance(scratchPad, (short) 0, temp);
-
-    // protected header
-    short protectedHeader =
-        kmCoseInst.constructHeaders(KMNInteger.uint_8(KMCose.COSE_ALG_ES256), KMType.INVALID_VALUE,
-            KMType.INVALID_VALUE, KMType.INVALID_VALUE);
-    // temp temporarily holds the length of encoded headers.
-    temp = KMKeymasterDevice.encodeToApduBuffer(protectedHeader, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
-    protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, temp);
-
-    //unprotected headers.
-    short arr = KMArray.instance((short) 0);
-    short unprotectedHeader = KMCoseHeaders.instance(arr);
-
-    // construct cose sign structure.
-    short coseSignStructure =
-    	kmCoseInst.constructCoseSignStructure(protectedHeader, KMByteBlob.instance((short) 0), payload);
-    // temp temporarily holds the length of encoded sign structure.
-    // Encode cose Sign_Structure.
-    temp = KMKeymasterDevice.encodeToApduBuffer(coseSignStructure, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
-    // do sign
-    short len =
-        seProvider.ecSign256(
-            deviceUniqueKey,
-            scratchPad,
-            (short) 0,
-            temp,
-            scratchPad,
-            temp
-        );
-    coseSignStructure = KMByteBlob.instance(scratchPad, temp, len);
-
-    // construct cose_sign1
-    short coseSign1 =
-    	kmCoseInst.constructCoseSign1(protectedHeader, unprotectedHeader, payload, coseSignStructure);
-
-    // [Cose_Key, Cose_Sign1]
-    short bcc = KMArray.instance((short) 2);
-    KMArray.add(bcc, (short) 0, coseKey);
-    KMArray.add(bcc, (short) 1, coseSign1);
-    return bcc;
-  }
 
   private void updateTrustedConfirmationOperation(KMOperationState op) {
     if (op.isTrustedConfirmationRequired()) {
@@ -4369,12 +4311,11 @@ private static short[] ATTEST_ID_TAGS;
     return KMKeyCharacteristics.exp();
   }
 
-  public void validateEarlyBoot() {
-    if (repository.getEarlyBootEndedStatus()) {
-	  //Validate early boot
-	  KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY,
-	          KMError.INVALID_KEY_BLOB);
-	}
+  public void validateEarlyBoot(byte[] scratchpad) {
+    if (readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, scratchpad, (short) 0)) {
+      // Validate early boot
+      KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, KMError.INVALID_KEY_BLOB);
+    }
   }
 
   public short getHardwareParamters(short sbParams, short teeParams) {
@@ -4423,7 +4364,7 @@ private static short[] ATTEST_ID_TAGS;
     short notAfter =
         KMKeyParameters.findTag(swParams, KMType.DATE_TAG, KMType.USAGE_EXPIRE_DATETIME);
     if (notAfter == KMType.INVALID_VALUE) {
-      notAfter = getProvisionedCertificateData(seProvider, KMSEProvider.CERTIFICATE_EXPIRY);
+      notAfter = getProvisionedCertificateData(seProvider, KMDataStoreConstants.CERTIFICATE_EXPIRY);
       derEncoded = true;
     }
     cert.notAfter(notAfter, derEncoded, scratchPad);
@@ -4434,17 +4375,17 @@ private static short[] ATTEST_ID_TAGS;
     KMByteBlob.add(serialNumber, (short) 0, SERIAL_NUM);
     cert.serialNumber(serialNumber);
     // Issuer.
-    cert.issuer(getProvisionedCertificateData(seProvider, KMSEProvider.CERTIFICATE_ISSUER));
+    cert.issuer(getProvisionedCertificateData(seProvider, KMDataStoreConstants.CERTIFICATE_ISSUER));
     return cert;
   }
 
   private short getProvisionedCertificateData(KMSEProvider kmseProvider, byte dataType) {
-    short len = seProvider.getProvisionedDataLength(dataType);
+    short len = storeDataInst.getCertificateDataLength(dataType);
     if (len == 0) {
       KMException.throwIt(KMError.INVALID_DATA);
     }
     short ptr = KMByteBlob.instance(len);
-    seProvider.readProvisionedData(
+    storeDataInst.readCertificateData(
         dataType,
         KMByteBlob.getBuffer(ptr),
         KMByteBlob.getStartOff(ptr));

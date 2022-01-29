@@ -15,7 +15,7 @@
  */
 package com.android.javacard.kmdevice;
 
-public interface KMDeviceUniqueKey {
+public interface KMDeviceUniqueKey extends KMUpgradable {
 
   short getPublicKey(byte[] buf, short offset);
 }

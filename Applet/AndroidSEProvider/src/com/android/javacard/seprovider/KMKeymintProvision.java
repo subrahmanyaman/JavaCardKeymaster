@@ -5,23 +5,33 @@ import com.android.javacard.kmdevice.KMByteBlob;
 import com.android.javacard.kmdevice.KMCose;
 import com.android.javacard.kmdevice.KMCoseHeaders;
 import com.android.javacard.kmdevice.KMCoseKey;
+import com.android.javacard.kmdevice.KMDataStore;
+import com.android.javacard.kmdevice.KMDataStoreConstants;
 import com.android.javacard.kmdevice.KMDecoder;
 import com.android.javacard.kmdevice.KMDeviceUniqueKey;
 import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.kmdevice.KMInteger;
 import com.android.javacard.kmdevice.KMKeymasterDevice;
+import com.android.javacard.kmdevice.KMKeymintDevice;
 import com.android.javacard.kmdevice.KMMap;
 import com.android.javacard.kmdevice.KMRepository;
+import com.android.javacard.kmdevice.KMRkpDataStore;
 import com.android.javacard.kmdevice.KMSEProvider;
 import com.android.javacard.kmdevice.KMTextString;
 
 import javacard.framework.APDU;
 import javacard.framework.Util;
 
-public class KMKeymintProvision extends KMKeymasterProvision{
+public class KMKeymintProvision extends KMKeymasterProvision {
 
-  public KMKeymintProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,  KMDecoder decoder, KMRepository repoInst){
-	super(deviceInst, provider, decoder, repoInst);
+  private static final byte PROVISION_STATUS_DEVICE_UNIQUE_KEY = 0x40;
+  private static final byte PROVISION_STATUS_ADDITIONAL_CERT_CHAIN = (byte) 0x80;
+  private KMRkpDataStore rkpDataStore;
+
+  public KMKeymintProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,
+      KMDecoder decoder, KMRepository repoInst, KMDataStore storeData, KMRkpDataStore rkpStore){
+	  super(deviceInst, provider, decoder, repoInst, storeData);
+	  rkpDataStore = rkpStore;
   }
   
   @Override
@@ -47,12 +57,13 @@ public class KMKeymintProvision extends KMKeymasterProvision{
     short pubKeyLen = KMCoseKey.cast(coseKey).getEcdsa256PublicKey(scratchPad, (short) 0);
     short privKeyLen = KMCoseKey.cast(coseKey).getPrivateKey(scratchPad, pubKeyLen);
     //Store the Device unique Key.
-    seProvider.createDeviceUniqueKey(false, scratchPad, (short) 0, pubKeyLen, scratchPad,
+    rkpDataStore.createDeviceUniqueKey(false, scratchPad, (short) 0, pubKeyLen, scratchPad,
         pubKeyLen, privKeyLen);
-    short bcc = kmDeviceInst.generateBcc(false, scratchPad);
-    short len = KMKeymasterDevice.encodeToApduBuffer(bcc, scratchPad, (short) 0,
-    		kmDeviceInst.MAX_COSE_BUF_SIZE);
-    ((KMAndroidSEProvider) seProvider).persistBootCertificateChain(scratchPad, (short) 0, len);
+    short bcc = ((KMKeymintDevice) kmDeviceInst).generateBcc(false, scratchPad);
+    short len = kmDeviceInst.encodeToApduBuffer(bcc, scratchPad, (short) 0,
+    		KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+    rkpDataStore.storeData(KMDataStoreConstants.BOOT_CERT_CHAIN, scratchPad, (short) 0, len);
+    writeProvisionStatus(PROVISION_STATUS_DEVICE_UNIQUE_KEY);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
 
@@ -78,11 +89,11 @@ public class KMKeymintProvision extends KMKeymasterProvision{
     arrInst = KMMap.getKeyValue(map, (short) 0);
     // Validate Additional certificate chain.
     short leafCoseKey =
-    		kmDeviceInst.validateCertChain(false, KMCose.COSE_ALG_ES256, KMCose.COSE_ALG_ES256, arrInst,
+    		((KMKeymintDevice) kmDeviceInst).validateCertChain(false, KMCose.COSE_ALG_ES256, KMCose.COSE_ALG_ES256, arrInst,
             srcBuffer, null);
     // Compare the DK_Pub.
     short pubKeyLen = KMCoseKey.cast(leafCoseKey).getEcdsa256PublicKey(srcBuffer, (short) 0);
-    KMDeviceUniqueKey uniqueKey = seProvider.getDeviceUniqueKey(false);
+    KMDeviceUniqueKey uniqueKey = rkpDataStore.getDeviceUniqueKey(false);
     if (uniqueKey == null) {
       KMException.throwIt(KMError.STATUS_FAILED);
     }
@@ -91,9 +102,10 @@ public class KMKeymintProvision extends KMKeymasterProvision{
         (0 != Util.arrayCompare(srcBuffer, (short) 0, srcBuffer, pubKeyLen, pubKeyLen))) {
       KMException.throwIt(KMError.STATUS_FAILED);
     }
-    seProvider.persistAdditionalCertChain(buffer, bufferStartOffset, bufferLength);
+    rkpDataStore.storeData(KMDataStoreConstants.ADDITIONAL_CERT_CHAIN, buffer, bufferStartOffset, bufferLength);
     //reclaim memory
     kmRepositroyInst.reclaimMemory(bufferLength);
+    writeProvisionStatus(PROVISION_STATUS_ADDITIONAL_CERT_CHAIN);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
   
