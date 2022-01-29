@@ -60,7 +60,7 @@ public class KMKeymasterDevice {
   public static byte[] confirmationToken;
   // Subject is a fixed field with only CN= Android Keystore Key - same for all the keys
   private static byte[] defaultSubject;
-  public static final short MAX_COSE_BUF_SIZE = (short) 1024;
+  
   // Top 32 commands are reserved for provisioning.
   private static final byte KEYMINT_CMD_APDU_START = 0x20;
 
@@ -89,7 +89,7 @@ public class KMKeymasterDevice {
   private static final byte INS_ABORT_OPERATION_CMD = KEYMINT_CMD_APDU_START + 19; //0x33
   private static final byte INS_DEVICE_LOCKED_CMD = KEYMINT_CMD_APDU_START + 20;//0x34
   private static final byte INS_EARLY_BOOT_ENDED_CMD = KEYMINT_CMD_APDU_START + 21; //0x35
-  protected static final byte INS_GET_CERT_CHAIN_CMD = KEYMINT_CMD_APDU_START + 22; //0x36
+  private static final byte INS_GET_CERT_CHAIN_CMD = KEYMINT_CMD_APDU_START + 22; //0x36
   private static final byte INS_UPDATE_AAD_OPERATION_CMD = KEYMINT_CMD_APDU_START + 23; //0x37
   private static final byte INS_BEGIN_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 24; //0x38
   private static final byte INS_FINISH_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 25; //0x39
@@ -108,49 +108,49 @@ public class KMKeymasterDevice {
   private static final byte INS_END_KM_CMD = 0x7F;
 
   // Data Dictionary items
-  public static final byte DATA_ARRAY_SIZE = 40;
-  public static final byte TMP_VARIABLE_ARRAY_SIZE = 5;
+  private static final byte DATA_ARRAY_SIZE = 40;
+  private static final byte TMP_VARIABLE_ARRAY_SIZE = 5;
 
-  public static final byte KEY_PARAMETERS = 0;
-  public static final byte KEY_CHARACTERISTICS = 1;
-  public static final byte HIDDEN_PARAMETERS = 2;
-  public static final byte HW_PARAMETERS = 3;
-  public static final byte SW_PARAMETERS = 4;
-  public static final byte AUTH_DATA = 5;
-  public static final byte AUTH_TAG = 6;
-  public static final byte NONCE = 7;
-  public static final byte KEY_BLOB = 8;
-  public static final byte AUTH_DATA_LENGTH = 9;
-  public static final byte SECRET = 10;
-  public static final byte ROT = 11;
-  public static final byte DERIVED_KEY = 12;
-  public static final byte RSA_PUB_EXPONENT = 13;
-  public static final byte APP_ID = 14;
-  public static final byte APP_DATA = 15;
-  public static final byte PUB_KEY = 16;
-  public static final byte IMPORTED_KEY_BLOB = 17;
-  public static final byte ORIGIN = 18;
-  public static final byte NOT_USED = 19;
-  public static final byte MASKING_KEY = 20;
-  public static final byte HMAC_SHARING_PARAMS = 21;
-  public static final byte OP_HANDLE = 22;
-  public static final byte IV = 23;
-  public static final byte INPUT_DATA = 24;
-  public static final byte OUTPUT_DATA = 25;
-  public static final byte HW_TOKEN = 26;
-  public static final byte VERIFICATION_TOKEN = 27;
-  public static final byte SIGNATURE = 28;
-  public static final byte ATTEST_KEY_BLOB = 29;
-  public static final byte ATTEST_KEY_PARAMS = 30;
-  public static final byte ATTEST_KEY_ISSUER = 31;
-  public static final byte CERTIFICATE = 32;
-  public static final byte PLAIN_SECRET = 33;
-  public static final byte TEE_PARAMETERS = 34;
-  public static final byte SB_PARAMETERS = 35;
-  public static final byte CONFIRMATION_TOKEN = 36;
+  protected static final byte KEY_PARAMETERS = 0;
+  private static final byte KEY_CHARACTERISTICS = 1;
+  private static final byte HIDDEN_PARAMETERS = 2;
+  protected static final byte HW_PARAMETERS = 3;
+  private static final byte SW_PARAMETERS = 4;
+  private static final byte AUTH_DATA = 5;
+  private static final byte AUTH_TAG = 6;
+  private static final byte NONCE = 7;
+  private static final byte KEY_BLOB = 8;
+  private static final byte AUTH_DATA_LENGTH = 9;
+  protected static final byte SECRET = 10;
+  private static final byte ROT = 11;
+  private static final byte DERIVED_KEY = 12;
+  private static final byte RSA_PUB_EXPONENT = 13;
+  private static final byte APP_ID = 14;
+  private static final byte APP_DATA = 15;
+  private static final byte PUB_KEY = 16;
+  private static final byte IMPORTED_KEY_BLOB = 17;
+  private static final byte ORIGIN = 18;
+  private static final byte NOT_USED = 19;
+  private static final byte MASKING_KEY = 20;
+  private static final byte HMAC_SHARING_PARAMS = 21;
+  private static final byte OP_HANDLE = 22;
+  private static final byte IV = 23;
+  protected static final byte INPUT_DATA = 24;
+  protected static final byte OUTPUT_DATA = 25;
+  private static final byte HW_TOKEN = 26;
+  private static final byte VERIFICATION_TOKEN = 27;
+  private static final byte SIGNATURE = 28;
+  private static final byte ATTEST_KEY_BLOB = 29;
+  private static final byte ATTEST_KEY_PARAMS = 30;
+  private static final byte ATTEST_KEY_ISSUER = 31;
+  private static final byte CERTIFICATE = 32;
+  private static final byte PLAIN_SECRET = 33;
+  private static final byte TEE_PARAMETERS = 34;
+  private static final byte SB_PARAMETERS = 35;
+  private static final byte CONFIRMATION_TOKEN = 36;
 
   // AddRngEntropy
-  protected static final short MAX_SEED_SIZE = 2048;
+  private static final short MAX_SEED_SIZE = 2048;
 
   // Keyblob constants
   public static final byte KEY_BLOB_SECRET = 0;
@@ -312,7 +312,6 @@ public class KMKeymasterDevice {
     KMPKCS8Decoder.initStatics();
     KMEnumArrayTag.initStatics();
     KMIntegerArrayTag.initStatics();
-    RemotelyProvisionedComponentDevice.initStatics();
   }
   
   
@@ -3602,7 +3601,7 @@ public class KMKeymasterDevice {
 	return receiveIncoming(apdu, generateAttestKeyExp());
   }
 
-  private void processGetCertChainCmd(APDU apdu) {
+  protected void processGetCertChainCmd(APDU apdu) {
     // Make the response
     short certChainLen = storeDataInst.getCertificateDataLength(KMDataStoreConstants.CERTIFICATE_CHAIN);
     short int32Ptr = KMInteger.uint_16(KMError.OK);

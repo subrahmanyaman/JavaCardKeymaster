@@ -433,7 +433,7 @@ public class KMKeymintDataStore implements KMDataStore {
     while (index < MAX_BLOB_STORAGE) {
       if ((dataLength((short) (index + AUTH_TAG_1)) == 0)
           || isAuthTagSlotAvailable((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff)) {
-
+        Util.arrayFillNonAtomic(scratchPad, scratchPadOff, AUTH_TAG_ENTRY_SIZE, (byte)0);
         // prepare auth tag buffer
         writeAuthTagState(scratchPad, scratchPadOff, (byte) 1);
         Util.arrayCopyNonAtomic(data, offset, scratchPad, (short) (scratchPadOff + 1), AUTH_TAG_LENGTH);

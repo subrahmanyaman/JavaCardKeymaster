@@ -18,6 +18,7 @@ import com.android.javacard.kmdevice.KMRepository;
 import com.android.javacard.kmdevice.KMRkpDataStore;
 import com.android.javacard.kmdevice.KMSEProvider;
 import com.android.javacard.kmdevice.KMTextString;
+import com.android.javacard.kmdevice.RemotelyProvisionedComponentDevice;
 
 import javacard.framework.APDU;
 import javacard.framework.Util;
@@ -61,7 +62,7 @@ public class KMKeymintProvision extends KMKeymasterProvision {
         pubKeyLen, privKeyLen);
     short bcc = ((KMKeymintDevice) kmDeviceInst).generateBcc(false, scratchPad);
     short len = kmDeviceInst.encodeToApduBuffer(bcc, scratchPad, (short) 0,
-    		KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+    		RemotelyProvisionedComponentDevice.MAX_COSE_BUF_SIZE);
     rkpDataStore.storeData(KMDataStoreConstants.BOOT_CERT_CHAIN, scratchPad, (short) 0, len);
     writeProvisionStatus(PROVISION_STATUS_DEVICE_UNIQUE_KEY);
     kmDeviceInst.sendError(apdu, KMError.OK);

@@ -41,6 +41,7 @@ public class RemotelyProvisionedComponentDevice {
   private static final byte SYSTEM_PATCH_LEVEL_ID = 0x01;
   private static final byte BOOT_PATCH_LEVEL_ID = 0x02;
   private static final byte VENDOR_PATCH_LEVEL_ID = 0x03;
+  public static final short MAX_COSE_BUF_SIZE = (short) 1024;
   // Device Info labels
   public static byte[] BRAND;
   public static byte[] MANUFACTURER;
@@ -117,16 +118,18 @@ public class RemotelyProvisionedComponentDevice {
   private KMSEProvider seProvider;
   private Object[] operation;
   private short[] dataIndex;
-  public static Object[] authorizedEekRoots;
+  private  Object[] authorizedEekRoots;
   private KMKeymintDevice KMAppletInst;
-  protected static KMDataStore storeDataInst;
-  protected static KMRkpDataStore rkpStoreDataInst;
-  protected static KMBootDataStore bootParamsProv;
+  private KMDataStore storeDataInst;
+  private KMRkpDataStore rkpStoreDataInst;
+  private KMBootDataStore bootParamsProv;
   private KMCose kmCoseInst;
+  private short[] deviceIds; 
 
   public RemotelyProvisionedComponentDevice(KMKeymintDevice KMApplet, KMEncoder encoder, KMDecoder decoder,
       KMRepository repository, KMSEProvider seProvider, KMDataStore storeData, KMRkpDataStore rkpStore,
       KMBootDataStore bootParamsProvider) {
+	initStatics();  
     this.encoder = encoder;
     this.decoder = decoder;
     this.repository = repository;
@@ -135,6 +138,7 @@ public class RemotelyProvisionedComponentDevice {
     storeDataInst = storeData;
     rkpStoreDataInst = rkpStore;
     bootParamsProv = bootParamsProvider; 
+    deviceIds = JCSystem.makeTransientShortArray((short) 30, JCSystem.CLEAR_ON_RESET);
     data = JCSystem.makeTransientByteArray(DATA_SIZE, JCSystem.CLEAR_ON_RESET);
     operation = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
     dataIndex = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
@@ -354,7 +358,7 @@ public class RemotelyProvisionedComponentDevice {
       short coseKey = validateAndExtractPublicKey(arrInst, scratchPad);
       // Encode CoseKey
       short length = KMAppletInst.encodeToApduBuffer(coseKey, scratchPad, (short) 0,
-          KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+         MAX_COSE_BUF_SIZE);
       // Do Hmac update with input as encoded CoseKey.
       ((KMOperation) operation[0]).update(scratchPad, (short) 0, length);
       // Increment the count each time this function gets executed.
@@ -481,7 +485,7 @@ public class RemotelyProvisionedComponentDevice {
       short coseEncryptProtectedHeader = getCoseEncryptProtectedHeader(scratchPad);
       short coseEncryptUnProtectedHeader = getCoseEncryptUnprotectedHeader(scratchPad, nonce);
       len = KMAppletInst.encodeToApduBuffer(deviceInfo, scratchPad,
-              (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+              (short) 0,MAX_COSE_BUF_SIZE);
       short encodedDeviceInfo =  KMByteBlob.instance(scratchPad, (short) 0, len);
       updateState(FINISH);
       short arr = KMArray.instance((short) 7);
@@ -680,7 +684,7 @@ public class RemotelyProvisionedComponentDevice {
             KMByteBlob.instance((short) 0),
             KMArray.get(coseMacPtr, KMCose.COSE_MAC0_PAYLOAD_OFFSET));
     short encodedLen = KMAppletInst.encodeToApduBuffer(macStructure, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
 
     short hmacLen = seProvider.hmacSign(KMByteBlob.getBuffer(macKey),
         KMByteBlob.getStartOff(macKey),
@@ -769,7 +773,7 @@ public class RemotelyProvisionedComponentDevice {
         KMType.INVALID_VALUE);
     // Encode the protected header as byte blob.
     len = KMAppletInst.encodeToApduBuffer(headerPtr, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
     short protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, len);
     // create MAC_Structure
     ptr =
@@ -777,7 +781,7 @@ public class RemotelyProvisionedComponentDevice {
             KMByteBlob.instance((short) 0), KMType.INVALID_VALUE);
     // Encode the Mac_structure and do HMAC_Sign to produce the tag for COSE_MAC0
     len = KMAppletInst.encodeToApduBuffer(ptr, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
     // Construct partial payload - Bstr Header + Array Header
     // The maximum combined length of bstr header and array header length is 6 bytes.
     // The lengths will never exceed Max SHORT value.
@@ -814,7 +818,7 @@ public class RemotelyProvisionedComponentDevice {
     KMArray.add(aad, (short) 1, deviceMapPtr);
     KMArray.add(aad, (short) 2, pubKeysToSign);
     aad = KMAppletInst.encodeToApduBuffer(aad, scratchPad,
-        (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        (short) 0, MAX_COSE_BUF_SIZE);
     aad = KMByteBlob.instance(scratchPad, (short) 0, aad);
 
     /* construct protected header */
@@ -824,14 +828,14 @@ public class RemotelyProvisionedComponentDevice {
         KMType.INVALID_VALUE,
         KMType.INVALID_VALUE);
     protectedHeaders = KMAppletInst.encodeToApduBuffer(protectedHeaders, scratchPad,
-        (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        (short) 0, MAX_COSE_BUF_SIZE);
     protectedHeaders = KMByteBlob.instance(scratchPad, (short) 0, protectedHeaders);
 
     /* construct cose sign structure */
     short signStructure =
         kmCoseInst.constructCoseSignStructure(protectedHeaders, aad, ephmeralMacKey);
     signStructure = KMAppletInst.encodeToApduBuffer(signStructure, scratchPad,
-        (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        (short) 0, MAX_COSE_BUF_SIZE);
     short len =
         seProvider.ecSign256(
             deviceUniqueKey,
@@ -899,23 +903,9 @@ public class RemotelyProvisionedComponentDevice {
    */
   private short createDeviceInfo(byte[] scratchpad) {
     // Device Info Key Value pairs.
-    short[] deviceIds = {
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE, KMType.INVALID_VALUE,
-    };
+    for(short i = 0; i < 30; i++) {
+      deviceIds[i] =  KMType.INVALID_VALUE;
+    }
     short[] out = {0/* index */, 0 /* length */};
     updateItem(deviceIds, out, BRAND, getAttestationId(KMType.ATTESTATION_ID_BRAND, scratchpad));
     updateItem(deviceIds, out, MANUFACTURER,
@@ -1102,7 +1092,7 @@ public class RemotelyProvisionedComponentDevice {
         kmCoseInst.constructKdfContext(pubKeyA, pubKeyAOff, pubKeyALen, pubKeyB, pubKeyBOff, pubKeyBLen,
             true);
     kdfContext = KMAppletInst
-        .encodeToApduBuffer(kdfContext, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        .encodeToApduBuffer(kdfContext, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
     kdfContext = KMByteBlob.instance(scratchPad, (short) 0, kdfContext);
 
     Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 32, (byte) 0);
@@ -1225,7 +1215,7 @@ public class RemotelyProvisionedComponentDevice {
     // Encode the protected header as byte blob.
     protectedHeaderRecipient = KMAppletInst
         .encodeToApduBuffer(protectedHeaderRecipient, scratchPad, (short) 0,
-            KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+            MAX_COSE_BUF_SIZE);
     protectedHeaderRecipient = KMByteBlob.instance(scratchPad, (short) 0, protectedHeaderRecipient);
 
     /* Construct unprotected headers */
@@ -1301,7 +1291,7 @@ public class RemotelyProvisionedComponentDevice {
     if (testMode) {
       short bcc = KMAppletInst.generateBcc(true, scratchPad);
       len = KMAppletInst
-          .encodeToApduBuffer(bcc, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+          .encodeToApduBuffer(bcc, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
     } else {
       byte[] bcc = rkpStoreDataInst.getData(KMDataStoreConstants.BOOT_CERT_CHAIN);
       len = Util.getShort(bcc, (short) 0);
@@ -1328,12 +1318,12 @@ public class RemotelyProvisionedComponentDevice {
         KMType.INVALID_VALUE);
     // Encode the protected header as byte blob.
     protectedHeader = KMAppletInst.encodeToApduBuffer(protectedHeader, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
     protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, protectedHeader);
     short coseEncryptStr =
         kmCoseInst.constructCoseEncryptStructure(protectedHeader, KMByteBlob.instance((short) 0));
     coseEncryptStr = KMAppletInst.encodeToApduBuffer(coseEncryptStr, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
     ((KMOperation) operation[0]).updateAAD(scratchPad, (short) 0, coseEncryptStr);
   }
 
@@ -1352,7 +1342,7 @@ public class RemotelyProvisionedComponentDevice {
       KMArray.add(arr, (short) 2, KMType.INVALID_VALUE);
     }
     short len = KMAppletInst
-        .encodeToApduBuffer(arr, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        .encodeToApduBuffer(arr, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
     short cipherTextLen = ((KMOperation) operation[0])
         .update(scratchPad, (short) 0, len, scratchPad, len);
     Util.arrayCopyNonAtomic(
@@ -1374,7 +1364,7 @@ public class RemotelyProvisionedComponentDevice {
         KMType.INVALID_VALUE);
     // Encode the protected header as byte blob.
     protectedHeader = KMAppletInst.encodeToApduBuffer(protectedHeader, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
     return KMByteBlob.instance(scratchPad, (short) 0, protectedHeader);
   }
 
@@ -1400,7 +1390,7 @@ public class RemotelyProvisionedComponentDevice {
             testMode);
     // Encode the cose key and make it as payload.
     short len = KMAppletInst
-        .encodeToApduBuffer(coseKey, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        .encodeToApduBuffer(coseKey, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
     short payload = KMByteBlob.instance(scratchPad, (short) 0, len);
     // Get the mackey.
     short macKey = getHmacKey(testMode, scratchPad);
@@ -1412,14 +1402,14 @@ public class RemotelyProvisionedComponentDevice {
         KMType.INVALID_VALUE);
     // Encode the protected header as byte blob.
     len = KMAppletInst
-        .encodeToApduBuffer(headerPtr, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        .encodeToApduBuffer(headerPtr, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
     short protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, len);
     // create MAC_Structure
     short macStructure =
         kmCoseInst.constructCoseMacStructure(protectedHeader, KMByteBlob.instance((short) 0), payload);
     // Encode the Mac_structure and do HMAC_Sign to produce the tag for COSE_MAC0
     len = KMAppletInst.encodeToApduBuffer(macStructure, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        MAX_COSE_BUF_SIZE);
     // HMAC Sign.
     short hmacLen = seProvider
         .hmacSign(KMByteBlob.getBuffer(macKey), KMByteBlob.getStartOff(macKey),
@@ -1431,7 +1421,7 @@ public class RemotelyProvisionedComponentDevice {
                 payload,
                 KMByteBlob.instance(scratchPad, len, hmacLen));
     len = KMAppletInst
-        .encodeToApduBuffer(coseMac0, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        .encodeToApduBuffer(coseMac0, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
     return KMByteBlob.instance(scratchPad, (short) 0, len);
   }
 
