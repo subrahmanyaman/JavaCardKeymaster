@@ -3513,7 +3513,7 @@ public class KMKeymasterDevice {
     // Algorithm must be present
     KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     // As per specification Early boot keys may be created after early boot ended.
-    validateEarlyBoot(data[KEY_PARAMETERS], INS_GENERATE_KEY_CMD, scratchPad, (short)0, KMError.INVALID_KEY_BLOB);
+    validateEarlyBoot(data[KEY_PARAMETERS], INS_GENERATE_KEY_CMD, scratchPad, (short)0, KMError.EARLY_BOOT_ENDED);
     validatePurpose(data[KEY_PARAMETERS]);
     //Check if the tags are supported.
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {

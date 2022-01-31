@@ -344,7 +344,7 @@ public class KMDecoder {
     short tagClass;
     short allowedType;
     short obj;
-    short arrPos =0;
+    short arrPos = 0;
     // For each tag in payload ...
     while (index < payloadLength) {
       tagFound = false;
