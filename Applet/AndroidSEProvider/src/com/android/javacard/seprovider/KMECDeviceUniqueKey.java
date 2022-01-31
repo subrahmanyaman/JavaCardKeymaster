@@ -55,23 +55,21 @@ public class KMECDeviceUniqueKey implements KMDeviceUniqueKey {
     return (ECPublicKey) ecKeyPair.getPublic();
   }
 
-  @Override
-  public void onSave(Element ele) {
-    ele.write(ecKeyPair);
+  public static void onSave(Element element, KMECDeviceUniqueKey kmKey) {
+    element.write(kmKey.ecKeyPair);
   }
 
-  @Override
-  public void onRestore(Element ele, short oldVersion, short currentVersion) {
-    ecKeyPair = (KeyPair) ele.readObject();
+  public static KMECDeviceUniqueKey onRestore(KeyPair ecKey) {
+    if (ecKey == null)
+      return null;
+    return new KMECDeviceUniqueKey(ecKey);
   }
 
-  @Override
-  public short getBackupPrimitiveByteCount() {
+  public static short getBackupPrimitiveByteCount() {
     return (short) 0;
   }
 
-  @Override
-  public short getBackupObjectCount() {
+  public static short getBackupObjectCount() {
     return (short) 1;
   }
 

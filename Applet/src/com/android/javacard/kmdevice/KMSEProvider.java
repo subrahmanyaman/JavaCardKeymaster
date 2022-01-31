@@ -639,4 +639,11 @@ public interface KMSEProvider {
  
   
   boolean isPowerReset(boolean isForStatusUpdate);
+  
+  void onSave(Element element, byte interfaceType, Object object);
+  Object onResore(Element element);
+  short getBackupPrimitiveByteCount(byte interfaceType);
+  short getBackupObjectCount(byte interfaceType); 
+  
+  
 }

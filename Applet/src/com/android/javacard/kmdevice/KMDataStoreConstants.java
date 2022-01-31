@@ -43,6 +43,14 @@ public class KMDataStoreConstants {
  public static final byte CERTIFICATE_EXPIRY = 1;
  public static final byte CERTIFICATE_ISSUER = 2;
  
+ // INTERFACE Types
+ public static final byte INTERFACE_TYPE_COMPUTED_HMAC_KEY = 0x01;
+ public static final byte INTERFACE_TYPE_ATTESTATION_KEY = 0x02;
+ public static final byte INTERFACE_TYPE_DEVICE_UNIQUE_KEY = 0x03;
+ public static final byte INTERFACE_TYPE_MASTER_KEY = 0x04;
+ public static final byte INTERFACE_TYPE_PRE_SHARED_KEY = 0x05;
+ 
+ 
  
 
 }

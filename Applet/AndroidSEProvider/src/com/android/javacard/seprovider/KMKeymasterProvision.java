@@ -45,13 +45,15 @@ public class KMKeymasterProvision {
   protected KMDataStore kmStoreDataInst;
 
   public KMKeymasterProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,  KMDecoder decoder, KMRepository repoInst,
-      KMDataStore storeData){
+      KMDataStore storeData) {
 	  kmDeviceInst = deviceInst;
 	  seProvider = provider;
 	  kmDecoder = decoder;
 	  kmRepositroyInst = repoInst;
 	  kmStoreDataInst = storeData;
-	  writeProvisionStatus(NOT_PROVISIONED);
+	  if (!seProvider.isUpgrading()) {
+	    writeProvisionStatus(NOT_PROVISIONED);
+	  }
 	}
   
   protected void writeProvisionStatus(byte provisionStatus) {

@@ -44,10 +44,6 @@ import javacard.framework.Util;
  */
 public class KMKeymintDataStore implements KMDataStore {
   
- // Magic number version
- private static final byte KM_MAGIC_NUMBER = (byte) 0x82;
- // MSB byte is for Major version and LSB byte is for Minor version.
- private static final short CURRENT_PACKAGE_VERSION = 0x0009; // 0.9
 
   // Data table configuration
   private static final short DATA_INDEX_SIZE = 19;
@@ -118,8 +114,6 @@ public class KMKeymintDataStore implements KMDataStore {
   private KMPreSharedKey preSharedKey;
   private KMAttestationKey attestationKey;
   protected KMSEProvider seProvider;
-  // Package version.
-  protected short packageVersion;
   
   // Data - originally was in repository
   private byte[] attIdBrand;
@@ -721,32 +715,10 @@ public class KMKeymintDataStore implements KMDataStore {
         break;
     }
   }
-  
-  private boolean isUpgradeAllowed(short version) {
-    boolean upgradeAllowed = false;
-    short oldMajorVersion = (short) ((version >> 8) & 0x00FF);
-    short oldMinorVersion = (short) (version & 0x00FF);
-    short currentMajorVersion = (short) (CURRENT_PACKAGE_VERSION >> 8 & 0x00FF);
-    short currentMinorVersion = (short) (CURRENT_PACKAGE_VERSION & 0x00FF);
-    // Downgrade of the Applet is not allowed.
-    // Upgrade is not allowed to a next version which is not immediate.
-    if ((short) (currentMajorVersion - oldMajorVersion) == 1) {
-      if (currentMinorVersion == 0) {
-        upgradeAllowed = true;
-      }
-    } else if ((short) (currentMajorVersion - oldMajorVersion) == 0) {
-      if ((short) (currentMinorVersion - oldMinorVersion) == 1) {
-        upgradeAllowed = true;
-      }
-    }
-    return upgradeAllowed;
-  }
 
   @Override
   public void onSave(Element element) {
     // Prmitives
-    element.write(KM_MAGIC_NUMBER);
-    element.write(packageVersion);
     element.write(dataIndex);
     element.write(deviceBootLocked);
     element.write(bootState);
@@ -765,25 +737,14 @@ public class KMKeymintDataStore implements KMDataStore {
     element.write(bootKey);
     element.write(bootPatchLevel);
     // Key Objects
-    masterKey.onSave(element);
-    computedHmacKey.onSave(element);
-    preSharedKey.onSave(element);
-    attestationKey.onSave(element);
-    
+    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY, masterKey);
+    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY, computedHmacKey);
+    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY, preSharedKey);
+    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY, attestationKey);
   }
 
   @Override
   public void onRestore(Element element, short oldVersion, short currentVersion) {
-    element.initRead();
-    byte magicNumber  = element.readByte();
-    if (magicNumber != KM_MAGIC_NUMBER) {
-      ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
-    }
-    short packageVersion = element.readShort();
-    // Validate version.
-    if (0 != packageVersion && !isUpgradeAllowed(packageVersion)) {
-      ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
-    }
     // Read Primitives
     dataIndex = element.readShort();
     deviceBootLocked = element.readBoolean();
@@ -803,6 +764,10 @@ public class KMKeymintDataStore implements KMDataStore {
     bootKey = (byte[]) element.readObject();
     bootPatchLevel = (byte[]) element.readObject();
     // Read Key Objects
+    masterKey = (KMMasterKey) seProvider.onResore(element);
+    computedHmacKey = (KMComputedHmacKey) seProvider.onResore(element);
+    preSharedKey = (KMPreSharedKey) seProvider.onResore(element);
+    attestationKey = (KMAttestationKey) seProvider.onResore(element);
   }
 
   @Override
@@ -812,12 +777,12 @@ public class KMKeymintDataStore implements KMDataStore {
     // dataIndex - 2 bytes
     // deviceLocked - 1 byte
     // deviceState = 2 bytes
-    short count = 8;
-    count += computedHmacKey.getBackupPrimitiveByteCount() +
-        masterKey.getBackupPrimitiveByteCount() +
-        preSharedKey.getBackupPrimitiveByteCount() +
-        (attestationKey != null ? attestationKey.getBackupPrimitiveByteCount() : 0);
-    return count;
+    // interface types - 4 bytes
+    return (short) (12 +
+        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY) +
+        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY) +
+        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
+        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY));
   }
 
   @Override
@@ -825,17 +790,15 @@ public class KMKeymintDataStore implements KMDataStore {
     // dataTable - 1
     // CertificateData - 1
     // AttestationIds - 8 
-    // bootParameters - 3 
-    short count = 13;
-    count += computedHmacKey.getBackupObjectCount() +
-        masterKey.getBackupObjectCount() +
-        preSharedKey.getBackupObjectCount() +
-        (attestationKey != null ? attestationKey.getBackupObjectCount() : 0);
-    return count;
+    // bootParameters - 3
+    return (short) (13 +
+        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY) +
+        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY) +
+        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
+        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY));
   }
   
   // Below functions are related boot paramters.
-
   public void setVerifiedBootHash(byte[] buffer, short start, short length) {
     if (verifiedHash == null) {
       verifiedHash = new byte[32];

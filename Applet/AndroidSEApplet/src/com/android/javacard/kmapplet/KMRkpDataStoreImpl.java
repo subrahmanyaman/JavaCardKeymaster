@@ -15,11 +15,6 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 public class KMRkpDataStoreImpl implements KMRkpDataStore {
-  
-  // Magic number version
-  private static final byte KM_MAGIC_NUMBER = (byte) 0x83;
-  // MSB byte is for Major version and LSB byte is for Minor version.
-  private static final short CURRENT_PACKAGE_VERSION = 0x0009; // 0.9
 
   private byte[] bcc;
   private byte[] additionalCertData;
@@ -133,24 +128,29 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
 
   @Override
   public void onSave(Element ele) {
-    
+    ele.write(additionalCertData);
+    ele.write(bcc);
+    // Key Object
+    seProvider.onSave(ele, KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY, deviceUniqueKey);
   }
 
   @Override
   public void onRestore(Element ele, short oldVersion, short currentVersion) {
-    
+    additionalCertData = (byte[]) ele.readObject();
+    bcc = (byte[]) ele.readObject();
+    deviceUniqueKey = (KMDeviceUniqueKey) seProvider.onResore(ele);
   }
 
   @Override
   public short getBackupPrimitiveByteCount() {
-    return (deviceUniqueKey.getBackupPrimitiveByteCount());
+    return seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY);
   }
 
   @Override
   public short getBackupObjectCount() {
     // AdditionalCertificateChain - 1
     // BCC - 1
-    return (short) (2 + deviceUniqueKey.getBackupObjectCount());
+    return (short) (2 + seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY));
   }
 
   @Override

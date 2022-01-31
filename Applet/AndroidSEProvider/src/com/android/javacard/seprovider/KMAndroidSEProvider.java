@@ -20,6 +20,7 @@ import org.globalplatform.upgrade.UpgradeManager;
 
 import com.android.javacard.kmdevice.KMAttestationKey;
 import com.android.javacard.kmdevice.KMComputedHmacKey;
+import com.android.javacard.kmdevice.KMDataStoreConstants;
 import com.android.javacard.kmdevice.KMDeviceUniqueKey;
 import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.kmdevice.KMMasterKey;
@@ -27,6 +28,8 @@ import com.android.javacard.kmdevice.KMOperation;
 import com.android.javacard.kmdevice.KMPreSharedKey;
 import com.android.javacard.kmdevice.KMSEProvider;
 
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.AESKey;
@@ -72,7 +75,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   public static final byte POWER_RESET_FALSE = (byte) 0xAA;
   public static final byte POWER_RESET_TRUE = (byte) 0x00;
 
-  private static KeyAgreement keyAgreement;
+  private KeyAgreement keyAgreement;
 
   // AESKey
   private AESKey aesKeys[];
@@ -87,37 +90,18 @@ public class KMAndroidSEProvider implements KMSEProvider {
   // Temporary array.
   public byte[] tmpArray;
   // This is used for internal encryption/decryption operations.
-  private static AEADCipher aesGcmCipher;
+  private AEADCipher aesGcmCipher;
 
   private Signature kdf;
-  public static byte[] resetFlag;
+  public byte[] resetFlag;
 
   private Signature hmacSignature;
   //For ImportwrappedKey operations.
   private KMRsaOAEPEncoding rsaOaepDecipher;
   private KMPoolManager poolMgr;
 
-  // Data - originally was in repository
-  private byte[] attIdBrand;
-  private byte[] attIdDevice;
-  private byte[] attIdProduct;
-  private byte[] attIdSerial;
-  private byte[] attIdImei;
-  private byte[] attIdMeId;
-  private byte[] attIdManufacturer;
-  private byte[] attIdModel;
-
-  // Boot parameters
-  private byte[] verifiedHash;
-  private byte[] bootKey;
-  private byte[] bootPatchLevel;
-  private boolean deviceBootLocked;
-  private short bootState;
-
   // Entropy
   private RandomData rng;
-  //For storing root certificate and intermediate certificates.
-  private byte[] certificateChain;
 
   private static KMAndroidSEProvider androidSEProvider = null;
 
@@ -1158,4 +1142,91 @@ public class KMAndroidSEProvider implements KMSEProvider {
     return len;
   }
 
+  @Override
+  public void onSave(Element element, byte interfaceType, Object object) {
+    element.write(interfaceType);
+    if (object == null) {
+      element.write(null);
+      return;
+    }
+    switch(interfaceType) {
+    case KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY:
+      KMHmacKey.onSave(element, (KMHmacKey) object);
+      break;
+    case KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY:
+      KMAESKey.onSave(element, (KMAESKey) object);
+      break;
+    case KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY:
+      KMHmacKey.onSave(element, (KMHmacKey) object);
+      break;
+    case KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY:
+      KMECPrivateKey.onSave(element, (KMECPrivateKey) object);
+      break;
+    case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY:
+      KMECDeviceUniqueKey.onSave(element, (KMECDeviceUniqueKey) object);
+      break;
+    default:
+        ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+    }
+  }
+
+  @Override
+  public Object onResore(Element element) {
+    if (element == null)
+      return null;
+    byte interfaceType = element.readByte();
+    switch(interfaceType) {
+    case KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY:
+      return KMHmacKey.onRestore((HMACKey) element.readObject());
+    case KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY:
+      return KMAESKey.onRestore((AESKey) element.readObject());
+    case KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY:
+      return KMHmacKey.onRestore((HMACKey) element.readObject());
+    case KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY:
+      return KMECPrivateKey.onRestore((KeyPair) element.readObject());
+    case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY:
+      return KMECDeviceUniqueKey.onRestore((KeyPair) element.readObject());
+    default:
+        ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+    }
+    return null;
+  }
+
+  @Override
+  public short getBackupPrimitiveByteCount(byte interfaceType) {
+    switch(interfaceType) {
+    case KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY:
+      return KMHmacKey.getBackupPrimitiveByteCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY:
+      return KMAESKey.getBackupPrimitiveByteCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY:
+      return KMHmacKey.getBackupPrimitiveByteCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY:
+      return KMECPrivateKey.getBackupPrimitiveByteCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY:
+      return KMECDeviceUniqueKey.getBackupPrimitiveByteCount();
+    default:
+        ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+    }
+    return 0;
+  }
+
+  @Override
+  public short getBackupObjectCount(byte interfaceType) {
+    switch(interfaceType) {
+    case KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY:
+      return KMHmacKey.getBackupObjectCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY:
+      return KMAESKey.getBackupObjectCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY:
+      return KMHmacKey.getBackupObjectCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY:
+      return KMECPrivateKey.getBackupObjectCount();
+    case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY:
+      return KMECDeviceUniqueKey.getBackupObjectCount();
+    default:
+        ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+    }
+    return 0;
+  }
 }

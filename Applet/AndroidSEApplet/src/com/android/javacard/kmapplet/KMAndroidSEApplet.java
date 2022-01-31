@@ -22,25 +22,14 @@ import org.globalplatform.upgrade.UpgradeManager;
 import com.android.javacard.kmdevice.KMArray;
 import com.android.javacard.kmdevice.KMBootDataStore;
 import com.android.javacard.kmdevice.KMByteBlob;
-import com.android.javacard.kmdevice.KMByteTag;
-import com.android.javacard.kmdevice.KMCose;
-import com.android.javacard.kmdevice.KMCoseHeaders;
-import com.android.javacard.kmdevice.KMCoseKey;
 import com.android.javacard.kmdevice.KMDecoder;
 import com.android.javacard.kmdevice.KMEncoder;
 import com.android.javacard.kmdevice.KMEnum;
-import com.android.javacard.kmdevice.KMEnumArrayTag;
-import com.android.javacard.kmdevice.KMEnumTag;
 import com.android.javacard.kmdevice.KMInteger;
-import com.android.javacard.kmdevice.KMKeyParameters;
 import com.android.javacard.kmdevice.KMKeymasterDevice;
 import com.android.javacard.kmdevice.KMKeymintDevice;
-import com.android.javacard.kmdevice.KMMap;
 import com.android.javacard.kmdevice.KMRepository;
 import com.android.javacard.kmdevice.KMRkpDataStore;
-import com.android.javacard.kmdevice.KMTag;
-import com.android.javacard.kmdevice.KMTextString;
-import com.android.javacard.kmdevice.RemotelyProvisionedComponentDevice;
 import com.android.javacard.seprovider.KMAndroidSEProvider;
 import com.android.javacard.seprovider.KMError;
 import com.android.javacard.kmdevice.KMException;
@@ -62,9 +51,13 @@ import javacardx.apdu.ExtendedLength;
 
 public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeListener, ExtendedLength {
 
+  // Magic number version
+  private static final byte KM_MAGIC_NUMBER = (byte) 0x82;
+  // MSB byte is for Major version and LSB byte is for Minor version.
+  private static final short CURRENT_PACKAGE_VERSION = 0x0009; // 0.9
+
   private static final byte KM_BEGIN_STATE = 0x00;
   private static final byte ILLEGAL_STATE = KM_BEGIN_STATE + 1;
-
 
   // Provider specific Commands
   private static final byte INS_KEYMINT_PROVIDER_APDU_START = 0x00;
@@ -88,29 +81,40 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
   public static final byte KM_40 = 0x00;
   public static final byte KM_41 = 0x01;
   public static final byte KM_100 = 0x03;
-  
+
   private static final byte BOOT_KEY_MAX_SIZE = 32;
   private static final byte BOOT_HASH_MAX_SIZE = 32;
   private static final byte COMPUTED_HMAC_KEY_SIZE = 32;
-  
-    
-  private static byte kmDevice;
-  private static KMSEProvider seProvider;
-  private static KMKeymasterProvision seProvisionInst;
-  private static KMDecoder decoderInst;
-  private static KMEncoder encoderInst;
-  private static KMRepository repositoryInst;
-  private static KMKeymasterDevice kmDeviceInst;
-  private static KMDataStore kmDataStore;
-  private static KMRkpDataStore kmRkpDataStore;
-  private static KMBootDataStore bootParamsProvider;
 
-  KMAndroidSEApplet() {
+
+  private byte kmDevice;
+  private KMSEProvider seProvider;
+  private KMKeymasterProvision seProvisionInst;
+  private KMDecoder decoderInst;
+  private KMEncoder encoderInst;
+  private KMRepository repositoryInst;
+  private KMKeymasterDevice kmDeviceInst;
+  private KMDataStore kmDataStore;
+  private KMRkpDataStore kmRkpDataStore;
+  private KMBootDataStore bootParamsProvider;
+
+  // Package version.
+  protected short packageVersion;
+
+  KMAndroidSEApplet(byte device) {
+    kmDevice = device;
     seProvider = (KMSEProvider) new KMAndroidSEProvider();
-    repositoryInst = new KMRepository(seProvider.isUpgrading());
-    kmRkpDataStore = new KMRkpDataStoreImpl(seProvider);
+    repositoryInst = new KMRepository(UpgradeManager.isUpgrading());
     decoderInst = new KMDecoder();
     encoderInst = new KMEncoder();
+    if (!UpgradeManager.isUpgrading()) {
+      packageVersion = CURRENT_PACKAGE_VERSION;
+      initLibraries();
+    }
+  }
+  
+  private void initLibraries() {
+    kmRkpDataStore = new KMRkpDataStoreImpl(seProvider);
     kmDataStore = new KMKeymintDataStore(seProvider, !(kmDevice == KM_100) /* Factory attest flag*/);
     bootParamsProvider = new KMBootParamsProviderImpl((KMKeymintDataStore) kmDataStore);
     if (kmDevice == KM_40 || kmDevice == KM_41) {
@@ -133,15 +137,17 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
    * @param bLength the length in bytes of the parameter data in bArray
    */
   public static void install(byte[] bArray, short bOffset, byte bLength) {
-    // TODO Get the specification correctly.
-    byte Li = bArray[bOffset]; // Length of AID
-    byte Lc = bArray[(short) (bOffset + Li + 1)]; // Length of ControlInfo
-    byte La = bArray[(short) (bOffset + Li + Lc + 2)]; // Length of application data
-    if (La != 1) {
-      ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+    byte kmDevice = KM_100;
+    if (!UpgradeManager.isUpgrading()) {
+      byte Li = bArray[bOffset]; // Length of AID
+      byte Lc = bArray[(short) (bOffset + Li + 1)]; // Length of ControlInfo
+      byte La = bArray[(short) (bOffset + Li + Lc + 2)]; // Length of application data
+      if (La != 1) {
+        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+      }
+      kmDevice = bArray[(short) (bOffset + Li + Lc + 3)];
     }
-    kmDevice = bArray[(short) (bOffset + Li + Lc + 3)];
-    new KMAndroidSEApplet().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
+    new KMAndroidSEApplet(kmDevice).register(bArray, (short) (bOffset + 1), bArray[bOffset]);
   }
   
   private boolean isProvisionLocked() {
@@ -244,6 +250,27 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
       kmDeviceInst.clean();
     }
   }
+
+
+  private boolean isUpgradeAllowed(short version) {
+    boolean upgradeAllowed = false;
+    short oldMajorVersion = (short) ((version >> 8) & 0x00FF);
+    short oldMinorVersion = (short) (version & 0x00FF);
+    short currentMajorVersion = (short) (CURRENT_PACKAGE_VERSION >> 8 & 0x00FF);
+    short currentMinorVersion = (short) (CURRENT_PACKAGE_VERSION & 0x00FF);
+    // Downgrade of the Applet is not allowed.
+    // Upgrade is not allowed to a next version which is not immediate.
+    if ((short) (currentMajorVersion - oldMajorVersion) == 1) {
+      if (currentMinorVersion == 0) {
+        upgradeAllowed = true;
+      }
+    } else if ((short) (currentMajorVersion - oldMajorVersion) == 0) {
+      if ((short) (currentMinorVersion - oldMinorVersion) == 1) {
+        upgradeAllowed = true;
+      }
+    }
+    return upgradeAllowed;
+  }  
   
   @Override
   public void onCleanup() {
@@ -255,16 +282,27 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
 
   @Override
   public void onRestore(Element element) {
-//    element.initRead();
-//    keymasterState = element.readByte();
-//    repositoryInst.onRestore(element);
-//    //seProvider.onRestore(element);
-//    seProvisionInst.onSave(element);
+    element.initRead();
+    byte magicNumber  = element.readByte();
+    if (magicNumber != KM_MAGIC_NUMBER) {
+      ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+    }
+    short packageVersion = element.readShort();
+    // Validate version.
+    if (0 != packageVersion && !isUpgradeAllowed(packageVersion)) {
+      ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+    }
+    kmDevice = element.readByte();
+    // Initialize libraries after reading kmDevice flag.
+    initLibraries();
+    kmDataStore.onRestore(element, packageVersion, CURRENT_PACKAGE_VERSION);
+    kmRkpDataStore.onRestore(element, packageVersion, CURRENT_PACKAGE_VERSION);
   }
 
   @Override
   public Element onSave() {
-    short primitiveCount = kmDataStore.getBackupPrimitiveByteCount();
+    short primitiveCount = 4;
+    primitiveCount += kmDataStore.getBackupPrimitiveByteCount();
     short objectCount = kmDataStore.getBackupObjectCount();
     
     primitiveCount += kmRkpDataStore.getBackupPrimitiveByteCount();
@@ -273,7 +311,10 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
     // Create element.
     Element element = UpgradeManager.createElement(Element.TYPE_SIMPLE,
       primitiveCount, objectCount);
-    
+
+    element.write(KM_MAGIC_NUMBER);
+    element.write(packageVersion);
+    element.write(kmDevice);
     kmDataStore.onSave(element);
     kmRkpDataStore.onSave(element);
     return element;

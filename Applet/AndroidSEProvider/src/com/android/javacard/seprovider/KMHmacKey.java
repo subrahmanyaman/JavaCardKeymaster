@@ -46,23 +46,21 @@ public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey  {
     return hmacKey.getSize();
   }
 
-  @Override
-  public void onSave(Element ele) {
-    ele.write(hmacKey);
+  public static void onSave(Element element, KMHmacKey kmKey) {
+    element.write(kmKey.hmacKey);
   }
 
-  @Override
-  public void onRestore(Element ele, short oldVersion, short currentVersion) {
-    hmacKey = (HMACKey) ele.readObject();
+  public static KMHmacKey onRestore(HMACKey hmacKey) {
+    if (hmacKey == null)
+      return null;
+    return new KMHmacKey(hmacKey);
   }
 
-  @Override
-  public short getBackupPrimitiveByteCount() {
+  public static short getBackupPrimitiveByteCount() {
     return (short) 0;
   }
 
-  @Override
-  public short getBackupObjectCount() {
+  public static short getBackupObjectCount() {
     return (short) 1;
   }
 }

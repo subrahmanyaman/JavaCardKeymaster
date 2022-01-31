@@ -42,29 +42,21 @@ public class KMAESKey implements KMMasterKey {
     return aesKey.getSize();
   }
 
-  public static KMAESKey onRestore(Element element) {
-    AESKey aesKey = (AESKey) element.readObject();
-    KMAESKey kmKey = new KMAESKey(aesKey);
-    return kmKey;
+  public static KMAESKey onRestore(AESKey aesKey) {
+    if (aesKey == null)
+      return null;
+    return new KMAESKey(aesKey);
   }
 
-  @Override
-  public void onSave(Element element) {
-    element.write(aesKey);    
+  public static void onSave(Element element, KMAESKey kmKey) {
+    element.write(kmKey.aesKey);
   }
 
-  @Override
-  public void onRestore(Element element, short oldVersion, short currentVersion) {
-    aesKey = (AESKey) element.readObject();
-  }
-
-  @Override
-  public short getBackupPrimitiveByteCount() {
+  public static short getBackupPrimitiveByteCount() {
     return (short) 0;
   }
 
-  @Override
-  public short getBackupObjectCount() {
+  public static short getBackupObjectCount() {
     return (short) 1;
   }
 

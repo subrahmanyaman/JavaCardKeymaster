@@ -49,34 +49,18 @@ public class KMECPrivateKey implements KMAttestationKey {
     element.write(kmKey.ecKeyPair);
   }
 
-  public static KMECPrivateKey onRestore(Element element) {
-    KeyPair ecKey = (KeyPair) element.readObject();
-    KMECPrivateKey kmKey = new KMECPrivateKey(ecKey);
-    return kmKey;
+  public static KMECPrivateKey onRestore(KeyPair ecKey) {
+    if (ecKey == null)
+      return null;
+    return new KMECPrivateKey(ecKey);
   }
 
-  @Override
-  public void onSave(Element ele) {
-    // TODO Auto-generated method stub
-    
+  public static short getBackupPrimitiveByteCount() {
+    return (short) 0;
   }
 
-  @Override
-  public void onRestore(Element ele, short oldVersion, short currentVersion) {
-    // TODO Auto-generated method stub
-    
-  }
-
-  @Override
-  public short getBackupPrimitiveByteCount() {
-    // TODO Auto-generated method stub
-    return 0;
-  }
-
-  @Override
-  public short getBackupObjectCount() {
-    // TODO Auto-generated method stub
-    return 0;
+  public static short getBackupObjectCount() {
+    return (short) 1;
   }
 
 }
