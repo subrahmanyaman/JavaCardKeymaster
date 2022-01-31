@@ -68,7 +68,7 @@ public class KMKeymasterDevice {
   private static final short MASTER_KEY_SIZE = 16;
   private static final short HMAC_SEED_NONCE_SIZE = 32;
 
-  private static final byte INS_GENERATE_KEY_CMD = KEYMINT_CMD_APDU_START + 1;  //0x21
+  protected static final byte INS_GENERATE_KEY_CMD = KEYMINT_CMD_APDU_START + 1;  //0x21
   private static final byte INS_IMPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 2;    //0x22
   private static final byte INS_IMPORT_WRAPPED_KEY_CMD = KEYMINT_CMD_APDU_START + 3; //0x23
   private static final byte INS_EXPORT_KEY_CMD = KEYMINT_CMD_APDU_START + 4; //0x24
@@ -83,7 +83,7 @@ public class KMKeymasterDevice {
   private static final byte INS_GET_HMAC_SHARING_PARAM_CMD = KEYMINT_CMD_APDU_START + 13; //0x2D
   private static final byte INS_GET_KEY_CHARACTERISTICS_CMD = KEYMINT_CMD_APDU_START + 14; //0x2E
   private static final byte INS_GET_HW_INFO_CMD = KEYMINT_CMD_APDU_START + 15; //0x2F
-  private static final byte INS_BEGIN_OPERATION_CMD = KEYMINT_CMD_APDU_START + 16;  //0x30
+  protected static final byte INS_BEGIN_OPERATION_CMD = KEYMINT_CMD_APDU_START + 16;  //0x30
   private static final byte INS_UPDATE_OPERATION_CMD = KEYMINT_CMD_APDU_START + 17;  //0x31
   private static final byte INS_FINISH_OPERATION_CMD = KEYMINT_CMD_APDU_START + 18; //0x32
   private static final byte INS_ABORT_OPERATION_CMD = KEYMINT_CMD_APDU_START + 19; //0x33
@@ -2473,10 +2473,7 @@ public class KMKeymasterDevice {
     authorizeKeyUsageForCount(scratchPad);
 
     //Validate early boot
-    if (readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, scratchPad, (short) 0)) {
-      KMTag.assertAbsence(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY,
-          KMError.INVALID_KEY_BLOB);
-    }
+    validateEarlyBoot(data[HW_PARAMETERS], INS_BEGIN_OPERATION_CMD, scratchPad, (short)0, KMError.INVALID_KEY_BLOB);
  
     //Validate bootloader only 
     if (readBoolean(KMDataStoreConstants.BOOT_ENDED_STATUS, scratchPad, (short) 0)) {
@@ -3063,9 +3060,7 @@ public class KMKeymasterDevice {
 	validatePurpose(params);
     // Rollback protection not supported
     KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE, KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
-    // As per specification, Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
-    // provided to IKeyMintDevice::importKey
-    KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, KMError.EARLY_BOOT_ENDED);
+    validateEarlyBoot(params, INS_IMPORT_KEY_CMD, null, (short)0, KMError.EARLY_BOOT_ENDED);
     //Check if the tags are supported.
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_TAG);
@@ -3518,7 +3513,7 @@ public class KMKeymasterDevice {
     // Algorithm must be present
     KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     // As per specification Early boot keys may be created after early boot ended.
-    validateEarlyBoot(scratchPad);
+    validateEarlyBoot(data[KEY_PARAMETERS], INS_GENERATE_KEY_CMD, scratchPad, (short)0, KMError.INVALID_KEY_BLOB);
     validatePurpose(data[KEY_PARAMETERS]);
     //Check if the tags are supported.
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
@@ -4311,10 +4306,13 @@ public class KMKeymasterDevice {
     return KMKeyCharacteristics.exp();
   }
 
-  public void validateEarlyBoot(byte[] scratchpad) {
-    if (readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, scratchpad, (short) 0)) {
+  public void validateEarlyBoot(short Params, byte inst, byte[] sPad, short sPadOff, short errorCode) {
+	
+    // As per specification, Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
+    // provided to IKeyMintDevice::importKey
+    if (inst == INS_IMPORT_KEY_CMD || readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, sPad, sPadOff)) {
       // Validate early boot
-      KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, KMError.INVALID_KEY_BLOB);
+      KMTag.assertAbsence(Params, KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, errorCode);
     }
   }
 
