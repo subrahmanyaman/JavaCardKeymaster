@@ -549,5 +549,16 @@ public class KMKeymintDevice extends KMKeymasterDevice {
   protected void processGetCertChainCmd(APDU apdu) {
 	KMException.throwIt(KMError.ATTESTATION_KEYS_NOT_PROVISIONED);
   }
-
+  
+  @Override  
+  public void validateEarlyBoot(short Params, byte inst, byte[] sPad, short sPadOff, short errorCode) {
+    if (inst != INS_GENERATE_KEY_CMD) {
+      //VTS expects error code EARLY_BOOT_ONLY during begin operation if eary boot ended tag is present	
+      if(inst == INS_BEGIN_OPERATION_CMD) {
+    	  errorCode = KMError.EARLY_BOOT_ENDED;
+      }
+      // Validate early boot
+      super.validateEarlyBoot(Params, inst, sPad, sPadOff, errorCode);
+    }
+  }
 }
