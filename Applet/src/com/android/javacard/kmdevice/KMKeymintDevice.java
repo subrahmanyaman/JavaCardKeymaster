@@ -389,10 +389,6 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     byte[] apduBuffer = apdu.getBuffer();
     short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
     byte ins = apduBuffer[ISO7816.OFFSET_INS];
-    switch (ins) {
-    case INS_GET_CERT_CHAIN_CMD:
-      return KMError.UNSUPPORTED_INSTRUCTION;
-    }
     if (P1P2 != KEYMINT_HAL_VERSION) {
       return KMError.INVALID_P1P2;
     }
@@ -423,7 +419,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     short coseKey = kmCoseInst.constructCoseKey(KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2), KMType.INVALID_VALUE,
         KMNInteger.uint_8(KMCose.COSE_ALG_ES256), KMInteger.uint_8(KMCose.COSE_KEY_OP_VERIFY),
         KMInteger.uint_8(KMCose.COSE_ECCURVE_256), scratchPad, (short) 0, temp, KMType.INVALID_VALUE, false);
-    temp = encodeToApduBuffer(coseKey, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+    temp = encodeToApduBuffer(coseKey, scratchPad, (short) 0, RemotelyProvisionedComponentDevice.MAX_COSE_BUF_SIZE);
     // Construct payload.
     short payload = kmCoseInst.constructCoseCertPayload(
         KMCosePairTextStringTag.instance(KMInteger.uint_8(KMCose.ISSUER),
@@ -435,7 +431,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
         KMCosePairByteBlobTag.instance(KMNInteger.uint_32(KMCose.KEY_USAGE, (short) 0),
             KMByteBlob.instance(KMCose.KEY_USAGE_SIGN, (short) 0, (short) KMCose.KEY_USAGE_SIGN.length)));
     // temp temporarily holds the length of encoded cert payload.
-    temp = encodeToApduBuffer(payload, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+    temp = encodeToApduBuffer(payload, scratchPad, (short) 0, RemotelyProvisionedComponentDevice.MAX_COSE_BUF_SIZE);
     payload = KMByteBlob.instance(scratchPad, (short) 0, temp);
 
     // protected header
@@ -443,7 +439,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
         KMType.INVALID_VALUE, KMType.INVALID_VALUE);
     // temp temporarily holds the length of encoded headers.
     temp = encodeToApduBuffer(protectedHeader, scratchPad, (short) 0,
-        KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+        RemotelyProvisionedComponentDevice.MAX_COSE_BUF_SIZE);
     protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, temp);
 
     // unprotected headers.
@@ -455,7 +451,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
         payload);
     // temp temporarily holds the length of encoded sign structure.
     // Encode cose Sign_Structure.
-    temp = encodeToApduBuffer(coseSignStructure, scratchPad, (short) 0, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+    temp = encodeToApduBuffer(coseSignStructure, scratchPad, (short) 0, RemotelyProvisionedComponentDevice.MAX_COSE_BUF_SIZE);
     // do sign
     short len = seProvider.ecSign256(deviceUniqueKey, scratchPad, (short) 0, temp, scratchPad, temp);
     coseSignStructure = KMByteBlob.instance(scratchPad, temp, len);
@@ -536,7 +532,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
               KMByteBlob.instance((short) 0),
               KMArray.get(ptr1, KMCose.COSE_SIGN1_PAYLOAD_OFFSET));
       encodedLen = encodeToApduBuffer(signStructure, scratchPad,
-          keySize, KMKeymasterDevice.MAX_COSE_BUF_SIZE);
+          keySize, RemotelyProvisionedComponentDevice.MAX_COSE_BUF_SIZE);
 
       if (!seProvider.ecVerify256(scratchPad, (short) 0, keySize, scratchPad, keySize, encodedLen,
           KMByteBlob.getBuffer(KMArray.get(ptr1, KMCose.COSE_SIGN1_SIGNATURE_OFFSET)),
@@ -547,6 +543,11 @@ public class KMKeymintDevice extends KMKeymasterDevice {
       prevCoseKey = ptr2;
     }
     return prevCoseKey;
+  }
+  
+  @Override
+  protected void processGetCertChainCmd(APDU apdu) {
+	KMException.throwIt(KMError.ATTESTATION_KEYS_NOT_PROVISIONED);
   }
 
 }
