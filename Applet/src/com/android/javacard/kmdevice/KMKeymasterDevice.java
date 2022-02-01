@@ -4261,7 +4261,6 @@ public class KMKeymasterDevice {
   }
 
   public void powerReset() {
-    //TODO handle power reset signal.
     releaseAllOperations();
     resetWrappingKey();
   }

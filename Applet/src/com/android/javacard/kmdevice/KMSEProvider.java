@@ -465,6 +465,19 @@ public interface KMSEProvider {
       byte[] outputDataBuf,
       short outputDataStart);
 
+  /**
+   * This is a oneshot operation that signs the data using device unique key.
+   *
+   * @param secret is the private key buffer.
+   * @param secretStart is the start of the private key buffer.
+   * @param secretLength is the length of the private key.
+   * @param inputDataBuf is the input buffer.
+   * @param inputDataStart is the start offset of the input buffer.
+   * @param inputDataLength is the length of the input buffer.
+   * @param outputDataBuf is the output buffer.
+   * @param outputDataStart is the start offset of the output buffer.
+   * @return length of the signed data.
+   */
   short ecSign256(byte[] secret, short secretStart, short secretLength,
       byte[] inputDataBuf, short inputDataStart, short inputDataLength,
       byte[] outputDataBuf, short outputDataStart);
@@ -577,11 +590,21 @@ public interface KMSEProvider {
    * generated key is maintained by the SEProvider. This function should be called only once at the
    * time of installation.
    *
+   * @param instance of the masterkey.
    * @param keySizeBits key size in bits.
    * @return An instance of KMMasterKey.
    */
   KMMasterKey createMasterKey(KMMasterKey masterKey, byte[] key, short offset, short length);
 
+  /**
+   * This function generates a HMAC key from the provided key buffers.
+   *
+   * @param presharedKey instance of the presharedkey.
+   * @param key buffer containing the key data.
+   * @param offset start offset of the buffer.
+   * @param length is the length of the key.
+   * @return instance of KMPresharedKey.
+   */
   KMPreSharedKey createPreSharedKey(KMPreSharedKey presharedKey, byte[] key, short offset,
       short length);
 
@@ -641,14 +664,47 @@ public interface KMSEProvider {
       short length);
 
 
-  boolean isPowerReset(boolean isForStatusUpdate);
+  /**
+   * This functions checks if SE power reset event occurred.
+   *
+   * @param resetFlag flag which denotes to reset the power reset event flag.
+   * @return true if power reset event occurrred; flase otherwise.
+   */
+  boolean isPowerReset(boolean resetFlag);
 
+  /**
+   * This function saves the key objects while upgrade.
+   *
+   * @param element instance of the Element class where the objects to be stored.
+   * @param interfaceType the type interface of the parent object.
+   * @param object instance of the object to be saved.
+   */
   void onSave(Element element, byte interfaceType, Object object);
 
+  /**
+   * This function restores the the object from element instance.
+   * 
+   * @param element instance of the Element class.
+   * @return restored object.
+   */
   Object onResore(Element element);
 
+  /**
+   * This function returns the count of the primitive bytes required to
+   * be stored by the implementation of the interface type.
+   *
+   * @param interfaceType type interface of the parent object.
+   * @return count of the primitive bytes.
+   */
   short getBackupPrimitiveByteCount(byte interfaceType);
 
+  /**
+   * This function returns the object count required to be stored by the
+   * implementation of the interface type.
+   *
+   * @param interfaceType type interface of the parent object.
+   * @return count of the objects.
+   */
   short getBackupObjectCount(byte interfaceType);
 
 
