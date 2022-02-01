@@ -1,68 +1,34 @@
-diff --git a/HAL/Android.bp b/HAL/Android.bp
-index c705a01..10dd93e 100644
---- a/HAL/Android.bp
-+++ b/HAL/Android.bp
-@@ -55,13 +55,17 @@ cc_library {
-     vendor_available: true,
-     srcs: [
-         "SocketTransport.cpp",
-+	"OmapiTransport.cpp"
-     ],
-     export_include_dirs: [
-         "."
-     ],
-     shared_libs: [
-+        "libbinder",
-         "libbase",
-         "liblog",
-+        "libbinder_ndk",
-+        "android.se.omapi-V1-ndk",
-     ],
- }
- 
-@@ -90,6 +94,7 @@ cc_binary {
-         "libjc_keymint_transport",
-         "liblog",
-         "libutils",
-+        "android.se.omapi-V1-ndk",
-     ],
-     srcs: [
-         "service.cpp",
-diff --git a/HAL/OmapiTransport.cpp b/HAL/OmapiTransport.cpp
-new file mode 100644
-index 0000000..dd81d3d
---- /dev/null
-+++ b/HAL/OmapiTransport.cpp
-@@ -0,0 +1,218 @@
-+/*
-+ **
-+ ** Copyright 2020, The Android Open Source Project
-+ **
-+ ** Licensed under the Apache License, Version 2.0 (the "License");
-+ ** you may not use this file except in compliance with the License.
-+ ** You may obtain a copy of the License at
-+ **
-+ **     http://www.apache.org/licenses/LICENSE-2.0
-+ **
-+ ** Unless required by applicable law or agreed to in writing, software
-+ ** distributed under the License is distributed on an "AS IS" BASIS,
-+ ** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+ ** See the License for the specific language governing permissions and
-+ ** limitations under the License.
-+ */
+diff --git a/HAL/keymaster/4.1/OmapiTransport.cpp b/HAL/keymaster/4.1/OmapiTransport.cpp
+index 5aaefc9..9466c84 100644
+--- a/HAL/keymaster/4.1/OmapiTransport.cpp
++++ b/HAL/keymaster/4.1/OmapiTransport.cpp
+@@ -14,36 +14,214 @@
+  ** See the License for the specific language governing permissions and
+  ** limitations under the License.
+  */
+-#include <stdio.h> 
+-#include <sys/socket.h> 
+-#include <arpa/inet.h> 
+-#include <unistd.h> 
+-#include <string.h> 
 +#include <stdio.h>
 +#include <sys/socket.h>
 +#include <arpa/inet.h>
 +#include <unistd.h>
 +#include <string.h>
-+#include <vector>
+ #include <vector>
 +
 +#include <android-base/logging.h>
 +
-+#include "OmapiTransport.h"
-+
-+namespace keymint::javacard {
-+
+ #include "Transport.h"
+ 
+-#define PORT    8080
+-#define IPADDR  "10.9.40.24"
+ #define UNUSED_V(a) a=a
+ 
+ namespace se_transport {
+ 
+-bool OmapiTransport::openConnection() {
 +class SEListener : public ::aidl::android::se::omapi::BnSecureElementListener {};
 +
 +bool OmapiTransport::initialize() {
@@ -121,9 +87,12 @@ index 0000000..dd81d3d
 +        return false;
 +    }
 +
-+    return true;
-+}
-+
+     return true;
+ }
+ 
+-bool OmapiTransport::sendData(const uint8_t* inData, const size_t inLen, std::vector<uint8_t>& output) {
+-    std::vector<uint8_t> test(inData, inData+inLen);
+-    output = std::move(test);
 +bool OmapiTransport::internalTransmitApdu(
 +        std::shared_ptr<aidl::android::se::omapi::ISecureElementReader> reader,
 +        std::vector<uint8_t> apdu, std::vector<uint8_t>& transmitResponse) {
@@ -193,9 +162,9 @@ index 0000000..dd81d3d
 +        return false;
 +    }
 +
-+    return true;
-+}
-+
+     return true;
+ }
+ 
 +bool OmapiTransport::openConnection() {
 +
 +    // if already conection setup done, no need to initialise it again.
@@ -206,7 +175,9 @@ index 0000000..dd81d3d
 +    return initialize();
 +}
 +
-+bool OmapiTransport::sendData(const vector<uint8_t>& inData, vector<uint8_t>& output) {
++bool OmapiTransport::sendData(const uint8_t* inData, const size_t inLen,
++                              std::vector<uint8_t>& output) {
++    std::vector<uint8_t> apdu(inData, inData+inLen);
 +
 +    if (!isConnected()) {
 +        // Try to initialize connection to eSE
@@ -218,16 +189,21 @@ index 0000000..dd81d3d
 +        }
 +    }
 +
++    if (inData == NULL) {
++        LOG(ERROR) << "Failed to send data, APDU is null";
++        return false;
++    }
++
 +    if (eSEReader != nullptr) {
 +        LOG(DEBUG) << "Sending apdu data to secure element: " << ESE_READER_PREFIX;
-+        return internalTransmitApdu(eSEReader, inData, output);
++        return internalTransmitApdu(eSEReader, apdu, output);
 +    } else {
 +        LOG(ERROR) << "secure element reader " << ESE_READER_PREFIX << " not found";
 +        return false;
 +    }
 +}
 +
-+bool OmapiTransport::closeConnection() {
+ bool OmapiTransport::closeConnection() {
 +    LOG(DEBUG) << "Closing all connections";
 +    if (omapiSeService != nullptr) {
 +        if (mVSReaders.size() > 0) {
@@ -237,10 +213,11 @@ index 0000000..dd81d3d
 +            mVSReaders.clear();
 +        }
 +    }
-+    return true;
-+}
-+
-+bool OmapiTransport::isConnected() {
+     return true;
+ }
+ 
+ bool OmapiTransport::isConnected() {
+-    return true;
 +    // Check already initialization completed or not
 +    if (omapiSeService != nullptr && eSEReader != nullptr) {
 +        LOG(DEBUG) << "Connection initialization already completed";
@@ -249,18 +226,48 @@ index 0000000..dd81d3d
 +
 +    LOG(DEBUG) << "Connection initialization not completed";
 +    return false;
-+}
-+
-+}
-diff --git a/HAL/OmapiTransport.h b/HAL/OmapiTransport.h
-new file mode 100644
-index 0000000..f7711e7
---- /dev/null
-+++ b/HAL/OmapiTransport.h
-@@ -0,0 +1,61 @@
-+#pragma once
-+
-+#include "ITransport.h"
+ }
+ 
+ }
+diff --git a/HAL/keymaster/Android.bp b/HAL/keymaster/Android.bp
+index 9bfe7fa..33f255f 100644
+--- a/HAL/keymaster/Android.bp
++++ b/HAL/keymaster/Android.bp
+@@ -47,6 +47,8 @@ cc_binary {
+         "libjc_transport",
+         "libjc_common",
+         "libcrypto",
++        "libbinder_ndk",
++        "android.se.omapi-V1-ndk",
+     ],
+     required: [
+         "android.hardware.strongbox_keystore.xml",
+@@ -82,6 +84,8 @@ cc_library {
+         "android.hardware.keymaster@4.0",
+         "libjc_transport",
+ 	"libcrypto",
++        "libbinder_ndk",
++        "android.se.omapi-V1-ndk",
+     ],
+ }
+ 
+@@ -100,6 +104,8 @@ cc_library {
+         "libbinder",
+         "libbase",
+         "liblog",
++        "libbinder_ndk",
++        "android.se.omapi-V1-ndk",
+     ],
+ }
+ 
+diff --git a/HAL/keymaster/include/Transport.h b/HAL/keymaster/include/Transport.h
+index c6674dc..b4f67c7 100644
+--- a/HAL/keymaster/include/Transport.h
++++ b/HAL/keymaster/include/Transport.h
+@@ -17,6 +17,16 @@
+ #ifndef __SE_TRANSPORT__
+ #define __SE_TRANSPORT__
+ 
 +#include <aidl/android/se/omapi/BnSecureElementListener.h>
 +#include <aidl/android/se/omapi/ISecureElementChannel.h>
 +#include <aidl/android/se/omapi/ISecureElementListener.h>
@@ -268,41 +275,34 @@ index 0000000..f7711e7
 +#include <aidl/android/se/omapi/ISecureElementService.h>
 +#include <aidl/android/se/omapi/ISecureElementSession.h>
 +#include <android/binder_manager.h>
++
 +#include <map>
-+#include <memory>
-+#include <vector>
 +
-+namespace keymint::javacard {
-+using std::vector;
-+
-+/**
-+ * OmapiTransport is derived from ITransport. This class gets the OMAPI service binder instance and uses IPC to
-+ * communicate with OMAPI service. OMAPI inturn communicates with hardware via ISecureElement.
-+ */
-+class OmapiTransport : public ITransport {
-+
-+public:
-+
-+    /**
-+     * Gets the binder instance of ISEService, gets the reader corresponding to secure element, establishes a session
-+     * and opens a basic channel.
-+     */
-+    bool openConnection() override;
-+    /**
-+     * Transmists the data over the opened basic channel and receives the data back.
-+     */
-+    bool sendData(const vector<uint8_t>& inData, vector<uint8_t>& output) override;
-+
-+    /**
-+     * Closes the connection.
-+     */
-+    bool closeConnection() override;
-+    /**
-+     * Returns the state of the connection status. Returns true if the connection is active, false if connection is
-+     * broken.
-+     */
-+    bool isConnected() override;
-+
+ namespace se_transport {
+ 
+ /**
+@@ -30,7 +40,7 @@ class ITransport {
+     /**
+      * Opens connection.
+      */
+-	virtual bool openConnection() = 0;
++      virtual bool openConnection() = 0;
+     /**
+      * Send data over communication channel and receives data back from the remote end.
+      */
+@@ -59,7 +69,7 @@ public:
+      * Gets the binder instance of ISEService, gets the reader corresponding to secure element, establishes a session
+      * and opens a basic channel.
+      */
+-	bool openConnection() override;
++      bool openConnection() override;
+     /**
+      * Transmists the data over the opened basic channel and receives the data back.
+      */
+@@ -75,6 +85,19 @@ public:
+      */
+     bool isConnected() override;
+ 
 +private:
 +    std::shared_ptr<aidl::android::se::omapi::ISecureElementService> omapiSeService = nullptr;
 +    std::shared_ptr<aidl::android::se::omapi::ISecureElementReader> eSEReader = nullptr;
@@ -316,70 +316,15 @@ index 0000000..f7711e7
 +    bool internalTransmitApdu(
 +            std::shared_ptr<aidl::android::se::omapi::ISecureElementReader> reader,
 +            std::vector<uint8_t> apdu, std::vector<uint8_t>& transmitResponse);
-+};
-+
-+}
-\ No newline at end of file
-diff --git a/HAL/service.cpp b/HAL/service.cpp
-index 3d51877..14580f8 100644
---- a/HAL/service.cpp
-+++ b/HAL/service.cpp
-@@ -22,18 +22,24 @@
+ };
  
- #include "JavacardKeyMintDevice.h"
- #include <aidl/android/hardware/security/keymint/SecurityLevel.h>
--
-+#include <android-base/properties.h>
- #include "JavacardSecureElement.h"
- #include "JavacardSharedSecret.h"
- #include "keymint_utils.h"
- #include "JavacardRemotelyProvisionedComponentDevice.h"
- #include <SocketTransport.h>
-+#include <OmapiTransport.h>
- 
- using aidl::android::hardware::security::keymint::JavacardKeyMintDevice;
- using aidl::android::hardware::security::keymint::JavacardSharedSecret;
- using aidl::android::hardware::security::keymint::SecurityLevel;
- using namespace keymint::javacard;
- 
-+#define PROP_BUILD_QEMU              "ro.kernel.qemu"
-+#define PROP_BUILD_FINGERPRINT       "ro.build.fingerprint"
-+// Cuttlefish build fingerprint substring.
-+#define CUTTLEFISH_FINGERPRINT_SS    "aosp_cf_"
-+
- template <typename T, class... Args> std::shared_ptr<T> addService(Args&&... args) {
-     std::shared_ptr<T> ser = ndk::SharedRefBase::make<T>(std::forward<Args>(args)...);
-     auto instanceName = std::string(T::descriptor) + "/strongbox";
-@@ -44,11 +50,31 @@ template <typename T, class... Args> std::shared_ptr<T> addService(Args&&... arg
-     return ser;
- }
- 
-+std::shared_ptr<ITransport> getTransportInstance() {
-+    bool isEmulator = false;
-+    // Check if the current build is for emulator or device.
-+    isEmulator = android::base::GetBoolProperty(PROP_BUILD_QEMU, false);
-+    if (!isEmulator) {
-+        std::string fingerprint = android::base::GetProperty(PROP_BUILD_FINGERPRINT, "");
-+        if (!fingerprint.empty()) {
-+            if (fingerprint.find(CUTTLEFISH_FINGERPRINT_SS, 0) != std::string::npos) {
-+                isEmulator = true;
-+            }
-+        }
-+    }
-+
-+    if (!isEmulator) {
-+        return std::make_shared<OmapiTransport>();
-+    } else {
-+        return std::make_shared<SocketTransport>();
-+    }
-+}
-+
- int main() {
-     ABinderProcess_setThreadPoolMaxThreadCount(0);
-     // Javacard Secure Element
-     std::shared_ptr<JavacardSecureElement> card =
--        std::make_shared<JavacardSecureElement>(std::make_shared<SocketTransport>(), getOsVersion(),
-+        std::make_shared<JavacardSecureElement>(getTransportInstance(), getOsVersion(),
-                                                 getOsPatchlevel(), getVendorPatchlevel());
-     // Add Keymint Service
-     addService<JavacardKeyMintDevice>(card);
+ class SocketTransport : public ITransport {
+@@ -85,7 +108,7 @@ public:
+     /**
+      * Creates a socket instance and connects to the provided server IP and port.
+      */
+-	bool openConnection() override;
++      bool openConnection() override;
+     /**
+      * Sends data over socket and receives data back.
+      */
