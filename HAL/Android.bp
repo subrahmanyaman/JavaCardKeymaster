@@ -59,7 +59,6 @@ cc_library {
         "CborConverter.cpp",
 	"KMUtils.cpp",
         "JavacardSecureElement.cpp",
-        "SocketTransport.cpp",
 	"JavacardKeymasterOperation.cpp",
     ],
     cflags:["-O0",],
@@ -84,7 +83,6 @@ cc_library {
 
 cc_library {
     name: "libjc_km_transport",
-    host_supported: true,
     vendor_available: true,
     srcs: [
         "SocketTransport.cpp",
