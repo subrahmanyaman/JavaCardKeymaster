@@ -11,7 +11,7 @@ index c39db36ae..39cce859b 100644
      </hal>
      <hal format="aidl" optional="true">
 diff --git a/security/keymint/aidl/vts/functional/AttestKeyTest.cpp b/security/keymint/aidl/vts/functional/AttestKeyTest.cpp
-index 64550eff2..49283e8e3 100644
+index 64550eff2..061efa87c 100644
 --- a/security/keymint/aidl/vts/functional/AttestKeyTest.cpp
 +++ b/security/keymint/aidl/vts/functional/AttestKeyTest.cpp
 @@ -198,7 +198,7 @@ TEST_P(AttestKeyTest, RsaAttestedAttestKeys) {
@@ -88,45 +88,25 @@ index 64550eff2..49283e8e3 100644
  
          AuthorizationSet hw_enforced = HwEnforcedAuthorizations(attested_key_characteristics);
          AuthorizationSet sw_enforced = SwEnforcedAuthorizations(attested_key_characteristics);
-@@ -443,8 +463,9 @@ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
+@@ -420,6 +440,10 @@ TEST_P(AttestKeyTest, EcAttestKeyChaining) {
+  * cross sign each other and be chained together.
+  */
+ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
++    if (SecLevel() == SecurityLevel::STRONGBOX) {
++        // Strongbox does not support factory attest keys.
++        GTEST_SKIP() << "Test not applicable to StrongBox device";
++    }
+     const int chain_size = 6;
+     vector<vector<uint8_t>> key_blob_list(chain_size);
+     vector<vector<Certificate>> cert_chain_list(chain_size);
+@@ -443,6 +467,7 @@ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
              attest_key_opt = attest_key;
          }
  
-+        ErrorCode result;
++
          if ((i & 0x1) == 1) {
--            EXPECT_EQ(ErrorCode::OK,
-+            result =
+             EXPECT_EQ(ErrorCode::OK,
                        GenerateKey(AuthorizationSetBuilder()
-                                           .EcdsaKey(EcCurve::P_256)
-                                           .AttestKey()
-@@ -455,9 +476,9 @@ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
-                                           .Authorization(TAG_NO_AUTH_REQUIRED)
-                                           .SetDefaultValidity(),
-                                   attest_key_opt, &key_blob_list[i], &attested_key_characteristics,
--                                  &cert_chain_list[i]));
-+                                  &cert_chain_list[i]);
-         } else {
--            EXPECT_EQ(ErrorCode::OK,
-+            result =
-                       GenerateKey(AuthorizationSetBuilder()
-                                           .RsaKey(2048, 65537)
-                                           .AttestKey()
-@@ -468,8 +489,14 @@ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
-                                           .Authorization(TAG_NO_AUTH_REQUIRED)
-                                           .SetDefaultValidity(),
-                                   attest_key_opt, &key_blob_list[i], &attested_key_characteristics,
--                                  &cert_chain_list[i]));
-+                                  &cert_chain_list[i]);
-+        }
-+        // Strongbox does not support Factory provisioned attestation key.
-+        if (SecLevel() == SecurityLevel::STRONGBOX) {
-+            ASSERT_EQ(ErrorCode::ATTESTATION_KEYS_NOT_PROVISIONED, result);
-+            return;
-         }
-+        ASSERT_EQ(ErrorCode::OK, result);
- 
-         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(attested_key_characteristics);
-         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(attested_key_characteristics);
 diff --git a/security/keymint/aidl/vts/functional/KeyMintAidlTestBase.cpp b/security/keymint/aidl/vts/functional/KeyMintAidlTestBase.cpp
 index 6140df135..b73d325c6 100644
 --- a/security/keymint/aidl/vts/functional/KeyMintAidlTestBase.cpp
@@ -183,7 +163,7 @@ index 7b3b9d4b4..c564d509a 100644
      static vector<string> build_params() {
          auto params = ::android::getAidlHalInstanceNames(IKeyMintDevice::descriptor);
 diff --git a/security/keymint/aidl/vts/functional/KeyMintTest.cpp b/security/keymint/aidl/vts/functional/KeyMintTest.cpp
-index 2a7911cc3..639b2a5dc 100644
+index 2a7911cc3..1af544617 100644
 --- a/security/keymint/aidl/vts/functional/KeyMintTest.cpp
 +++ b/security/keymint/aidl/vts/functional/KeyMintTest.cpp
 @@ -912,8 +912,8 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
@@ -349,7 +329,29 @@ index 2a7911cc3..639b2a5dc 100644
      }
  }
  
-@@ -1756,6 +1800,13 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTagNoApplicationId) {
+@@ -1567,6 +1611,10 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTags) {
+  * attestation extension.
+  */
+ TEST_P(NewKeyGenerationTest, EcdsaAttestationIdTags) {
++    if (SecLevel() == SecurityLevel::STRONGBOX) {
++        // Strongbox does not support factory attest keys.
++        GTEST_SKIP() << "Test not applicable to StrongBox device";
++    }
+     auto challenge = "hello";
+     auto app_id = "foo";
+     auto subject = "cert subj 2";
+@@ -1634,6 +1682,10 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationIdTags) {
+  * Verifies that creation of an attested ECDSA key with a UNIQUE_ID included.
+  */
+ TEST_P(NewKeyGenerationTest, EcdsaAttestationUniqueId) {
++    if (SecLevel() == SecurityLevel::STRONGBOX) {
++        // Strongbox does not support factory attest keys.
++        GTEST_SKIP() << "Test not applicable to StrongBox device";
++    }
+     auto get_unique_id = [this](const std::string& app_id, uint64_t datetime,
+                                 vector<uint8_t>* unique_id, bool reset = false) {
+         auto challenge = "hello";
+@@ -1756,6 +1808,13 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTagNoApplicationId) {
                                        .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
                                        .SetDefaultValidity(),
                                &key_blob, &key_characteristics);
@@ -363,7 +365,7 @@ index 2a7911cc3..639b2a5dc 100644
      ASSERT_EQ(result, ErrorCode::OK);
      ASSERT_GT(key_blob.size(), 0U);
  
-@@ -1834,13 +1885,19 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationRequireAppId) {
+@@ -1834,13 +1893,19 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationRequireAppId) {
      vector<uint8_t> key_blob;
      vector<KeyCharacteristics> key_characteristics;
  
@@ -386,7 +388,7 @@ index 2a7911cc3..639b2a5dc 100644
  }
  
  /*
-@@ -1897,14 +1954,21 @@ TEST_P(NewKeyGenerationTest, AttestationApplicationIDLengthProperlyEncoded) {
+@@ -1897,14 +1962,21 @@ TEST_P(NewKeyGenerationTest, AttestationApplicationIDLengthProperlyEncoded) {
          const string app_id(length, 'a');
          vector<uint8_t> key_blob;
          vector<KeyCharacteristics> key_characteristics;
@@ -410,7 +412,7 @@ index 2a7911cc3..639b2a5dc 100644
          ASSERT_GT(key_blob.size(), 0U);
          CheckBaseParams(key_characteristics);
          CheckCharacteristics(key_blob, key_characteristics);
-@@ -3945,25 +4009,27 @@ typedef KeyMintAidlTestBase EncryptionOperationsTest;
+@@ -3945,25 +4017,27 @@ typedef KeyMintAidlTestBase EncryptionOperationsTest;
   * Verifies that raw RSA decryption works.
   */
  TEST_P(EncryptionOperationsTest, RsaNoPaddingSuccess) {
@@ -453,7 +455,7 @@ index 2a7911cc3..639b2a5dc 100644
      }
  }
  
-@@ -6503,7 +6569,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
+@@ -6503,7 +6577,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
      size_t i;
  
      for (i = 0; i < max_operations; i++) {
@@ -462,7 +464,7 @@ index 2a7911cc3..639b2a5dc 100644
          if (ErrorCode::OK != result) {
              break;
          }
-@@ -6511,12 +6577,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
+@@ -6511,12 +6585,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
      EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
      // Try again just in case there's a weird overflow bug
      EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
@@ -477,7 +479,7 @@ index 2a7911cc3..639b2a5dc 100644
      AbortIfNeeded();
  }
  
-@@ -6615,7 +6681,6 @@ TEST_P(KeyAgreementTest, Ecdh) {
+@@ -6615,7 +6689,6 @@ TEST_P(KeyAgreementTest, Ecdh) {
              OPENSSL_free(p);
  
              // Generate EC key in KeyMint (only access to public key material)
@@ -485,7 +487,7 @@ index 2a7911cc3..639b2a5dc 100644
              EXPECT_EQ(
                      ErrorCode::OK,
                      GenerateKey(AuthorizationSetBuilder()
-@@ -6624,7 +6689,6 @@ TEST_P(KeyAgreementTest, Ecdh) {
+@@ -6624,7 +6697,6 @@ TEST_P(KeyAgreementTest, Ecdh) {
                                          .Authorization(TAG_PURPOSE, KeyPurpose::AGREE_KEY)
                                          .Authorization(TAG_ALGORITHM, Algorithm::EC)
                                          .Authorization(TAG_ATTESTATION_APPLICATION_ID, {0x61, 0x62})
@@ -493,7 +495,7 @@ index 2a7911cc3..639b2a5dc 100644
                                          .SetDefaultValidity()))
                      << "Failed to generate key";
              ASSERT_GT(cert_chain_.size(), 0);
-@@ -6704,14 +6768,24 @@ TEST_P(EarlyBootKeyTest, CreateEarlyBootKeys) {
+@@ -6704,14 +6776,24 @@ TEST_P(EarlyBootKeyTest, CreateEarlyBootKeys) {
              CreateTestKeys(TAG_EARLY_BOOT_ONLY, ErrorCode::OK);
  
      for (const auto& keyData : {aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData}) {
@@ -520,7 +522,7 @@ index 2a7911cc3..639b2a5dc 100644
  }
  
  /*
-@@ -6727,14 +6801,21 @@ TEST_P(EarlyBootKeyTest, CreateAttestedEarlyBootKey) {
+@@ -6727,14 +6809,21 @@ TEST_P(EarlyBootKeyTest, CreateAttestedEarlyBootKey) {
              });
  
      for (const auto& keyData : {aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData}) {
