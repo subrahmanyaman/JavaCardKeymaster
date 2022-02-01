@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.android.javacard.seprovider;
+
 import org.globalplatform.upgrade.Element;
 
 import com.android.javacard.kmdevice.KMDeviceUniqueKey;
@@ -60,8 +61,9 @@ public class KMECDeviceUniqueKey implements KMDeviceUniqueKey {
   }
 
   public static KMECDeviceUniqueKey onRestore(KeyPair ecKey) {
-    if (ecKey == null)
+    if (ecKey == null) {
       return null;
+    }
     return new KMECDeviceUniqueKey(ecKey);
   }
 

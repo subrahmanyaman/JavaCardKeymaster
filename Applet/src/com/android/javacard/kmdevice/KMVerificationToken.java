@@ -48,7 +48,7 @@ public class KMVerificationToken extends KMType {
     KMArray.add(arrPtr, MAC1, KMByteBlob.exp());
     return instance(arrPtr);
   }
-  
+
   public static short verificationTokenExp() {
     short arrPtr = KMArray.instance((short) 5);
     KMArray.add(arrPtr, CHALLENGE, KMInteger.exp());
@@ -75,6 +75,7 @@ public class KMVerificationToken extends KMType {
     KMArray.add(arrPtr, MAC1, KMByteBlob.instance((short) 0));
     return instance(arrPtr);
   }
+
   public static short instance2() {
     short arrPtr = KMArray.instance((short) 5);
     KMArray.add(arrPtr, CHALLENGE, KMInteger.uint_16((short) 0));
@@ -84,7 +85,7 @@ public class KMVerificationToken extends KMType {
     KMArray.add(arrPtr, MAC2, KMByteBlob.instance((short) 0));
     return instance(arrPtr);
   }
-  
+
   public static short instance(short vals) {
     if (KMArray.length(vals) != 3 && KMArray.length(vals) != 5) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -106,7 +107,8 @@ public class KMVerificationToken extends KMType {
   }
 
   public short getVals() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_VERIFICATION_TOKEN_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_VERIFICATION_TOKEN_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short length() {
@@ -140,34 +142,34 @@ public class KMVerificationToken extends KMType {
     short arrPtr = getVals();
     return KMArray.get(arrPtr, macIndex);
   }
-  
-  
+
+
   public static short getVals(short bPtr) {
-	return KMVerificationToken.cast(bPtr).getVals();
+    return KMVerificationToken.cast(bPtr).getVals();
   }
 
   public static short length(short bPtr) {
-	return KMVerificationToken.cast(bPtr).length();
+    return KMVerificationToken.cast(bPtr).length();
   }
 
   public static short getChallenge(short bPtr) {
-	return KMVerificationToken.cast(bPtr).getChallenge();
+    return KMVerificationToken.cast(bPtr).getChallenge();
   }
 
   public static void setChallenge(short bPtr, short vals) {
-	KMVerificationToken.cast(bPtr).setChallenge(vals);
+    KMVerificationToken.cast(bPtr).setChallenge(vals);
   }
 
   public static short getTimestamp(short bPtr) {
-	return KMVerificationToken.cast(bPtr).getTimestamp();
+    return KMVerificationToken.cast(bPtr).getTimestamp();
   }
 
   public static void setTimestamp(short bPtr, short vals) {
-	KMVerificationToken.cast(bPtr).setTimestamp(vals);
+    KMVerificationToken.cast(bPtr).setTimestamp(vals);
   }
 
   public static short getMac(short bPtr, short macIndex) {
-	return KMVerificationToken.cast(bPtr).getMac(macIndex);
+    return KMVerificationToken.cast(bPtr).getMac(macIndex);
   }
-  
+
 }

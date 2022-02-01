@@ -37,7 +37,7 @@ public class KMEnumArrayTag extends KMTag {
   public static void initStatics() {
     tags = new short[]{PURPOSE, BLOCK_MODE, DIGEST, PADDING, RSA_OAEP_MGF_DIGEST};
   }
-  
+
   private KMEnumArrayTag() {
   }
 
@@ -109,7 +109,8 @@ public class KMEnumArrayTag extends KMTag {
   }
 
   public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   public short getTagType() {
@@ -117,11 +118,13 @@ public class KMEnumArrayTag extends KMTag {
   }
 
   public short getValues() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
   public short length() {
-    short blobPtr = Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    short blobPtr = Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
     return KMByteBlob.length(blobPtr);
   }
 
@@ -303,30 +306,30 @@ public class KMEnumArrayTag extends KMTag {
       return false;
     }
   }
-  
+
   public static short get(short bPtr, short index) {
-	return KMEnumArrayTag.cast(bPtr).get(index);
+    return KMEnumArrayTag.cast(bPtr).get(index);
   }
-  
+
   public static short length(short bPtr) {
-	return KMEnumArrayTag.cast(bPtr).length();
+    return KMEnumArrayTag.cast(bPtr).length();
   }
-  
+
   public static short getValues(short bPtr) {
     return KMEnumArrayTag.cast(bPtr).getValues();
   }
-    
+
   public static short getTagType(short bPtr) {
-	return KMType.ENUM_ARRAY_TAG;
+    return KMType.ENUM_ARRAY_TAG;
   }
-  
+
   public static short getKey(short bPtr) {
-	return KMEnumArrayTag.cast(bPtr).getKey();
+    return KMEnumArrayTag.cast(bPtr).getKey();
   }
-  
+
   public static boolean contains(short bPtr, short tagValue) {
     return KMEnumArrayTag.cast(bPtr).contains(tagValue);
   }
 
-  
+
 }

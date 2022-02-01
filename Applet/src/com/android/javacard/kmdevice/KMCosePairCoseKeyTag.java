@@ -5,8 +5,9 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCosePairCoseKeyTag represents a key-value type, where key can be KMInteger or KMNInteger and value is
- * KMCOseKey type. struct{byte TAG_TYPE; short length; struct{short COSE_KEY_VALUE_TYPE; short key; short value}}.
+ * KMCosePairCoseKeyTag represents a key-value type, where key can be KMInteger or KMNInteger and
+ * value is KMCOseKey type. struct{byte TAG_TYPE; short length; struct{short COSE_KEY_VALUE_TYPE;
+ * short key; short value}}.
  */
 public class KMCosePairCoseKeyTag extends KMCosePairTagType {
 
@@ -15,10 +16,10 @@ public class KMCosePairCoseKeyTag extends KMCosePairTagType {
 
   public static void initStatics() {
     keys = new byte[]{
-		      KMCose.COSE_LABEL_COSE_KEY
-		  };  
+        KMCose.COSE_LABEL_COSE_KEY
+    };
   }
-  
+
   private KMCosePairCoseKeyTag() {
   }
 
@@ -72,19 +73,22 @@ public class KMCosePairCoseKeyTag extends KMCosePairTagType {
 
   @Override
   public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_COSE_KEY_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (instanceTable[KM_COSE_KEY_COSE_KEY_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   @Override
   public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_COSE_KEY_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (instanceTable[KM_COSE_KEY_COSE_KEY_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
   public static boolean isKeyValueValid(short keyVal) {
     short index = 0;
     while (index < (short) keys.length) {
-      if ((byte) (keyVal & 0xFF) == keys[index])
+      if ((byte) (keyVal & 0xFF) == keys[index]) {
         return true;
+      }
       index++;
     }
     return false;

@@ -232,7 +232,8 @@ public abstract class KMType {
   public static final short ACTIVE_DATETIME = 0x0190;
   public static final short ORIGINATION_EXPIRE_DATETIME = 0x0191;
   public static final short USAGE_EXPIRE_DATETIME = 0x0192;
-  public static final short CREATION_DATETIME = 0x02BD;;
+  public static final short CREATION_DATETIME = 0x02BD;
+  ;
   public static final short CERTIFICATE_NOT_BEFORE = 0x03F0;
   public static final short CERTIFICATE_NOT_AFTER = 0x03F1;
   // Integer Array Tags - ULONG_REP and UINT_REP.

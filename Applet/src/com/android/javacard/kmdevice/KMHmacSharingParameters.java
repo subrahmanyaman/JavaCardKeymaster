@@ -77,7 +77,8 @@ public class KMHmacSharingParameters extends KMType {
   }
 
   public short getVals() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_HMAC_SHARING_PARAMETERS_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_HMAC_SHARING_PARAMETERS_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short length() {
@@ -106,9 +107,9 @@ public class KMHmacSharingParameters extends KMType {
     short arrPtr = getVals();
     return KMArray.get(arrPtr, SEED);
   }
-  
+
   public static short getVals(short bPtr) {
-	return KMHmacSharingParameters.cast(bPtr).getVals();
+    return KMHmacSharingParameters.cast(bPtr).getVals();
   }
 
   public static short length(short bPtr) {
@@ -116,11 +117,11 @@ public class KMHmacSharingParameters extends KMType {
   }
 
   public static void setSeed(short bPtr, short vals) {
-	KMHmacSharingParameters.cast(bPtr).setSeed(vals);
+    KMHmacSharingParameters.cast(bPtr).setSeed(vals);
   }
 
   public static void setNonce(short bPtr, short vals) {
-	KMHmacSharingParameters.cast(bPtr).setNonce(vals);
+    KMHmacSharingParameters.cast(bPtr).setNonce(vals);
   }
 
   public static short getNonce(short bPtr) {
@@ -128,6 +129,6 @@ public class KMHmacSharingParameters extends KMType {
   }
 
   public static short getSeed(short bPtr) {
-	return KMHmacSharingParameters.cast(bPtr).getSeed();
+    return KMHmacSharingParameters.cast(bPtr).getSeed();
   }
 }

@@ -87,7 +87,7 @@ public class KMInteger extends KMType {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }
   }
-  
+
   // create integer and copy byte value
   public static short uint_8(byte num) {
     short ptr = instance(UINT_32);
@@ -150,6 +150,7 @@ public class KMInteger extends KMType {
     Util.arrayCopyNonAtomic(heap, getStartOff(), dest, destOff, length());
     return length();
   }
+
   private short toLittleEndian(byte[] dest, short destOff) {
     short index = (short) (length() - 1);
     while (index >= 0) {
@@ -216,7 +217,7 @@ public class KMInteger extends KMType {
   protected short getBaseOffset() {
     return instanceTable[KM_INTEGER_OFFSET];
   }
-  
+
   // Get the length of the integer
   public static short length(short bPtr) {
     return KMInteger.cast(bPtr).length();
@@ -224,7 +225,7 @@ public class KMInteger extends KMType {
 
   // Get the buffer pointer in which blob is contained.
   public static byte[] getBuffer(short bPtr) {
-    return  KMInteger.cast(bPtr).getBuffer();
+    return KMInteger.cast(bPtr).getBuffer();
   }
 
   // Get the start of value
@@ -237,19 +238,19 @@ public class KMInteger extends KMType {
   }
 
   public static void setValue(short bPtr, byte[] src, short srcOff) {
-	KMInteger.cast(bPtr).setValue(src, srcOff);
+    KMInteger.cast(bPtr).setValue(src, srcOff);
   }
 
   public static short value(short bPtr, byte[] dest, short destOff) {
-	return KMInteger.cast(bPtr).value(dest, destOff);
+    return KMInteger.cast(bPtr).value(dest, destOff);
   }
-  
+
   public static short toLittleEndian(short bPtr, byte[] dest, short destOff) {
-	return KMInteger.cast(bPtr).toLittleEndian(dest, destOff);
+    return KMInteger.cast(bPtr).toLittleEndian(dest, destOff);
   }
 
   public static short getShort(short bPtr) {
-	return KMInteger.cast(bPtr).getShort();
+    return KMInteger.cast(bPtr).getShort();
   }
 
   public static short getSignificantShort(short bPtr) {
@@ -257,10 +258,10 @@ public class KMInteger extends KMType {
   }
 
   public static byte getByte(short bPtr) {
-	return KMInteger.cast(bPtr).getByte();
+    return KMInteger.cast(bPtr).getByte();
   }
 
   public static boolean isZero(short bPtr) {
-	return KMInteger.cast(bPtr).isZero();
+    return KMInteger.cast(bPtr).isZero();
   }
 }

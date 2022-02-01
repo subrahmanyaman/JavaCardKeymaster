@@ -59,7 +59,7 @@ public class KMKeymasterDevice {
   public static byte[] confirmationToken;
   // Subject is a fixed field with only CN= Android Keystore Key - same for all the keys
   private static byte[] defaultSubject;
-  
+
   // Top 32 commands are reserved for provisioning.
   private static final byte KEYMINT_CMD_APDU_START = 0x20;
 
@@ -163,16 +163,16 @@ public class KMKeymasterDevice {
   // ComputeHMAC constants
   private static final short HMAC_SHARED_PARAM_MAX_SIZE = 64;
   protected static final short MAX_CERT_SIZE = 2048;
-  
+
   protected static final short POWER_RESET_MASK_FLAG = (short) 0x4000;
-  
-//getHardwareInfo constants.
- private static byte[] JAVACARD_KEYMASTER_DEVICE;
- private static byte[] GOOGLE;
- private static byte[] X509Subject;
- 
- private static short[] ATTEST_ID_TAGS;
- private static final byte SERIAL_NUM = (byte) 0x01;
+
+  //getHardwareInfo constants.
+  private static byte[] JAVACARD_KEYMASTER_DEVICE;
+  private static byte[] GOOGLE;
+  private static byte[] X509Subject;
+
+  private static short[] ATTEST_ID_TAGS;
+  private static final byte SERIAL_NUM = (byte) 0x01;
 
   protected KMDecoder decoder;
   protected KMRepository repository;
@@ -185,12 +185,13 @@ public class KMKeymasterDevice {
   protected short[] tmpVariables;
   protected static short[] data;
   protected byte[] wrappingKey;
-  
-  
+
+
   /**
    * Registers this applet.
    */
-  public KMKeymasterDevice(KMSEProvider seImpl, KMRepository repoInst, KMEncoder encoderInst, KMDecoder decoderInst, KMDataStore storeData,
+  public KMKeymasterDevice(KMSEProvider seImpl, KMRepository repoInst, KMEncoder encoderInst,
+      KMDecoder decoderInst, KMDataStore storeData,
       KMBootDataStore bootParamsProvider) {
     initKMDeviceStatics();
     seProvider = seImpl;
@@ -200,8 +201,10 @@ public class KMKeymasterDevice {
     encoder = encoderInst;
     decoder = decoderInst;
     data = JCSystem.makeTransientShortArray(DATA_ARRAY_SIZE, JCSystem.CLEAR_ON_DESELECT);
-    tmpVariables = JCSystem.makeTransientShortArray(TMP_VARIABLE_ARRAY_SIZE, JCSystem.CLEAR_ON_DESELECT);
-    wrappingKey = JCSystem.makeTransientByteArray((short) (WRAPPING_KEY_SIZE + 1), JCSystem.CLEAR_ON_RESET);
+    tmpVariables = JCSystem.makeTransientShortArray(TMP_VARIABLE_ARRAY_SIZE,
+        JCSystem.CLEAR_ON_DESELECT);
+    wrappingKey = JCSystem.makeTransientByteArray((short) (WRAPPING_KEY_SIZE + 1),
+        JCSystem.CLEAR_ON_RESET);
     resetWrappingKey();
     opTable = new KMOperationState[MAX_OPERATIONS_COUNT];
     short index = 0;
@@ -215,7 +218,7 @@ public class KMKeymasterDevice {
     }
 
   }
-  
+
   private void initializeDefaultValues() {
     short offset = repository.alloc((short) 32);
     // Initialize master key
@@ -231,71 +234,71 @@ public class KMKeymasterDevice {
     writeBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, false, buffer, offset);
     writeBoolean(KMDataStoreConstants.PROVISIONED_LOCKED, false, buffer, offset);
   }
-  
-  public static void initStatics(){
-	F4 = new byte[] {0x01, 0x00, 0x01};  
-	// "Keymaster HMAC Verification" - used for HMAC key verification.
-	sharingCheck = new byte[] {
-	      0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74, 0x65, 0x72, 0x20, 0x48, 0x4D, 0x41, 0x43, 0x20,
-	      0x56,
-	      0x65, 0x72, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6F, 0x6E
-	  };
 
-	  // "KeymasterSharedMac"
-	ckdfLable = new byte[] {
-	      0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74, 0x65, 0x72, 0x53, 0x68, 0x61, 0x72, 0x65, 0x64,
-	      0x4D,
-	      0x61, 0x63
-	  };
+  public static void initStatics() {
+    F4 = new byte[]{0x01, 0x00, 0x01};
+    // "Keymaster HMAC Verification" - used for HMAC key verification.
+    sharingCheck = new byte[]{
+        0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74, 0x65, 0x72, 0x20, 0x48, 0x4D, 0x41, 0x43, 0x20,
+        0x56,
+        0x65, 0x72, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6F, 0x6E
+    };
 
-	  // "Auth Verification"
-	authVerification = new byte[] {
-	      0x41, 0x75, 0x74, 0x68, 0x20, 0x56, 0x65, 0x72, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69,
-	      0x6F,
-	      0x6E
-	  };
-	  // "confirmation token"
-	confirmationToken = new byte[] {
-	      0x63, 0x6F, 0x6E, 0x66, 0x69, 0x72, 0x6D, 0x61, 0x74, 0x69, 0x6F, 0x6E, 0x20, 0x74, 0x6F,
-	      0x6B,
-	      0x65, 0x6E
-	  };
-	  // Subject is a fixed field with only CN= Android Keystore Key - same for all the keys
-	defaultSubject = new byte[] {
-	      0x30, 0x1F, 0x31, 0x1D, 0x30, 0x1B, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x14, 0x41, 0x6e,
-	      0x64,
-	      0x72, 0x6f, 0x69, 0x64, 0x20, 0x4B, 0x65, 0x79, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x20, 0x4B,
-	      0x65,
-	      0x79
-	  };
-	//getHardwareInfo constants.
-	JAVACARD_KEYMASTER_DEVICE = new byte[] {
-	      0x4A, 0x61, 0x76, 0x61, 0x63, 0x61, 0x72, 0x64, 0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74,
-	      0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65,
-	  };
-	GOOGLE = new byte[] {0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
-	X509Subject = new byte[] {
-	      0x30, 0x1F, 0x31, 0x1D, 0x30, 0x1B, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x14, 0x41, 0x6e,
-	      0x64,
-	      0x72, 0x6f, 0x69, 0x64, 0x20, 0x4B, 0x65, 0x79, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x20, 0x4B,
-	      0x65,
-	      0x79
-	  };
-	  
-    ATTEST_ID_TAGS = new short[] {
-	 	            KMType.ATTESTATION_ID_BRAND,
-	 	            KMType.ATTESTATION_ID_DEVICE,
-	 	            KMType.ATTESTATION_ID_IMEI,
-	 	            KMType.ATTESTATION_ID_MANUFACTURER,
-	 	            KMType.ATTESTATION_ID_MEID,
-	 	            KMType.ATTESTATION_ID_MODEL,
-	 	            KMType.ATTESTATION_ID_PRODUCT,
-	 	            KMType.ATTESTATION_ID_SERIAL
-	 	        };
+    // "KeymasterSharedMac"
+    ckdfLable = new byte[]{
+        0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74, 0x65, 0x72, 0x53, 0x68, 0x61, 0x72, 0x65, 0x64,
+        0x4D,
+        0x61, 0x63
+    };
+
+    // "Auth Verification"
+    authVerification = new byte[]{
+        0x41, 0x75, 0x74, 0x68, 0x20, 0x56, 0x65, 0x72, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69,
+        0x6F,
+        0x6E
+    };
+    // "confirmation token"
+    confirmationToken = new byte[]{
+        0x63, 0x6F, 0x6E, 0x66, 0x69, 0x72, 0x6D, 0x61, 0x74, 0x69, 0x6F, 0x6E, 0x20, 0x74, 0x6F,
+        0x6B,
+        0x65, 0x6E
+    };
+    // Subject is a fixed field with only CN= Android Keystore Key - same for all the keys
+    defaultSubject = new byte[]{
+        0x30, 0x1F, 0x31, 0x1D, 0x30, 0x1B, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x14, 0x41, 0x6e,
+        0x64,
+        0x72, 0x6f, 0x69, 0x64, 0x20, 0x4B, 0x65, 0x79, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x20, 0x4B,
+        0x65,
+        0x79
+    };
+    //getHardwareInfo constants.
+    JAVACARD_KEYMASTER_DEVICE = new byte[]{
+        0x4A, 0x61, 0x76, 0x61, 0x63, 0x61, 0x72, 0x64, 0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74,
+        0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65,
+    };
+    GOOGLE = new byte[]{0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
+    X509Subject = new byte[]{
+        0x30, 0x1F, 0x31, 0x1D, 0x30, 0x1B, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x14, 0x41, 0x6e,
+        0x64,
+        0x72, 0x6f, 0x69, 0x64, 0x20, 0x4B, 0x65, 0x79, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x20, 0x4B,
+        0x65,
+        0x79
+    };
+
+    ATTEST_ID_TAGS = new short[]{
+        KMType.ATTESTATION_ID_BRAND,
+        KMType.ATTESTATION_ID_DEVICE,
+        KMType.ATTESTATION_ID_IMEI,
+        KMType.ATTESTATION_ID_MANUFACTURER,
+        KMType.ATTESTATION_ID_MEID,
+        KMType.ATTESTATION_ID_MODEL,
+        KMType.ATTESTATION_ID_PRODUCT,
+        KMType.ATTESTATION_ID_SERIAL
+    };
   }
-  
+
   private static void initKMDeviceStatics() {
-	initStatics();  
+    initStatics();
     KMAttestationCertImpl.initStatics();
     KMBignumTag.initStatics();
     KMCosePairCoseKeyTag.initStatics();
@@ -319,20 +322,21 @@ public class KMKeymasterDevice {
 
   protected void initHmacNonceAndSeed(byte[] scratchPad, short offset) {
     seProvider.newRandomNumber(scratchPad, offset, HMAC_SEED_NONCE_SIZE);
-    storeDataInst.storeData(KMDataStoreConstants.HMAC_NONCE, scratchPad, offset, HMAC_SEED_NONCE_SIZE);
+    storeDataInst.storeData(KMDataStoreConstants.HMAC_NONCE, scratchPad, offset,
+        HMAC_SEED_NONCE_SIZE);
   }
 
-  private void releaseAllOperations(){
+  private void releaseAllOperations() {
     short index = 0;
-    while(index < MAX_OPERATIONS_COUNT) {
+    while (index < MAX_OPERATIONS_COUNT) {
       opTable[index].reset();
       index++;
     }
   }
 
-  private KMOperationState reserveOperation(short algorithm, short opHandle){
+  private KMOperationState reserveOperation(short algorithm, short opHandle) {
     short index = 0;
-    while(index < MAX_OPERATIONS_COUNT) {
+    while (index < MAX_OPERATIONS_COUNT) {
       if (opTable[index].getAlgorithm() == KMType.INVALID_VALUE) {
         opTable[index].reset();
         opTable[index].setAlgorithm(algorithm);
@@ -346,17 +350,17 @@ public class KMKeymasterDevice {
     return null;
   }
 
-  private KMOperationState findOperation(short handle){
+  private KMOperationState findOperation(short handle) {
     return findOperation(KMInteger.getBuffer(handle),
         KMInteger.getStartOff(handle),
         KMInteger.length(handle));
   }
 
-  private KMOperationState findOperation(byte[] opHandle, short start, short len){
+  private KMOperationState findOperation(byte[] opHandle, short start, short len) {
     short index = 0;
-    while(index < MAX_OPERATIONS_COUNT) {
-      if(opTable[index].compare(opHandle, start, len) == 0){
-        if(opTable[index].getAlgorithm() != KMType.INVALID_VALUE) {
+    while (index < MAX_OPERATIONS_COUNT) {
+      if (opTable[index].compare(opHandle, start, len) == 0) {
+        if (opTable[index].getAlgorithm() != KMType.INVALID_VALUE) {
           return opTable[index];
         }
       }
@@ -365,9 +369,10 @@ public class KMKeymasterDevice {
     return null;
   }
 
-  private void releaseOperation(KMOperationState op){
+  private void releaseOperation(KMOperationState op) {
     op.reset();
   }
+
   /**
    * Selects this applet.
    *
@@ -430,6 +435,7 @@ public class KMKeymasterDevice {
 
   /**
    * Processes an incoming APDU and handles it using command objects.
+   *
    * @param apdu the incoming APDU
    */
   public void process(APDU apdu) {
@@ -439,7 +445,7 @@ public class KMKeymasterDevice {
       // Validate APDU Header.
       byte[] apduBuffer = apdu.getBuffer();
       byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
-      
+
       switch (apduIns) {
         case INS_INIT_STRONGBOX_CMD:
           processInitStrongBoxCmd(apdu);
@@ -456,7 +462,7 @@ public class KMKeymasterDevice {
           break;
         case INS_IMPORT_WRAPPED_KEY_CMD:
           processImportWrappedKeyCmd(apdu);
-          break;  
+          break;
         case INS_BEGIN_IMPORT_WRAPPED_KEY_CMD:
           processBeginImportWrappedKeyCmd(apdu);
           break;
@@ -539,7 +545,7 @@ public class KMKeymasterDevice {
       freeOperations();
       resetWrappingKey();
       sendError(apdu, KMError.GENERIC_UNKNOWN_ERROR);
-    } finally {      
+    } finally {
       repository.clean();
     }
   }
@@ -563,7 +569,7 @@ public class KMKeymasterDevice {
     writeBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, true);
   }
 
-  private short deviceLockedCmd(APDU apdu){
+  private short deviceLockedCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 2);
     // passwordOnly
     KMArray.add(cmd, (short) 0, KMInteger.exp());
@@ -571,7 +577,7 @@ public class KMKeymasterDevice {
     KMArray.add(cmd, (short) 1, getKMVerificationTokenExp());
     return receiveIncoming(apdu, cmd);
   }
-  
+
   protected boolean isProvisionLocked(byte[] scratchPad, short scratchPadOff) {
     return readBoolean(KMDataStoreConstants.PROVISIONED_LOCKED, scratchPad, scratchPadOff);
   }
@@ -583,7 +589,7 @@ public class KMKeymasterDevice {
     }
     return scratchPad[scratchPadOff] == 0x01;
   }
-  
+
   protected void writeBoolean(byte storeDataId, boolean flag, byte[] scratchPad, short offset) {
     if (flag) {
       scratchPad[offset] = (byte) 0x01;
@@ -634,39 +640,43 @@ public class KMKeymasterDevice {
     passwordOnly = KMInteger.getByte(passwordOnly);
     validateVerificationToken(verToken, scratchPad);
     short verTime = KMVerificationToken.getTimestamp(verToken);
-    short len = storeDataInst.getData(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad, (short) 0);
+    short len = storeDataInst.getData(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad,
+        (short) 0);
     short lastDeviceLockedTime = KMByteBlob.instance(scratchPad, (short) 0, len);
     if (KMInteger.compare(verTime, lastDeviceLockedTime) > 0) {
       Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 8, (byte) 0);
       KMInteger.getValue(verTime, scratchPad, (short) 0, (short) 8);
       writeBoolean(KMDataStoreConstants.DEVICE_LOCKED, true);
       writeBoolean(KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY, passwordOnly == 0x01);
-      storeDataInst.storeData(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad,(short) 0, (short) 8);
+      storeDataInst.storeData(KMDataStoreConstants.DEVICE_LOCKED_TIME, scratchPad, (short) 0,
+          (short) 8);
     }
     sendError(apdu, KMError.OK);
   }
 
-  private void resetWrappingKey(){
-    if(!isValidWrappingKey()) return;
-    Util.arrayFillNonAtomic(wrappingKey,(short) 1, WRAPPING_KEY_SIZE, (byte) 0);
+  private void resetWrappingKey() {
+    if (!isValidWrappingKey()) {
+      return;
+    }
+    Util.arrayFillNonAtomic(wrappingKey, (short) 1, WRAPPING_KEY_SIZE, (byte) 0);
     wrappingKey[0] = -1;
   }
 
-  private boolean isValidWrappingKey(){
+  private boolean isValidWrappingKey() {
     return wrappingKey[0] != -1;
   }
 
-  private void setWrappingKey(short key){
-    if(KMByteBlob.length(key) != WRAPPING_KEY_SIZE){
+  private void setWrappingKey(short key) {
+    if (KMByteBlob.length(key) != WRAPPING_KEY_SIZE) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
     wrappingKey[0] = 0;
     Util.arrayCopyNonAtomic(KMByteBlob.getBuffer(key),
-        KMByteBlob.getStartOff(key),wrappingKey,(short)1,WRAPPING_KEY_SIZE);
+        KMByteBlob.getStartOff(key), wrappingKey, (short) 1, WRAPPING_KEY_SIZE);
   }
 
-  private short getWrappingKey(){
-    return KMByteBlob.instance(wrappingKey,(short)1,WRAPPING_KEY_SIZE);
+  private short getWrappingKey() {
+    return KMByteBlob.instance(wrappingKey, (short) 1, WRAPPING_KEY_SIZE);
   }
 
   protected void resetData() {
@@ -705,15 +715,17 @@ public class KMKeymasterDevice {
    * Receives data, which can be extended data, as requested by the command instance.
    */
   public short receiveIncoming(APDU apdu, short reqExp) {
-	short recvLen = apdu.setIncomingAndReceive();  
+    short recvLen = apdu.setIncomingAndReceive();
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);
-    short req = receiveIncoming(apdu, reqExp, repository.getHeap(), bufferLength, bufferStartOffset, recvLen);
+    short req = receiveIncoming(apdu, reqExp, repository.getHeap(), bufferLength, bufferStartOffset,
+        recvLen);
     repository.reclaimMemory(bufferLength);
     return req;
   }
-  
-  public short receiveIncoming(APDU apdu, short reqExp, byte[] reclamBuf, short bLen, short bStartOffset, short incomingReceivedLen) {
+
+  public short receiveIncoming(APDU apdu, short reqExp, byte[] reclamBuf, short bLen,
+      short bStartOffset, short incomingReceivedLen) {
     byte[] srcBuffer = apdu.getBuffer();
     short recvLen = incomingReceivedLen;
     short srcOffset = apdu.getOffsetCdata();
@@ -727,8 +739,9 @@ public class KMKeymasterDevice {
     }
     return decoder.decode(reqExp, reclamBuf, bStartOffset, bLen);
   }
-  
-  public void receiveIncomingCertData(APDU apdu, byte[] reclamBuf, short bLen, short bStartOffset, short incomingReceivedLen, byte[] outBuf, short outOff) {
+
+  public void receiveIncomingCertData(APDU apdu, byte[] reclamBuf, short bLen, short bStartOffset,
+      short incomingReceivedLen, byte[] outBuf, short outOff) {
     byte[] srcBuffer = apdu.getBuffer();
     short recvLen = incomingReceivedLen;
     short srcOffset = apdu.getOffsetCdata();
@@ -739,11 +752,11 @@ public class KMKeymasterDevice {
       recvLen = apdu.receiveBytes(srcOffset);
     }
     decoder.decodeCertificateData((short) 3,
-    		reclamBuf, bStartOffset, bLen,
-            outBuf, outOff);
+        reclamBuf, bStartOffset, bLen,
+        outBuf, outOff);
   }
-  
-  
+
+
   private void processGetHwInfoCmd(APDU apdu) {
     // No arguments expected
     short respPtr = getHardwareInfo();
@@ -751,7 +764,7 @@ public class KMKeymasterDevice {
     sendOutgoing(apdu, respPtr);
   }
 
-  private short addRngEntropyCmd(APDU apdu){
+  private short addRngEntropyCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 1);
     // Rng entropy
     KMArray.add(cmd, (short) 0, KMByteBlob.exp());
@@ -767,11 +780,12 @@ public class KMKeymasterDevice {
     if (KMByteBlob.length(blob) > MAX_SEED_SIZE) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
-    seProvider.addRngEntropy(KMByteBlob.getBuffer(blob), KMByteBlob.getStartOff(blob), KMByteBlob.length(blob));
+    seProvider.addRngEntropy(KMByteBlob.getBuffer(blob), KMByteBlob.getStartOff(blob),
+        KMByteBlob.length(blob));
     sendError(apdu, KMError.OK);
   }
 
-  private short getKeyCharacteristicsCmd(APDU apdu){
+  private short getKeyCharacteristicsCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 3);
     KMArray.add(cmd, (short) 0, KMByteBlob.exp());
     KMArray.add(cmd, (short) 1, KMByteBlob.exp());
@@ -794,7 +808,7 @@ public class KMKeymasterDevice {
       data[APP_DATA] = KMType.INVALID_VALUE;
     }
     // Parse Key Blob
-    parseEncryptedKeyBlob(data[KEY_BLOB],data[APP_ID], data[APP_DATA], scratchPad);
+    parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
     // Check Version and Patch Level
     checkVersionAndPatchLevel(scratchPad);
     // Remove custom tags from key characteristics
@@ -831,13 +845,13 @@ public class KMKeymasterDevice {
     sendError(apdu, KMError.OK);
   }
 
-  private short deleteKeyCmd(APDU apdu){
+  private short deleteKeyCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 1);
     KMArray.add(cmd, (short) 0, KMByteBlob.exp());
     return receiveIncoming(apdu, cmd);
   }
 
-  private short keyBlob(){
+  private short keyBlob() {
     short keyBlob = KMArray.instance((short) 5);
     KMArray.add(keyBlob, KMKeymasterDevice.KEY_BLOB_SECRET, KMByteBlob.exp());
     KMArray.add(keyBlob, KMKeymasterDevice.KEY_BLOB_AUTH_TAG, KMByteBlob.exp());
@@ -868,7 +882,7 @@ public class KMKeymasterDevice {
     sendError(apdu, KMError.OK);
   }
 
-  private short computeSharedHmacCmd(APDU apdu){
+  private short computeSharedHmacCmd(APDU apdu) {
     short params = KMHmacSharingParameters.exp();
     short paramsVec = KMArray.exp(params);
     short cmd = KMArray.instance((short) 1);
@@ -903,7 +917,7 @@ public class KMKeymasterDevice {
       short param = KMArray.get(data[HMAC_SHARING_PARAMS], paramIndex);
       // get seed - 32 bytes max
       //tmpVariables[5]
-      short seed  = KMHmacSharingParameters.getSeed(param);
+      short seed = KMHmacSharingParameters.getSeed(param);
       //tmpVariables[6]
       short seedLength = KMByteBlob.length(seed);
       // if seed is present
@@ -994,7 +1008,7 @@ public class KMKeymasterDevice {
     sendOutgoing(apdu, resp);
   }
 
-  private short upgradeKeyCmd(APDU apdu){
+  private short upgradeKeyCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 2);
     short keyParams = KMKeyParameters.exp();
     KMArray.add(cmd, (short) 0, KMByteBlob.exp()); // Key Blob
@@ -1033,7 +1047,7 @@ public class KMKeymasterDevice {
     byte[] scratchPad = apdu.getBuffer();
 
     data[KEY_BLOB] = KMArray.get(cmd, (short) 0);
-    data[KEY_PARAMETERS] = KMArray.get(cmd ,(short) 1);
+    data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 1);
     //tmpVariables[0]
     short appId =
         KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.APPLICATION_ID);
@@ -1049,10 +1063,13 @@ public class KMKeymasterDevice {
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
     boolean isKeyUpgradeRequired = false;
     // Check if key requires upgrade.
-    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_VERSION, readInteger32(KMDataStoreConstants.OS_VERSION, scratchPad, (short) 0));
-    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_PATCH_LEVEL, readInteger32(KMDataStoreConstants.OS_PATCH_LEVEL, scratchPad, (short) 0));
+    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_VERSION,
+        readInteger32(KMDataStoreConstants.OS_VERSION, scratchPad, (short) 0));
+    isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.OS_PATCH_LEVEL,
+        readInteger32(KMDataStoreConstants.OS_PATCH_LEVEL, scratchPad, (short) 0));
     isKeyUpgradeRequired |=
-        isKeyUpgradeRequired(KMType.VENDOR_PATCH_LEVEL, readInteger32(KMDataStoreConstants.VENDOR_PATCH_LEVEL, scratchPad, (short) 0));
+        isKeyUpgradeRequired(KMType.VENDOR_PATCH_LEVEL,
+            readInteger32(KMDataStoreConstants.VENDOR_PATCH_LEVEL, scratchPad, (short) 0));
     // Get boot patch level.
     bootParamsProv.getBootPatchLevel(scratchPad, (short) 0);
     isKeyUpgradeRequired |= isKeyUpgradeRequired(KMType.BOOT_PATCH_LEVEL,
@@ -1077,6 +1094,7 @@ public class KMKeymasterDevice {
   private void processExportKeyCmd(APDU apdu) {
     sendError(apdu, KMError.UNIMPLEMENTED);
   }
+
   private void processWrappingKeyBlob(short keyBlob, short wrapParams, byte[] scratchPad) {
     // Read App Id and App Data if any from un wrapping key params
     short appId =
@@ -1098,10 +1116,11 @@ public class KMKeymasterDevice {
     validateWrappingKeyBlob();
   }
 
-  private void validateWrappingKeyBlob(){
+  private void validateWrappingKeyBlob() {
     // check whether the wrapping key is RSA with purpose KEY_WRAP, padding RSA_OAEP and Digest
     // SHA2_256.
-    KMTag.assertPresence(data[SB_PARAMETERS],KMType.ENUM_TAG, KMType.ALGORITHM, KMError.UNSUPPORTED_KEY_ENCRYPTION_ALGORITHM);
+    KMTag.assertPresence(data[SB_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM,
+        KMError.UNSUPPORTED_KEY_ENCRYPTION_ALGORITHM);
     if (KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]) != KMType.RSA) {
       KMException.throwIt(KMError.UNSUPPORTED_KEY_ENCRYPTION_ALGORITHM);
     }
@@ -1116,8 +1135,9 @@ public class KMKeymasterDevice {
     }
   }
 
-  private short decryptTransportKey(short privExp, short modulus, short transportKey, byte[] scratchPad){
-    short length  =
+  private short decryptTransportKey(short privExp, short modulus, short transportKey,
+      byte[] scratchPad) {
+    short length =
         seProvider.rsaDecipherOAEP256(
             KMByteBlob.getBuffer(privExp),
             KMByteBlob.getStartOff(privExp),
@@ -1134,7 +1154,7 @@ public class KMKeymasterDevice {
 
   }
 
-  private void unmask(short data, short maskingKey){
+  private void unmask(short data, short maskingKey) {
     short dataLength = KMByteBlob.length(data);
     short maskLength = KMByteBlob.length(maskingKey);
     // Length of masking key and transport key must be same.
@@ -1152,8 +1172,8 @@ public class KMKeymasterDevice {
       index++;
     }
   }
-  
-  private short beginImportWrappedKeyCmd(APDU apdu){
+
+  private short beginImportWrappedKeyCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 4);
     short params = KMKeyParameters.expAny();
     KMArray.add(cmd, (short) 0, KMByteBlob.exp()); // Encrypted Transport Key
@@ -1179,14 +1199,15 @@ public class KMKeymasterDevice {
         KMArray.get(cmd, (short) 0), scratchPad);
     // Step 3 - XOR the decrypted AES-GCM key with with masking key
     unmask(transportKey, KMArray.get(cmd, (short) 2));
-    if(isValidWrappingKey()){
+    if (isValidWrappingKey()) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
     setWrappingKey(transportKey);
     sendError(apdu, KMError.OK);
   }
 
-  private short aesGCMDecrypt(short aesSecret, short input, short nonce, short authData, short authTag,byte[] scratchPad){
+  private short aesGCMDecrypt(short aesSecret, short input, short nonce, short authData,
+      short authTag, byte[] scratchPad) {
     Util.arrayFillNonAtomic(scratchPad, (short) 0, KMByteBlob.length(input), (byte) 0);
     if (!seProvider.aesGCMDecrypt(
         KMByteBlob.getBuffer(aesSecret),
@@ -1211,7 +1232,7 @@ public class KMKeymasterDevice {
     return KMByteBlob.instance(scratchPad, (short) 0, KMByteBlob.length(input));
   }
 
-  private short finishImportWrappedKeyCmd(APDU apdu){
+  private short finishImportWrappedKeyCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 8);
     short params = KMKeyParameters.expAny();
     KMArray.add(cmd, (short) 0, params); // Key Params of wrapped key
@@ -1226,7 +1247,7 @@ public class KMKeymasterDevice {
   }
 
   //TODO remove cmd later on
-  private void processFinishImportWrappedKeyCmd(APDU apdu){
+  private void processFinishImportWrappedKeyCmd(APDU apdu) {
     short cmd = finishImportWrappedKeyCmd(apdu);
     data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 0);
     short keyFmt = KMArray.get(cmd, (short) 1);
@@ -1239,30 +1260,32 @@ public class KMKeymasterDevice {
     data[NONCE] = KMArray.get(cmd, (short) 4);
     data[AUTH_DATA] = KMArray.get(cmd, (short) 5);
 
-    if(!isValidWrappingKey()){
+    if (!isValidWrappingKey()) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    data[IMPORTED_KEY_BLOB] = aesGCMDecrypt(getWrappingKey(),data[INPUT_DATA],data[NONCE],data[AUTH_DATA], data[AUTH_TAG],scratchPad);
+    data[IMPORTED_KEY_BLOB] = aesGCMDecrypt(getWrappingKey(), data[INPUT_DATA], data[NONCE],
+        data[AUTH_DATA], data[AUTH_TAG], scratchPad);
     resetWrappingKey();
     // Step 5 - Import decrypted key
-    data[ORIGIN] = KMType.SECURELY_IMPORTED; 
+    data[ORIGIN] = KMType.SECURELY_IMPORTED;
     // create key blob array
     importKey(apdu, keyFmt, scratchPad);
   }
 
-//TODO remove hwParameters when this is refactored.
+  //TODO remove hwParameters when this is refactored.
   private KMAttestationCert makeAttestationCert(short attKeyBlob, short attKeyParam,
       short attChallenge, short issuer, short hwParameters, short swParameters, short keyParams,
       byte[] scratchPad) {
     KMAttestationCert cert = makeCommonCert(swParameters, hwParameters,
         keyParams, scratchPad, seProvider);
 
-    short subject = KMKeyParameters.findTag(keyParams, KMType.BYTES_TAG, KMType.CERTIFICATE_SUBJECT_NAME);
+    short subject = KMKeyParameters.findTag(keyParams, KMType.BYTES_TAG,
+        KMType.CERTIFICATE_SUBJECT_NAME);
 
     // If no subject name is specified then use the default subject name.
-    if(subject == KMType.INVALID_VALUE || KMByteTag.length(subject) == 0){
+    if (subject == KMType.INVALID_VALUE || KMByteTag.length(subject) == 0) {
       subject = KMByteBlob.instance(defaultSubject, (short) 0, (short) defaultSubject.length);
-    }else{
+    } else {
       subject = KMByteTag.getValue(subject);
     }
     cert.subjectName(subject);
@@ -1270,7 +1293,7 @@ public class KMKeymasterDevice {
     // App Id and App Data,
     short appId = KMType.INVALID_VALUE;
     short appData = KMType.INVALID_VALUE;
-    if(attKeyParam != KMType.INVALID_VALUE) {
+    if (attKeyParam != KMType.INVALID_VALUE) {
       appId =
           KMKeyParameters.findTag(attKeyParam, KMType.BYTES_TAG, KMType.APPLICATION_ID);
       if (appId != KMTag.INVALID_VALUE) {
@@ -1301,39 +1324,40 @@ public class KMKeymasterDevice {
     }
     short alg = KMKeyParameters.findTag(attestParam, KMType.ENUM_TAG, KMType.ALGORITHM);
 
-    if(KMEnumTag.getValue(alg) == KMType.RSA) {
+    if (KMEnumTag.getValue(alg) == KMType.RSA) {
       short attestationKeyPublic = KMArray.get(keyBlob, KEY_BLOB_PUB_KEY);
       cert.rsaAttestKey(attestationKeySecret, attestationKeyPublic, KMType.ATTESTATION_CERT);
-    }else{
+    } else {
       cert.ecAttestKey(attestationKeySecret, KMType.ATTESTATION_CERT);
     }
     cert.attestationChallenge(attChallenge);
     cert.issuer(issuer);
     //TODO remove following line
-    data[PUB_KEY] =pubKey;
+    data[PUB_KEY] = pubKey;
     cert.publicKey(data[PUB_KEY]);
 
     // Save attestation application id - must be present.
-      short attAppId =
-          KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_APPLICATION_ID);
-      if (attAppId == KMType.INVALID_VALUE) {
-        KMException.throwIt(KMError.ATTESTATION_APPLICATION_ID_MISSING);
-      }
-      cert.extensionTag(attAppId, false);
-      // unique id byte blob - uses application id and temporal month count of creation time.
-      setUniqueId(cert, scratchPad);
-      // Add Attestation Ids if present
-      addAttestationIds(cert, scratchPad);
+    short attAppId =
+        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG,
+            KMType.ATTESTATION_APPLICATION_ID);
+    if (attAppId == KMType.INVALID_VALUE) {
+      KMException.throwIt(KMError.ATTESTATION_APPLICATION_ID_MISSING);
+    }
+    cert.extensionTag(attAppId, false);
+    // unique id byte blob - uses application id and temporal month count of creation time.
+    setUniqueId(cert, scratchPad);
+    // Add Attestation Ids if present
+    addAttestationIds(cert, scratchPad);
 
-        // Add Tags
-      addTags(hwParameters, true, cert);
-      addTags(swParameters, false, cert);
-      // Add Device Boot locked status
-      cert.deviceLocked(bootParamsProv.isDeviceBootLocked());
-      // VB data
-      cert.verifiedBootHash(getVerifiedBootHash(scratchPad));
-      cert.verifiedBootKey(getBootKey(scratchPad));
-      cert.verifiedBootState((byte)bootParamsProv.getBootState());
+    // Add Tags
+    addTags(hwParameters, true, cert);
+    addTags(swParameters, false, cert);
+    // Add Device Boot locked status
+    cert.deviceLocked(bootParamsProv.isDeviceBootLocked());
+    // VB data
+    cert.verifiedBootHash(getVerifiedBootHash(scratchPad));
+    cert.verifiedBootKey(getBootKey(scratchPad));
+    cert.verifiedBootState((byte) bootParamsProv.getBootState());
 
     //TODO remove the following line
     makeKeyCharacteristics(scratchPad);
@@ -1341,16 +1365,19 @@ public class KMKeymasterDevice {
     return cert;
   }
 
-  private KMAttestationCert makeCertWithFactoryProvisionedKey(short attChallenge, byte[] scratchPad) {
+  private KMAttestationCert makeCertWithFactoryProvisionedKey(short attChallenge,
+      byte[] scratchPad) {
     KMAttestationCert cert = makeCommonCert(data[SW_PARAMETERS], data[HW_PARAMETERS],
         data[KEY_PARAMETERS], scratchPad, seProvider);
     cert.attestationChallenge(attChallenge);
     cert.publicKey(data[PUB_KEY]);
-    cert.factoryAttestKey(storeDataInst.getAttestationKey(), KMType.FACTORY_PROVISIONED_ATTEST_CERT);
+    cert.factoryAttestKey(storeDataInst.getAttestationKey(),
+        KMType.FACTORY_PROVISIONED_ATTEST_CERT);
 
     // Save attestation application id - must be present.
     short attAppId =
-        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_APPLICATION_ID);
+        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG,
+            KMType.ATTESTATION_APPLICATION_ID);
     if (attAppId == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.ATTESTATION_APPLICATION_ID_MISSING);
     }
@@ -1368,7 +1395,7 @@ public class KMKeymasterDevice {
     // VB data
     cert.verifiedBootHash(getVerifiedBootHash(scratchPad));
     cert.verifiedBootKey(getBootKey(scratchPad));
-    cert.verifiedBootState((byte)bootParamsProv.getBootState());
+    cert.verifiedBootState((byte) bootParamsProv.getBootState());
 
     //TODO remove the following line
     //makeKeyCharacteristics(scratchPad);
@@ -1376,27 +1403,29 @@ public class KMKeymasterDevice {
     return cert;
   }
 
-  private KMAttestationCert makeSelfSignedCert(short attPrivKey, short attPubKey, byte[] scratchPad) {
+  private KMAttestationCert makeSelfSignedCert(short attPrivKey, short attPubKey,
+      byte[] scratchPad) {
     //KMAttestationCert cert = makeCommonCert(scratchPad);
     KMAttestationCert cert =
         makeCommonCert(data[SW_PARAMETERS], data[HW_PARAMETERS],
             data[KEY_PARAMETERS], scratchPad, seProvider);
     short alg = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM);
     byte mode = KMType.FAKE_CERT;
-    if(attPrivKey != KMType.INVALID_VALUE){
+    if (attPrivKey != KMType.INVALID_VALUE) {
       mode = KMType.SELF_SIGNED_CERT;
     }
-    short subject = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.CERTIFICATE_SUBJECT_NAME);
+    short subject = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG,
+        KMType.CERTIFICATE_SUBJECT_NAME);
     // If no subject name is specified then use the default subject name.
-    if(subject == KMType.INVALID_VALUE || KMByteTag.length(subject) == 0){
+    if (subject == KMType.INVALID_VALUE || KMByteTag.length(subject) == 0) {
       subject = KMByteBlob.instance(defaultSubject, (short) 0, (short) defaultSubject.length);
-    }else{
+    } else {
       subject = KMByteTag.getValue(subject);
     }
 
-    if(KMEnumTag.getValue(alg) == KMType.RSA) {
+    if (KMEnumTag.getValue(alg) == KMType.RSA) {
       cert.rsaAttestKey(attPrivKey, attPubKey, mode);
-    }else{
+    } else {
       cert.ecAttestKey(attPrivKey, mode);
     }
     cert.issuer(subject);
@@ -1405,24 +1434,24 @@ public class KMKeymasterDevice {
     return cert;
   }
 
-  protected short getBootKey(byte[] scratchPad){
-    Util.arrayFillNonAtomic(scratchPad, (short)0, VERIFIED_BOOT_KEY_SIZE, (byte)0);
+  protected short getBootKey(byte[] scratchPad) {
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, VERIFIED_BOOT_KEY_SIZE, (byte) 0);
     short len = bootParamsProv.getBootKey(scratchPad, (short) 0);
-    if(len != VERIFIED_BOOT_KEY_SIZE) {
+    if (len != VERIFIED_BOOT_KEY_SIZE) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    return KMByteBlob.instance(scratchPad,(short)0, VERIFIED_BOOT_KEY_SIZE);
+    return KMByteBlob.instance(scratchPad, (short) 0, VERIFIED_BOOT_KEY_SIZE);
   }
 
-  protected short getVerifiedBootHash(byte[] scratchPad){
-    Util.arrayFillNonAtomic(scratchPad, (short)0, VERIFIED_BOOT_HASH_SIZE, (byte)0);
+  protected short getVerifiedBootHash(byte[] scratchPad) {
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, VERIFIED_BOOT_HASH_SIZE, (byte) 0);
     short len = bootParamsProv.getVerifiedBootHash(scratchPad, (short) 0);
-    if(len != VERIFIED_BOOT_HASH_SIZE) {
+    if (len != VERIFIED_BOOT_HASH_SIZE) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    return KMByteBlob.instance(scratchPad,(short)0, VERIFIED_BOOT_HASH_SIZE);
+    return KMByteBlob.instance(scratchPad, (short) 0, VERIFIED_BOOT_HASH_SIZE);
   }
-  
+
   public short mapAttestIdToStoreId(short tag) {
     switch (tag) {
       // Attestation Id Brand
@@ -1450,10 +1479,11 @@ public class KMKeymasterDevice {
       case KMType.ATTESTATION_ID_MODEL:
         return KMDataStoreConstants.ATT_ID_MODEL;
       default:
-          KMException.throwIt(KMError.INVALID_ARGUMENT);
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     return KMType.INVALID_VALUE;
   }
+
   // --------------------------------
   // Only add the Attestation ids which are requested in the attestation parameters.
   // If the requested attestation ids are not provisioned or deleted then
@@ -1466,11 +1496,12 @@ public class KMKeymasterDevice {
     short attIdTagValue;
     short storedAttIdLen;
     while (index < (short) ATTEST_ID_TAGS.length) {
-      attIdTag = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, ATTEST_ID_TAGS[index]);
+      attIdTag = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG,
+          ATTEST_ID_TAGS[index]);
       if (attIdTag != KMType.INVALID_VALUE) {
         attIdTagValue = KMByteTag.getValue(attIdTag);
-        storedAttIdLen = storeDataInst.getData((byte)mapAttestIdToStoreId(ATTEST_ID_TAGS[index]),
-            scratchPad, (short)0);
+        storedAttIdLen = storeDataInst.getData((byte) mapAttestIdToStoreId(ATTEST_ID_TAGS[index]),
+            scratchPad, (short) 0);
         // Return CANNOT_ATTEST_IDS if Attestation IDs are not provisioned or
         // Attestation IDs are deleted.
         if (storedAttIdLen == 0) {
@@ -1484,7 +1515,7 @@ public class KMKeymasterDevice {
                 storedAttIdLen))) {
           KMException.throwIt(KMError.INVALID_TAG);
         }
-        short blob = KMByteBlob.instance(scratchPad, (short)0, storedAttIdLen);
+        short blob = KMByteBlob.instance(scratchPad, (short) 0, storedAttIdLen);
         cert.extensionTag(KMByteTag.instance(ATTEST_ID_TAGS[index], blob), true);
       }
       index++;
@@ -1504,18 +1535,20 @@ public class KMKeymasterDevice {
   }
 
   private void setUniqueId(KMAttestationCert cert, byte[] scratchPad) {
-    if(!KMTag.isPresent(data[HW_PARAMETERS],KMType.BOOL_TAG, KMType.INCLUDE_UNIQUE_ID)){
+    if (!KMTag.isPresent(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.INCLUDE_UNIQUE_ID)) {
       return;
     }
     // temporal count T
-    short time = KMKeyParameters.findTag(data[SW_PARAMETERS], KMType.DATE_TAG, KMType.CREATION_DATETIME);
-    if(time == KMType.INVALID_VALUE){
+    short time = KMKeyParameters.findTag(data[SW_PARAMETERS], KMType.DATE_TAG,
+        KMType.CREATION_DATETIME);
+    if (time == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.INVALID_TAG);
     }
     time = KMIntegerTag.getValue(time);
 
     // Application Id C
-    short appId = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_APPLICATION_ID);
+    short appId = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG,
+        KMType.ATTESTATION_APPLICATION_ID);
     if (appId == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.ATTESTATION_APPLICATION_ID_MISSING);
     }
@@ -1524,16 +1557,17 @@ public class KMKeymasterDevice {
     // Reset After Rotation R - it will be part of HW Enforced key
     // characteristics
     byte resetAfterRotation = 0;
-    if(KMTag.isPresent(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.RESET_SINCE_ID_ROTATION)){
+    if (KMTag.isPresent(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.RESET_SINCE_ID_ROTATION)) {
       resetAfterRotation = 0x01;
     }
 
     cert.makeUniqueId(scratchPad, (short) 0, KMInteger.getBuffer(time),
         KMInteger.getStartOff(time), KMInteger.length(time),
-        KMByteBlob.getBuffer(appId), KMByteBlob.getStartOff(appId), KMByteBlob.length(appId), resetAfterRotation,
+        KMByteBlob.getBuffer(appId), KMByteBlob.getStartOff(appId), KMByteBlob.length(appId),
+        resetAfterRotation,
         storeDataInst.getMasterKey());
   }
-  
+
   private void deleteAttestationIds() {
     storeDataInst.clearData(KMDataStoreConstants.ATT_ID_BRAND);
     storeDataInst.clearData(KMDataStoreConstants.ATT_ID_DEVICE);
@@ -1554,7 +1588,7 @@ public class KMKeymasterDevice {
     sendError(apdu, KMError.UNIMPLEMENTED);
   }
 
-  private short abortOperationCmd(APDU apdu){
+  private short abortOperationCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 1);
     KMArray.add(cmd, (short) 0, KMInteger.exp());
     return receiveIncoming(apdu, cmd);
@@ -1565,23 +1599,23 @@ public class KMKeymasterDevice {
     data[OP_HANDLE] = KMArray.get(cmd, (short) 0);
     KMOperationState op = findOperation(data[OP_HANDLE]);
     if (op == null) {
-      sendError(apdu,KMError.INVALID_OPERATION_HANDLE);
-    }else {
+      sendError(apdu, KMError.INVALID_OPERATION_HANDLE);
+    } else {
       releaseOperation(op);
       sendError(apdu, KMError.OK);
     }
   }
 
-  private short finishOperationCmd(APDU apdu){
-	return receiveIncoming(apdu, prepareFinishExp());
+  private short finishOperationCmd(APDU apdu) {
+    return receiveIncoming(apdu, prepareFinishExp());
   }
 
   private void processFinishOperationCmd(APDU apdu) {
     short cmd = finishOperationCmd(apdu);
-    byte[] scratchPad = apdu.getBuffer(); 
+    byte[] scratchPad = apdu.getBuffer();
     getFinishInputParameters(cmd, data, OP_HANDLE, KEY_PARAMETERS, INPUT_DATA,
-    		       SIGNATURE, HW_TOKEN, VERIFICATION_TOKEN, CONFIRMATION_TOKEN);
-    
+        SIGNATURE, HW_TOKEN, VERIFICATION_TOKEN, CONFIRMATION_TOKEN);
+
     // Check Operation Handle
     KMOperationState op = findOperation(data[OP_HANDLE]);
     if (op == null) {
@@ -1591,7 +1625,7 @@ public class KMKeymasterDevice {
     authorizeUpdateFinishOperation(op, scratchPad);
     switch (op.getPurpose()) {
       case KMType.SIGN:
-    	  finishTrustedConfirmationOperation(op);
+        finishTrustedConfirmationOperation(op);
       case KMType.VERIFY:
         finishSigningVerifyingOperation(op, scratchPad);
         break;
@@ -1602,7 +1636,7 @@ public class KMKeymasterDevice {
         finishDecryptOperation(op, scratchPad);
         break;
       case KMType.AGREE_KEY:
-		finishKeyAgreementOperation(op, scratchPad);  
+        finishKeyAgreementOperation(op, scratchPad);
         break;
     }
     if (data[OUTPUT_DATA] == KMType.INVALID_VALUE) {
@@ -1616,7 +1650,7 @@ public class KMKeymasterDevice {
   }
 
   private void finishEncryptOperation(KMOperationState op, byte[] scratchPad) {
-    if(op.getAlgorithm() != KMType.AES && op.getAlgorithm() != KMType.DES){
+    if (op.getAlgorithm() != KMType.AES && op.getAlgorithm() != KMType.DES) {
       KMException.throwIt(KMError.UNSUPPORTED_ALGORITHM);
     }
     finishAesDesOperation(op);
@@ -1645,16 +1679,16 @@ public class KMKeymasterDevice {
     }
   }
 
-  private void finishAesDesOperation(KMOperationState op){
+  private void finishAesDesOperation(KMOperationState op) {
     short len = KMByteBlob.length(data[INPUT_DATA]);
     short blockSize = AES_BLOCK_SIZE;
     if (op.getAlgorithm() == KMType.DES) {
-      blockSize= DES_BLOCK_SIZE;
+      blockSize = DES_BLOCK_SIZE;
     }
 
-    if(op.getPurpose() == KMType.DECRYPT && len > 0
+    if (op.getPurpose() == KMType.DECRYPT && len > 0
         && (op.getBlockMode() == KMType.ECB || op.getBlockMode() == KMType.CBC)
-        && ((short) (len % blockSize) != 0)){
+        && ((short) (len % blockSize) != 0)) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
 
@@ -1664,7 +1698,7 @@ public class KMKeymasterDevice {
       }
       // update aad if there is any
       updateAAD(op, (byte) 0x01);
-      if(op.isAesGcmUpdateAllowed()){
+      if (op.isAesGcmUpdateAllowed()) {
         op.setAesGcmUpdateComplete();
       }
       // Get the output size
@@ -1673,7 +1707,7 @@ public class KMKeymasterDevice {
     // If padding i.e. pkcs7 then add padding to right
     // Output data can at most one block size more the input data in case of pkcs7 encryption
     // In case of gcm we will allocate extra memory of the size equal to blocksize.
-    data[OUTPUT_DATA]  = KMByteBlob.instance((short) (len + 2 * blockSize));
+    data[OUTPUT_DATA] = KMByteBlob.instance((short) (len + 2 * blockSize));
     try {
       len = op.getOperation().finish(
           KMByteBlob.getBuffer(data[INPUT_DATA]),
@@ -1690,7 +1724,7 @@ public class KMKeymasterDevice {
   }
 
   public void finishKeyAgreementOperation(KMOperationState op, byte[] scratchPad) {
-	  KMException.throwIt(KMError.UNIMPLEMENTED); 
+    KMException.throwIt(KMError.UNIMPLEMENTED);
   }
 
   private void finishSigningVerifyingOperation(KMOperationState op, byte[] scratchPad) {
@@ -1702,18 +1736,18 @@ public class KMKeymasterDevice {
           if (op.getPurpose() == KMType.SIGN) {
             // len of signature will be 256 bytes - but it can be less then 256 bytes
             short len = op.getOperation().sign(
-                    KMByteBlob.getBuffer(data[INPUT_DATA]),
-                    KMByteBlob.getStartOff(data[INPUT_DATA]),
-                    KMByteBlob.length(data[INPUT_DATA]), scratchPad,
-                    (short) 0);
+                KMByteBlob.getBuffer(data[INPUT_DATA]),
+                KMByteBlob.getStartOff(data[INPUT_DATA]),
+                KMByteBlob.length(data[INPUT_DATA]), scratchPad,
+                (short) 0);
             // Maximum output size of signature is 256 bytes. - the signature will always be positive
             data[OUTPUT_DATA] = KMByteBlob.instance((short) 256);
             Util.arrayCopyNonAtomic(
-                    scratchPad,
-                    (short) 0,
-                    KMByteBlob.getBuffer(data[OUTPUT_DATA]),
-                    (short) (KMByteBlob.getStartOff(data[OUTPUT_DATA]) + 256 - len),
-                    len);
+                scratchPad,
+                (short) 0,
+                KMByteBlob.getBuffer(data[OUTPUT_DATA]),
+                (short) (KMByteBlob.getStartOff(data[OUTPUT_DATA]) + 256 - len),
+                len);
           } else {
             KMException.throwIt(KMError.UNSUPPORTED_PURPOSE);
           }
@@ -1761,14 +1795,14 @@ public class KMKeymasterDevice {
                 KMByteBlob.length(data[INPUT_DATA]),
                 scratchPad,
                 (short) 0);
-        if(op.getPurpose() == KMType.SIGN) {
+        if (op.getPurpose() == KMType.SIGN) {
           // Copy only signature of mac length size.
           data[OUTPUT_DATA] =
               KMByteBlob.instance(scratchPad, (short) 0, (short) (op.getMacLength() / 8));
-        }else if (op.getPurpose() == KMType.VERIFY) {
+        } else if (op.getPurpose() == KMType.VERIFY) {
           if (0
               != Util.arrayCompare(
-              scratchPad, (short)0,
+              scratchPad, (short) 0,
               KMByteBlob.getBuffer(data[SIGNATURE]),
               KMByteBlob.getStartOff(data[SIGNATURE]),
               KMByteBlob.length(data[SIGNATURE]))) {
@@ -1821,7 +1855,7 @@ public class KMKeymasterDevice {
     Util.arrayFillNonAtomic(scratchPad, scratchPadOff, requiredScratchBufLen, (byte) 0);
 
     short usageLimitBufLen = KMIntegerTag.getValue(scratchPad, scratchPadOff,
-       KMType.UINT_TAG, KMType.MAX_USES_PER_BOOT, data[HW_PARAMETERS]);
+        KMType.UINT_TAG, KMType.MAX_USES_PER_BOOT, data[HW_PARAMETERS]);
 
     if (usageLimitBufLen == KMType.INVALID_VALUE) {
       return;
@@ -1855,7 +1889,7 @@ public class KMKeymasterDevice {
       storeDataInst.setRateLimitedKeyCount(KMByteBlob.getBuffer(data[AUTH_TAG]),
           KMByteBlob.getStartOff(data[AUTH_TAG]),
           KMByteBlob.length(data[AUTH_TAG]),
-          scratchPad, (short) (scratchPadOff + len * 2), len, scratchPad, 
+          scratchPad, (short) (scratchPadOff + len * 2), len, scratchPad,
           requiredScratchBufLen);
     } else {
       // Persist auth tag.
@@ -1871,9 +1905,11 @@ public class KMKeymasterDevice {
     // If device is locked and key characteristics requires unlocked device then check whether
     // HW auth token has correct timestamp.
     short ptr =
-        KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.UNLOCKED_DEVICE_REQUIRED);
+        KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.BOOL_TAG,
+            KMType.UNLOCKED_DEVICE_REQUIRED);
 
-    if (ptr != KMType.INVALID_VALUE && readBoolean(KMDataStoreConstants.DEVICE_LOCKED, scratchPad, (short) 0)) {
+    if (ptr != KMType.INVALID_VALUE && readBoolean(KMDataStoreConstants.DEVICE_LOCKED, scratchPad,
+        (short) 0)) {
       if (!validateHwToken(data[HW_TOKEN], scratchPad)) {
         KMException.throwIt(KMError.DEVICE_LOCKED);
       }
@@ -1943,15 +1979,15 @@ public class KMKeymasterDevice {
     }
   }
 
-  private short updateOperationCmd(APDU apdu){
-	return receiveIncoming(apdu, prepareUpdateExp());
+  private short updateOperationCmd(APDU apdu) {
+    return receiveIncoming(apdu, prepareUpdateExp());
   }
 
   private void processUpdateOperationCmd(APDU apdu) {
     short cmd = updateOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
     getUpdateInputParameters(cmd, data, OP_HANDLE, KEY_PARAMETERS,
-    		           INPUT_DATA, HW_TOKEN, VERIFICATION_TOKEN);
+        INPUT_DATA, HW_TOKEN, VERIFICATION_TOKEN);
 
     // Input data must be present even if it is zero length.
     if (data[INPUT_DATA] == KMType.INVALID_VALUE) {
@@ -1976,7 +2012,7 @@ public class KMKeymasterDevice {
               KMByteBlob.length(data[INPUT_DATA]));
       // update trusted confirmation operation
       updateTrustedConfirmationOperation(op);
-      
+
       data[OUTPUT_DATA] = KMType.INVALID_VALUE;
     } else if (op.getPurpose() == KMType.ENCRYPT || op.getPurpose() == KMType.DECRYPT) {
       // Update for encrypt/decrypt using RSA will not be supported because to do this op state
@@ -1984,23 +2020,23 @@ public class KMKeymasterDevice {
       if (op.getAlgorithm() == KMType.RSA) {
         KMException.throwIt(KMError.OPERATION_CANCELLED);
       }
-      short len  = KMByteBlob.length(data[INPUT_DATA]);
+      short len = KMByteBlob.length(data[INPUT_DATA]);
       short blockSize = DES_BLOCK_SIZE;
       if (op.getAlgorithm() == KMType.AES) {
-          blockSize = AES_BLOCK_SIZE;
-          if (op.getBlockMode() == KMType.GCM) {
-        	// data[KEY_PARAMETERS] will be invalid for keymint
-        	if(data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
-        	  updateAAD(op, (byte) 0x00);
-        	}
-            // if input data present
-            if (len > 0) {
-              // no more future updateAAD allowed if input data present.
-              if (op.isAesGcmUpdateAllowed()) {
-                op.setAesGcmUpdateComplete();
-              }
+        blockSize = AES_BLOCK_SIZE;
+        if (op.getBlockMode() == KMType.GCM) {
+          // data[KEY_PARAMETERS] will be invalid for keymint
+          if (data[KEY_PARAMETERS] != KMType.INVALID_VALUE) {
+            updateAAD(op, (byte) 0x00);
+          }
+          // if input data present
+          if (len > 0) {
+            // no more future updateAAD allowed if input data present.
+            if (op.isAesGcmUpdateAllowed()) {
+              op.setAesGcmUpdateComplete();
             }
           }
+        }
       }
       // Allocate output buffer as input data is already block aligned
       data[OUTPUT_DATA] = KMByteBlob.instance((short) (len + 2 * blockSize));
@@ -2034,7 +2070,7 @@ public class KMKeymasterDevice {
     sendOutgoing(apdu, prepareUpdateResp(data[OUTPUT_DATA], KMInteger.uint_16(inputConsumed)));
   }
 
-  private short updateAadOperationCmd(APDU apdu){
+  private short updateAadOperationCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 4);
     KMArray.add(cmd, (short) 0, KMInteger.exp());
     KMArray.add(cmd, (short) 1, KMByteBlob.exp());
@@ -2079,7 +2115,7 @@ public class KMKeymasterDevice {
               KMByteBlob.length(aData));
     }
   }
-  
+
   private void processUpdateAadOperationCmd(APDU apdu) {
     short cmd = updateAadOperationCmd(apdu);
     byte[] scratchPad = apdu.getBuffer();
@@ -2098,44 +2134,44 @@ public class KMKeymasterDevice {
     if (op == null) {
       KMException.throwIt(KMError.INVALID_OPERATION_HANDLE);
     }
-    if(op.getAlgorithm() != KMType.AES ){
+    if (op.getAlgorithm() != KMType.AES) {
       KMException.throwIt(KMError.INCOMPATIBLE_ALGORITHM);
     }
-    if(op.getBlockMode() != KMType.GCM ){
+    if (op.getBlockMode() != KMType.GCM) {
       KMException.throwIt(KMError.INCOMPATIBLE_BLOCK_MODE);
     }
-    if(!op.isAesGcmUpdateAllowed() ){
+    if (!op.isAesGcmUpdateAllowed()) {
       KMException.throwIt(KMError.INVALID_TAG);
     }
-    if(op.getPurpose() != KMType.ENCRYPT && op.getPurpose() != KMType.DECRYPT){
+    if (op.getPurpose() != KMType.ENCRYPT && op.getPurpose() != KMType.DECRYPT) {
       KMException.throwIt(KMError.INCOMPATIBLE_PURPOSE);
     }
     // authorize the update operation
     authorizeUpdateFinishOperation(op, scratchPad);
     try {
-	  op.getOperation()
-	         .updateAAD(
+      op.getOperation()
+          .updateAAD(
               KMByteBlob.getBuffer(data[INPUT_DATA]),
-	          KMByteBlob.getStartOff(data[INPUT_DATA]),
+              KMByteBlob.getStartOff(data[INPUT_DATA]),
               KMByteBlob.length(data[INPUT_DATA]));
-    } catch(CryptoException exp){
+    } catch (CryptoException exp) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    
+
     // make response
     short resp = KMArray.instance((short) 1);
     KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     sendOutgoing(apdu, resp);
   }
 
-  private short beginOperationCmd(APDU apdu){
+  private short beginOperationCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 4);
     // Arguments
     short params = KMKeyParameters.expAny();
     KMArray.add(cmd, (short) 0, KMEnum.instance(KMType.PURPOSE));
     KMArray.add(cmd, (short) 1, KMByteBlob.exp());
     KMArray.add(cmd, (short) 2, params);
-    short authToken  = KMHardwareAuthToken.exp();
+    short authToken = KMHardwareAuthToken.exp();
     KMArray.add(cmd, (short) 3, authToken);
     return receiveIncoming(apdu, cmd);
   }
@@ -2162,13 +2198,14 @@ public class KMKeymasterDevice {
     }
     // Parse the encrypted blob and decrypt it.
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
-    KMTag.assertPresence(data[SB_PARAMETERS],KMType.ENUM_TAG,KMType.ALGORITHM,KMError.UNSUPPORTED_ALGORITHM);
-    short algorithm = KMEnumTag.getValue(KMType.ALGORITHM,data[SB_PARAMETERS]);
-    
+    KMTag.assertPresence(data[SB_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM,
+        KMError.UNSUPPORTED_ALGORITHM);
+    short algorithm = KMEnumTag.getValue(KMType.ALGORITHM, data[SB_PARAMETERS]);
+
     //TODO should be removed for keymint
     // If Blob usage tag is present in key characteristics then it should be standalone.
-    if(KMTag.isPresent(data[SB_PARAMETERS],KMType.ENUM_TAG, KMType.BLOB_USAGE_REQ)){
-      if(KMEnumTag.getValue(KMType.BLOB_USAGE_REQ, data[SB_PARAMETERS]) != KMType.STANDALONE){
+    if (KMTag.isPresent(data[SB_PARAMETERS], KMType.ENUM_TAG, KMType.BLOB_USAGE_REQ)) {
+      if (KMEnumTag.getValue(KMType.BLOB_USAGE_REQ, data[SB_PARAMETERS]) != KMType.STANDALONE) {
         KMException.throwIt(KMError.UNSUPPORTED_TAG);
       }
     }
@@ -2184,7 +2221,7 @@ public class KMKeymasterDevice {
         KMByteBlob.getBuffer(buf),
         KMByteBlob.getStartOff(buf),
         KMByteBlob.length(buf));
-    KMOperationState op = reserveOperation(algorithm,opHandle);
+    KMOperationState op = reserveOperation(algorithm, opHandle);
     if (op == null) {
       KMException.throwIt(KMError.TOO_MANY_OPERATIONS);
     }
@@ -2194,7 +2231,7 @@ public class KMKeymasterDevice {
     authorizeAndBeginOperation(op, scratchPad);
     switch (op.getPurpose()) {
       case KMType.SIGN:
-    	beginTrustedConfirmationOperation(op);
+        beginTrustedConfirmationOperation(op);
       case KMType.VERIFY:
         beginSignVerifyOperation(op);
         break;
@@ -2203,7 +2240,7 @@ public class KMKeymasterDevice {
         beginCipherOperation(op);
         break;
       case KMType.AGREE_KEY:
-    	beginKeyAgreementOperation(op);  
+        beginKeyAgreementOperation(op);
         break;
       default:
         KMException.throwIt(KMError.UNIMPLEMENTED);
@@ -2236,7 +2273,7 @@ public class KMKeymasterDevice {
 
     short params = KMKeyParameters.instance(iv);
     short resp = prepareBeginResp(params, data[OP_HANDLE], KMInteger.uint_8(op.getBufferingMode()),
-    		        KMInteger.uint_16((short) (op.getMacLength() / 8)));
+        KMInteger.uint_16((short) (op.getMacLength() / 8)));
     sendOutgoing(apdu, resp);
   }
 
@@ -2261,8 +2298,9 @@ public class KMKeymasterDevice {
         }
         break;
       case KMType.RSA:
-        if (op.getPurpose() == KMType.AGREE_KEY)
+        if (op.getPurpose() == KMType.AGREE_KEY) {
           KMException.throwIt(KMError.UNSUPPORTED_PURPOSE);
+        }
         break;
       default:
         break;
@@ -2287,7 +2325,8 @@ public class KMKeymasterDevice {
         KMException.throwIt(KMError.INCOMPATIBLE_DIGEST);
       }
       op.setDigest((byte) param);
-    }else if(KMEnumArrayTag.contains(KMType.PADDING, KMType.RSA_PKCS1_1_5_SIGN, data[KEY_PARAMETERS])){
+    } else if (KMEnumArrayTag.contains(KMType.PADDING, KMType.RSA_PKCS1_1_5_SIGN,
+        data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
     }
     short paramPadding =
@@ -2356,7 +2395,7 @@ public class KMKeymasterDevice {
             && op.getDigest() == KMType.DIGEST_NONE) {
           KMException.throwIt(KMError.INCOMPATIBLE_DIGEST);
         }
-        if(param == KMType.RSA_OAEP) {
+        if (param == KMType.RSA_OAEP) {
           op.setMgfDigest(
               (byte) getMgf1Digest(data[KEY_PARAMETERS], data[HW_PARAMETERS]));
         }
@@ -2423,7 +2462,7 @@ public class KMKeymasterDevice {
             KMException.throwIt(KMError.INCOMPATIBLE_PADDING_MODE);
           }
         }
-          break;
+        break;
       case KMType.DES:
         //Validate the block mode.
         switch (param) {
@@ -2471,20 +2510,21 @@ public class KMKeymasterDevice {
     authorizeKeyUsageForCount(scratchPad);
 
     //Validate early boot
-    validateEarlyBoot(data[HW_PARAMETERS], INS_BEGIN_OPERATION_CMD, scratchPad, (short)0, KMError.INVALID_KEY_BLOB);
- 
+    validateEarlyBoot(data[HW_PARAMETERS], INS_BEGIN_OPERATION_CMD, scratchPad, (short) 0,
+        KMError.INVALID_KEY_BLOB);
+
     //Validate bootloader only 
     if (readBoolean(KMDataStoreConstants.BOOT_ENDED_STATUS, scratchPad, (short) 0)) {
       KMTag.assertAbsence(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY,
-    	  KMError.INVALID_KEY_BLOB);
+          KMError.INVALID_KEY_BLOB);
     }
-      
+
     // Authorize Caller Nonce - if caller nonce absent in key char and nonce present in
     // key params then fail if it is not a Decrypt operation
     data[IV] = KMType.INVALID_VALUE;
 
-    if (!KMTag.isPresent(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.CALLER_NONCE )
-        && KMTag.isPresent(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.NONCE )
+    if (!KMTag.isPresent(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.CALLER_NONCE)
+        && KMTag.isPresent(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.NONCE)
         && op.getPurpose() != KMType.DECRYPT) {
       KMException.throwIt(KMError.CALLER_NONCE_PROHIBITED);
     }
@@ -2541,7 +2581,7 @@ public class KMKeymasterDevice {
   }
 
   public void beginKeyAgreementOperation(KMOperationState op) {
-	KMException.throwIt(KMError.UNIMPLEMENTED);
+    KMException.throwIt(KMError.UNIMPLEMENTED);
   }
 
   private void beginCipherOperation(KMOperationState op) {
@@ -2552,9 +2592,9 @@ public class KMKeymasterDevice {
             op.setOperation(
                 seProvider.initAsymmetricOperation(
                     (byte) op.getPurpose(),
-                    (byte)op.getAlgorithm(),
-                    (byte)op.getPadding(),
-                    (byte)op.getDigest(),
+                    (byte) op.getAlgorithm(),
+                    (byte) op.getPadding(),
+                    (byte) op.getDigest(),
                     (byte) op.getMgfDigest(),
                     KMByteBlob.getBuffer(data[SECRET]),
                     KMByteBlob.getStartOff(data[SECRET]),
@@ -2578,10 +2618,10 @@ public class KMKeymasterDevice {
           op.setOperation(
               seProvider.initSymmetricOperation(
                   (byte) op.getPurpose(),
-                  (byte)op.getAlgorithm(),
-                  (byte)op.getDigest(),
-                  (byte)op.getPadding(),
-                  (byte)op.getBlockMode(),
+                  (byte) op.getAlgorithm(),
+                  (byte) op.getDigest(),
+                  (byte) op.getPadding(),
+                  (byte) op.getBlockMode(),
                   KMByteBlob.getBuffer(data[SECRET]),
                   KMByteBlob.getStartOff(data[SECRET]),
                   KMByteBlob.length(data[SECRET]),
@@ -2600,8 +2640,9 @@ public class KMKeymasterDevice {
   }
 
   private void beginTrustedConfirmationOperation(KMOperationState op) {
-	    // Check for trusted confirmation - if required then set the signer in op state.
-    if (KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.TRUSTED_CONFIRMATION_REQUIRED) != KMType.INVALID_VALUE) {
+    // Check for trusted confirmation - if required then set the signer in op state.
+    if (KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.BOOL_TAG,
+        KMType.TRUSTED_CONFIRMATION_REQUIRED) != KMType.INVALID_VALUE) {
 
       op.setTrustedConfirmationSigner(
           seProvider.initTrustedConfirmationSymmetricOperation(storeDataInst.getComputedHmacKey()));
@@ -2609,11 +2650,11 @@ public class KMKeymasterDevice {
       op.getTrustedConfirmationSigner().update(
           confirmationToken,
           (short) 0,
-          (short) confirmationToken.length);   
+          (short) confirmationToken.length);
     }
-    
+
   }
-  
+
   private void beginSignVerifyOperation(KMOperationState op) {
     switch (op.getAlgorithm()) {
       case KMType.RSA:
@@ -2622,9 +2663,9 @@ public class KMKeymasterDevice {
             op.setOperation(
                 seProvider.initAsymmetricOperation(
                     (byte) op.getPurpose(),
-                    (byte)op.getAlgorithm(),
-                    (byte)op.getPadding(),
-                    (byte)op.getDigest(),
+                    (byte) op.getAlgorithm(),
+                    (byte) op.getPadding(),
+                    (byte) op.getDigest(),
                     KMType.DIGEST_NONE, /* No MGF Digest */
                     KMByteBlob.getBuffer(data[SECRET]),
                     KMByteBlob.getStartOff(data[SECRET]),
@@ -2645,9 +2686,9 @@ public class KMKeymasterDevice {
             op.setOperation(
                 seProvider.initAsymmetricOperation(
                     (byte) op.getPurpose(),
-                    (byte)op.getAlgorithm(),
-                    (byte)op.getPadding(),
-                    (byte)op.getDigest(),
+                    (byte) op.getAlgorithm(),
+                    (byte) op.getPadding(),
+                    (byte) op.getDigest(),
                     KMType.DIGEST_NONE, /* No MGF Digest */
                     KMByteBlob.getBuffer(data[SECRET]),
                     KMByteBlob.getStartOff(data[SECRET]),
@@ -2679,10 +2720,10 @@ public class KMKeymasterDevice {
           op.setOperation(
               seProvider.initSymmetricOperation(
                   (byte) KMType.SIGN,
-                  (byte)op.getAlgorithm(),
-                  (byte)op.getDigest(),
-                  (byte)op.getPadding(),
-                  (byte)op.getBlockMode(),
+                  (byte) op.getAlgorithm(),
+                  (byte) op.getDigest(),
+                  (byte) op.getPadding(),
+                  (byte) op.getBlockMode(),
                   KMByteBlob.getBuffer(data[SECRET]),
                   KMByteBlob.getStartOff(data[SECRET]),
                   KMByteBlob.length(data[SECRET]),
@@ -2704,14 +2745,16 @@ public class KMKeymasterDevice {
       short secureUserIdsObj) {
     short secureUserId = KMHardwareAuthToken.getUserId(hwAuthToken);
     if (!KMInteger.isZero(secureUserId)) {
-      if (KMIntegerArrayTag.contains(secureUserIdsObj, secureUserId))
+      if (KMIntegerArrayTag.contains(secureUserIdsObj, secureUserId)) {
         return true;
+      }
     }
 
     short authenticatorId = KMHardwareAuthToken.getAuthenticatorId(hwAuthToken);
     if (!KMInteger.isZero(authenticatorId)) {
-      if (KMIntegerArrayTag.contains(secureUserIdsObj, authenticatorId))
+      if (KMIntegerArrayTag.contains(secureUserIdsObj, authenticatorId)) {
         return true;
+      }
     }
     return false;
   }
@@ -2747,7 +2790,7 @@ public class KMKeymasterDevice {
         KMException.throwIt(KMError.INVALID_KEY_BLOB);
       }
       // authenticator type must be provided.
-      if(KMType.INVALID_VALUE ==
+      if (KMType.INVALID_VALUE ==
           (authType = KMEnumTag.getValue(KMType.USER_AUTH_TYPE, data[HW_PARAMETERS]))) {
         // Authentication required, but no auth type found.
         KMException.throwIt(KMError.KEY_USER_NOT_AUTHENTICATED);
@@ -2762,7 +2805,8 @@ public class KMKeymasterDevice {
         }
 
         authTimeoutTagPtr =
-            KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.ULONG_TAG, KMType.AUTH_TIMEOUT_MILLIS);
+            KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.ULONG_TAG,
+                KMType.AUTH_TIMEOUT_MILLIS);
         if (authTimeoutTagPtr == KMType.INVALID_VALUE) {
           KMException.throwIt(KMError.INVALID_KEY_BLOB);
         }
@@ -2883,8 +2927,8 @@ public class KMKeymasterDevice {
     }
   }
 
-  private short importKeyCmd(APDU apdu){
-	short cmd = KMArray.instance((short) 3);
+  private short importKeyCmd(APDU apdu) {
+    short cmd = KMArray.instance((short) 3);
     // Arguments
     short params = KMKeyParameters.expAny();
     KMArray.add(cmd, (short) 0, params);
@@ -2892,7 +2936,7 @@ public class KMKeymasterDevice {
     KMArray.add(cmd, (short) 2, KMByteBlob.exp());
     return receiveIncoming(apdu, cmd);
   }
-  
+
   private void processImportKeyCmd(APDU apdu) {
     // Receive the incoming request fully from the master into buffer.
     short cmd = importKeyCmd(apdu);
@@ -2902,13 +2946,13 @@ public class KMKeymasterDevice {
     data[IMPORTED_KEY_BLOB] = KMArray.get(cmd, (short) 2);
     keyFmt = KMEnum.getVal(keyFmt);
 
-    data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
+    data[CERTIFICATE] = KMArray.instance((short) 0); //by default the cert is empty.
     data[ORIGIN] = KMType.IMPORTED;
     importKey(apdu, keyFmt, scratchPad);
   }
 
-  private short importWrappedKeyCmd(APDU apdu){
-	short cmd = KMArray.instance((short) 12);
+  private short importWrappedKeyCmd(APDU apdu) {
+    short cmd = KMArray.instance((short) 12);
     // Arguments
     short params = KMKeyParameters.exp();
     short bBlob = KMByteBlob.exp();
@@ -2926,9 +2970,9 @@ public class KMKeymasterDevice {
     KMArray.add(cmd, (short) 11, KMInteger.exp()); // Biometric Sid
     return receiveIncoming(apdu, cmd);
   }
-  
+
   private void processImportWrappedKeyCmd(APDU apdu) {
-	    
+
     byte[] scratchPad = apdu.getBuffer();
     short cmd = importWrappedKeyCmd(apdu);
 
@@ -2953,7 +2997,7 @@ public class KMKeymasterDevice {
     data[APP_ID] =
         KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.APPLICATION_ID);
     data[APP_DATA] =
-    KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.APPLICATION_DATA);
+        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.APPLICATION_DATA);
     if (data[APP_ID] != KMTag.INVALID_VALUE) {
       data[APP_ID] = KMByteTag.getValue(data[APP_ID]);
     }
@@ -3050,15 +3094,17 @@ public class KMKeymasterDevice {
     data[ORIGIN] = KMType.SECURELY_IMPORTED;
     data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 0);
     // create key blob array
-    data[IMPORTED_KEY_BLOB] = KMByteBlob.instance(scratchPad, (short) 0, KMByteBlob.length(data[INPUT_DATA]));
-	importKey(apdu, keyFormat, scratchPad);
+    data[IMPORTED_KEY_BLOB] = KMByteBlob.instance(scratchPad, (short) 0,
+        KMByteBlob.length(data[INPUT_DATA]));
+    importKey(apdu, keyFormat, scratchPad);
   }
-  
-  private void validateImportKey(short params, short keyFmt){
-	validatePurpose(params);
+
+  private void validateImportKey(short params, short keyFmt) {
+    validatePurpose(params);
     // Rollback protection not supported
-    KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE, KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
-    validateEarlyBoot(params, INS_IMPORT_KEY_CMD, null, (short)0, KMError.EARLY_BOOT_ENDED);
+    KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE,
+        KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
+    validateEarlyBoot(params, INS_IMPORT_KEY_CMD, null, (short) 0, KMError.EARLY_BOOT_ENDED);
     //Check if the tags are supported.
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_TAG);
@@ -3067,10 +3113,10 @@ public class KMKeymasterDevice {
     KMTag.assertPresence(params, KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, params);
     // key format must be raw if aes, des or hmac and pkcs8 for rsa and ec.
-    if((alg == KMType.AES || alg == KMType.DES || alg == KMType.HMAC) && keyFmt != KMType.RAW ){
+    if ((alg == KMType.AES || alg == KMType.DES || alg == KMType.HMAC) && keyFmt != KMType.RAW) {
       KMException.throwIt(KMError.UNIMPLEMENTED);
     }
-    if((alg == KMType.RSA || alg == KMType.EC) && keyFmt != KMType.PKCS8){
+    if ((alg == KMType.RSA || alg == KMType.EC) && keyFmt != KMType.PKCS8) {
       KMException.throwIt(KMError.UNIMPLEMENTED);
     }
   }
@@ -3078,7 +3124,7 @@ public class KMKeymasterDevice {
   public void validatePurpose(short params) {
     return;
   }
-  
+
   private void importKey(APDU apdu, short keyFmt, byte[] scratchPad) {
     validateImportKey(data[KEY_PARAMETERS], keyFmt);
     // Check algorithm and dispatch to appropriate handler.
@@ -3103,7 +3149,7 @@ public class KMKeymasterDevice {
         KMException.throwIt(KMError.UNSUPPORTED_ALGORITHM);
         break;
     }
-    makeKeyCharacteristics( scratchPad);
+    makeKeyCharacteristics(scratchPad);
     createEncryptedKeyBlob(scratchPad);
     // prepare the response
     short resp = KMArray.instance((short) 3);
@@ -3149,8 +3195,8 @@ public class KMKeymasterDevice {
         KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       }
     } else {
-      if ((256 > SecretLen) || (383 < SecretLen)){
-          KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);    		 
+      if ((256 > SecretLen) || (383 < SecretLen)) {
+        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       }
       // add the key size to scratchPad
       keySize = KMInteger.uint_16((short) 256);
@@ -3170,9 +3216,9 @@ public class KMKeymasterDevice {
         KMException.throwIt(KMError.UNSUPPORTED_EC_CURVE);
       }
     } else {
-      if ((256 > SecretLen) || (383 < SecretLen)){
-        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);    		 
-      }	
+      if ((256 > SecretLen) || (383 < SecretLen)) {
+        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+      }
       // add the curve to scratchPad
       curve = KMEnumTag.instance(KMType.ECCURVE, KMType.P_256);
       Util.setShort(scratchPad, index, curve);
@@ -3213,7 +3259,7 @@ public class KMKeymasterDevice {
       // add the key size to scratchPad
       keysize = (short) (KMByteBlob.length(data[SECRET]) * 8);
       if (!(keysize >= 64 && keysize <= 512 && keysize % 8 == 0)) {
-    	KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       }
       keysize = KMInteger.uint_16(keysize);
       short keySizeTag = KMIntegerTag.instance(KMType.UINT_TAG, KMType.KEYSIZE, keysize);
@@ -3238,15 +3284,15 @@ public class KMKeymasterDevice {
   private void importTDESKey(byte[] scratchPad) {
     // Decode Key Material
     data[SECRET] = data[IMPORTED_KEY_BLOB];
-    short index  = 0; // index in scratchPad for update params
+    short index = 0; // index in scratchPad for update params
     // check the keysize tag if present in key parameters.
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     if (keysize != KMType.INVALID_VALUE) {
       if (keysize != 168) {
-    	  KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+        KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       }
-      if(192 != (short)( 8 * KMByteBlob.length(data[SECRET]))) {
+      if (192 != (short) (8 * KMByteBlob.length(data[SECRET]))) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
     } else {
@@ -3261,7 +3307,8 @@ public class KMKeymasterDevice {
       index += 2;
     }
     // Read Minimum Mac length - it must not be present
-    KMTag.assertAbsence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,KMError.INVALID_TAG);
+    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,
+        KMError.INVALID_TAG);
     // Check whether key can be created
     seProvider.importSymmetricKey(
         KMType.DES,
@@ -3289,13 +3336,13 @@ public class KMKeymasterDevice {
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     if (keysize != KMType.INVALID_VALUE) {
-      if(keysize != (short)( 8 * KMByteBlob.length(data[SECRET]))) {
+      if (keysize != (short) (8 * KMByteBlob.length(data[SECRET]))) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
-      }	
+      }
       validateAesKeySize(keysize);
     } else {
       // add the key size to scratchPad
-      keysize = (short) ( 8 * KMByteBlob.length(data[SECRET]));
+      keysize = (short) (8 * KMByteBlob.length(data[SECRET]));
       validateAesKeySize(keysize);
       keysize = KMInteger.uint_16(keysize);
       short keysizeTag = KMIntegerTag.instance(KMType.UINT_TAG, KMType.KEYSIZE, keysize);
@@ -3322,13 +3369,13 @@ public class KMKeymasterDevice {
     KMPKCS8Decoder pkcs8 = KMPKCS8Decoder.instance();
     short keyblob = pkcs8.decodeRsa(data[IMPORTED_KEY_BLOB]);
     data[PUB_KEY] = KMArray.get(keyblob, (short) 0);
-    short pubKeyExp = KMArray.get(keyblob, (short)1);
+    short pubKeyExp = KMArray.get(keyblob, (short) 1);
     data[SECRET] = KMArray.get(keyblob, (short) 2);
-    if(F4.length != KMByteBlob.length(pubKeyExp)){
+    if (F4.length != KMByteBlob.length(pubKeyExp)) {
       KMException.throwIt(KMError.INVALID_KEY_BLOB);
     }
-    if(Util.arrayCompare(F4, (short)0, KMByteBlob.getBuffer(pubKeyExp),
-        KMByteBlob.getStartOff(pubKeyExp), (short)F4.length) != 0){
+    if (Util.arrayCompare(F4, (short) 0, KMByteBlob.getBuffer(pubKeyExp),
+        KMByteBlob.getStartOff(pubKeyExp), (short) F4.length) != 0) {
       KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
     }
     short index = 0; // index in scratchPad for update parameters.
@@ -3363,12 +3410,12 @@ public class KMKeymasterDevice {
     short kSize = (short) (KMByteBlob.length(data[SECRET]) * 8);
     if (keysize != KMType.INVALID_VALUE) {
       if (keysize != 2048
-          || keysize != kSize ) {
+          || keysize != kSize) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
     } else {
-      if(2048 != kSize){
-    	KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);  
+      if (2048 != kSize) {
+        KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
       }
       // add the key size to scratchPad
       keysize = KMInteger.uint_16((short) 2048);
@@ -3404,7 +3451,7 @@ public class KMKeymasterDevice {
     short updatedParams = KMArray.instance(len); // update params
 
     len = KMArray.length(params);
-    short index  = 0;
+    short index = 0;
 
     // copy the existing key parameters to updated array
     while (index < len) {
@@ -3426,7 +3473,7 @@ public class KMKeymasterDevice {
     data[KEY_PARAMETERS] = KMKeyParameters.instance(updatedParams);
   }
 
-  private short initStrongBoxCmd(APDU apdu){
+  private short initStrongBoxCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 3);
     KMArray.add(cmd, (short) 0, KMInteger.exp()); //OS version
     KMArray.add(cmd, (short) 1, KMInteger.exp()); //OS patch level
@@ -3465,31 +3512,31 @@ public class KMKeymasterDevice {
   }
 
   protected void initSystemBootParams() {
-      short empty = KMInteger.uint_16((short) 0);
-      setOsVersion(empty);
-      setOsPatchLevel(empty);
-      setVendorPatchLevel(empty);
+    short empty = KMInteger.uint_16((short) 0);
+    setOsVersion(empty);
+    setOsPatchLevel(empty);
+    setVendorPatchLevel(empty);
   }
 
-  protected void setOsVersion(short version){
+  protected void setOsVersion(short version) {
     writeData(KMDataStoreConstants.OS_VERSION, KMInteger.getBuffer(version),
         KMInteger.getStartOff(version),
         KMInteger.length(version));
   }
 
-  protected void setOsPatchLevel(short patch){
+  protected void setOsPatchLevel(short patch) {
     writeData(KMDataStoreConstants.OS_PATCH_LEVEL, KMInteger.getBuffer(patch),
         KMInteger.getStartOff(patch),
         KMInteger.length(patch));
   }
 
-  protected void setVendorPatchLevel(short patch){
+  protected void setVendorPatchLevel(short patch) {
     writeData(KMDataStoreConstants.VENDOR_PATCH_LEVEL, KMInteger.getBuffer(patch),
         KMInteger.getStartOff(patch),
         KMInteger.length(patch));
   }
 
-  private short generateKeyCmd(APDU apdu){
+  private short generateKeyCmd(APDU apdu) {
     short params = KMKeyParameters.expAny();
     // Array of expected arguments
     short cmd = KMArray.instance((short) 1);
@@ -3503,15 +3550,19 @@ public class KMKeymasterDevice {
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
     data[KEY_PARAMETERS] = KMArray.get(cmd, (short) 0);
-    data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
+    data[CERTIFICATE] = KMArray.instance((short) 0); //by default the cert is empty.
     // ROLLBACK_RESISTANCE not supported.
-    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG,KMType.ROLLBACK_RESISTANCE, KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
+    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE,
+        KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
     // BOOTLOADER_ONLY keys not supported.
-    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY, KMError.INVALID_KEY_BLOB);
+    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY,
+        KMError.INVALID_KEY_BLOB);
     // Algorithm must be present
-    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
+    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM,
+        KMError.INVALID_ARGUMENT);
     // As per specification Early boot keys may be created after early boot ended.
-    validateEarlyBoot(data[KEY_PARAMETERS], INS_GENERATE_KEY_CMD, scratchPad, (short)0, KMError.EARLY_BOOT_ENDED);
+    validateEarlyBoot(data[KEY_PARAMETERS], INS_GENERATE_KEY_CMD, scratchPad, (short) 0,
+        KMError.EARLY_BOOT_ENDED);
     validatePurpose(data[KEY_PARAMETERS]);
     //Check if the tags are supported.
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
@@ -3591,19 +3642,21 @@ public class KMKeymasterDevice {
   }
 
   private short generateAttestKeyCmd(APDU apdu) {
-	return receiveIncoming(apdu, generateAttestKeyExp());
+    return receiveIncoming(apdu, generateAttestKeyExp());
   }
 
   protected void processGetCertChainCmd(APDU apdu) {
     // Make the response
-    short certChainLen = storeDataInst.getCertificateDataLength(KMDataStoreConstants.CERTIFICATE_CHAIN);
+    short certChainLen = storeDataInst.getCertificateDataLength(
+        KMDataStoreConstants.CERTIFICATE_CHAIN);
     short int32Ptr = KMInteger.uint_16(KMError.OK);
     short maxByteHeaderLen = 3; // Maximum possible ByteBlob header len.
     short arrayHeaderLen = 1;
     // Allocate maximum possible buffer.
     // Add arrayHeader + (PowerResetStatus + KMError.OK) + Byte Header
     encoder.getEncodedLength(int32Ptr);
-    short totalLen = (short) (arrayHeaderLen + encoder.getEncodedLength(int32Ptr) + maxByteHeaderLen + certChainLen);
+    short totalLen = (short) (arrayHeaderLen + encoder.getEncodedLength(int32Ptr) + maxByteHeaderLen
+        + certChainLen);
     short certChain = KMByteBlob.instance(totalLen);
     // copy the certificate chain to the end of the buffer.
     storeDataInst.readCertificateData(
@@ -3616,7 +3669,8 @@ public class KMKeymasterDevice {
         KMByteBlob.getStartOff(certChain),
         KMByteBlob.length(certChain),
         int32Ptr, // uint32 ptr
-        (short) (KMByteBlob.getStartOff(certChain) + totalLen - certChainLen), // start pos of cert chain.
+        (short) (KMByteBlob.getStartOff(certChain) + totalLen - certChainLen),
+        // start pos of cert chain.
         certChainLen);
     apdu.setOutgoing();
     apdu.setOutgoingLength(KMByteBlob.length(certChain));
@@ -3631,8 +3685,8 @@ public class KMKeymasterDevice {
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
     getAttestKeyInputParameters(cmd, data, KEY_BLOB, KEY_PARAMETERS, ATTEST_KEY_BLOB,
-    		        ATTEST_KEY_PARAMS, ATTEST_KEY_ISSUER);
-    data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
+        ATTEST_KEY_PARAMS, ATTEST_KEY_ISSUER);
+    data[CERTIFICATE] = KMArray.instance((short) 0); //by default the cert is empty.
 
     // Check for app id and app data.
     data[APP_ID] =
@@ -3661,12 +3715,12 @@ public class KMKeymasterDevice {
     sendOutgoing(apdu, resp);
   }
 
-  private short getAttestationMode(short attKeyBlob, short attChallenge){
+  private short getAttestationMode(short attKeyBlob, short attChallenge) {
     short alg = KMKeyParameters.findTag(data[HW_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM);
     short mode = KMType.NO_CERT;
     // TODO Keymaster specification: Symmetric keys with challenge should return error.
-    if(KMEnumTag.getValue(alg) != KMType.RSA &&
-        KMEnumTag.getValue(alg) != KMType.EC){
+    if (KMEnumTag.getValue(alg) != KMType.RSA &&
+        KMEnumTag.getValue(alg) != KMType.EC) {
       return mode;
     }
     // If attestation keyblob present
@@ -3683,27 +3737,29 @@ public class KMKeymasterDevice {
     return mode;
   }
 
-  private  void generateAttestation(short attKeyBlob, short attKeyParam, byte[] scratchPad){
+  private void generateAttestation(short attKeyBlob, short attKeyParam, byte[] scratchPad) {
     // Device unique attestation not supported
-    KMTag.assertAbsence(data[KEY_PARAMETERS],KMType.BOOL_TAG,KMType.DEVICE_UNIQUE_ATTESTATION,KMError.CANNOT_ATTEST_IDS);
+    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.DEVICE_UNIQUE_ATTESTATION,
+        KMError.CANNOT_ATTEST_IDS);
     // Read attestation challenge if present
     short attChallenge =
-        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_CHALLENGE);
-    if(attChallenge != KMType.INVALID_VALUE){
+        KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.BYTES_TAG,
+            KMType.ATTESTATION_CHALLENGE);
+    if (attChallenge != KMType.INVALID_VALUE) {
       attChallenge = KMByteTag.getValue(attChallenge);
     }
     // No attestation required for symmetric keys
     short mode = getAttestationMode(attKeyBlob, attChallenge);
     KMAttestationCert cert = null;
 
-    switch (mode){
+    switch (mode) {
       case KMType.ATTESTATION_CERT:
         cert = makeAttestationCert(attKeyBlob, attKeyParam, attChallenge, data[ATTEST_KEY_ISSUER],
             data[HW_PARAMETERS], data[SW_PARAMETERS], data[KEY_PARAMETERS], scratchPad);
         break;
       case KMType.SELF_SIGNED_CERT:
         //cert = makeCert(attKeyBlob, attKeyParam, scratchPad);
-        cert = makeSelfSignedCert(data[SECRET], data[PUB_KEY],scratchPad);
+        cert = makeSelfSignedCert(data[SECRET], data[PUB_KEY], scratchPad);
         break;
       case KMType.FACTORY_PROVISIONED_ATTEST_CERT:
         cert = makeCertWithFactoryProvisionedKey(attChallenge, scratchPad);
@@ -3713,7 +3769,7 @@ public class KMKeymasterDevice {
         cert = makeSelfSignedCert(KMType.INVALID_VALUE, data[PUB_KEY], scratchPad);
         break;
       default:
-        data[CERTIFICATE] = KMArray.instance((short)0);
+        data[CERTIFICATE] = KMArray.instance((short) 0);
         return;
     }
     // Allocate memory
@@ -3729,25 +3785,24 @@ public class KMKeymasterDevice {
     KMByteBlob.setStartOff(certData, cert.getCertStart());
     KMByteBlob.setLength(certData, cert.getCertLength());
     // Initialize the certificate as array of blob
-    data[CERTIFICATE] = KMArray.instance((short)1);
-    KMArray.add(data[CERTIFICATE], (short)0, certData);
+    data[CERTIFICATE] = KMArray.instance((short) 1);
+    KMArray.add(data[CERTIFICATE], (short) 0, certData);
   }
 
   /**
-   * 1) If attestation key is present and attestation challenge is absent then it is an error.
-   * 2) If attestation key is absent and attestation challenge is present then it is an error as
-   * factory provisioned attestation key is not supported.
-   * 3) If both are present and issuer is absent or attest key purpose is not ATTEST_KEY then it is an error.
-   * 4) If the generated/imported keys are RSA or EC then validity period must be specified.
-   * Device Unique Attestation is not supported.
+   * 1) If attestation key is present and attestation challenge is absent then it is an error. 2) If
+   * attestation key is absent and attestation challenge is present then it is an error as factory
+   * provisioned attestation key is not supported. 3) If both are present and issuer is absent or
+   * attest key purpose is not ATTEST_KEY then it is an error. 4) If the generated/imported keys are
+   * RSA or EC then validity period must be specified. Device Unique Attestation is not supported.
    */
 
   private static void validateRSAKey(byte[] scratchPad) {
     // Read key size
-    if(!KMTag.isValidKeySize(data[KEY_PARAMETERS])){
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
     }
-    if(!KMTag.isValidPublicExponent(data[KEY_PARAMETERS])){
+    if (!KMTag.isValidPublicExponent(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
   }
@@ -3776,17 +3831,18 @@ public class KMKeymasterDevice {
 
   private static void validateAESKey() {
     // Read key size
-    if(!KMTag.isValidKeySize(data[KEY_PARAMETERS])){
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
     }
     // Read Block mode - array of byte values
-    if(KMTag.isPresent(data[KEY_PARAMETERS],KMType.ENUM_ARRAY_TAG,KMType.BLOCK_MODE)){
+    if (KMTag.isPresent(data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.BLOCK_MODE)) {
       short blockModes =
           KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.BLOCK_MODE);
       // If it is a GCM mode
-      if (KMEnumArrayTag.contains(blockModes, KMType.GCM)){
+      if (KMEnumArrayTag.contains(blockModes, KMType.GCM)) {
         // Min mac length must be present
-        KMTag.assertPresence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, KMError.MISSING_MIN_MAC_LENGTH);
+        KMTag.assertPresence(data[KEY_PARAMETERS], KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,
+            KMError.MISSING_MIN_MAC_LENGTH);
         short macLength =
             KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.UINT_TAG, KMType.MIN_MAC_LENGTH);
         macLength = KMIntegerTag.getValue(macLength);
@@ -3806,7 +3862,7 @@ public class KMKeymasterDevice {
     validateAESKey();
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
-    short len  =
+    short len =
         seProvider.createSymmetricKey(KMType.AES, keysize, scratchPad, (short) 0);
     data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, len);
     data[KEY_BLOB] = KMArray.instance((short) 4);
@@ -3815,7 +3871,7 @@ public class KMKeymasterDevice {
   public void validateECKeys() {
     // Read key size
     short eccurve = KMEnumTag.getValue(KMType.ECCURVE, data[KEY_PARAMETERS]);
-    if(!KMTag.isValidKeySize(data[KEY_PARAMETERS])){
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
       if (eccurve == KMType.INVALID_VALUE) {
         KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
       } else if (eccurve != KMType.P_256) {
@@ -3827,7 +3883,8 @@ public class KMKeymasterDevice {
   private void generateECKeys(byte[] scratchPad) {
     validateECKeys();
     short[] lengths = tmpVariables;
-    seProvider.createAsymmetricKey(KMType.EC, scratchPad, (short) 0, (short) 128, scratchPad, (short) 128,
+    seProvider.createAsymmetricKey(KMType.EC, scratchPad, (short) 0, (short) 128, scratchPad,
+        (short) 128,
         (short) 128, lengths);
     data[PUB_KEY] = KMByteBlob.instance(scratchPad, (short) 128, lengths[1]);
     data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, lengths[0]);
@@ -3836,11 +3893,12 @@ public class KMKeymasterDevice {
   }
 
   private static void validateTDESKey() {
-    if(!KMTag.isValidKeySize(data[KEY_PARAMETERS])){
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
     }
     // Read Minimum Mac length - it must not be present
-    KMTag.assertAbsence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,KMError.INVALID_TAG);
+    KMTag.assertAbsence(data[KEY_PARAMETERS], KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,
+        KMError.INVALID_TAG);
   }
 
   private void generateTDESKey(byte[] scratchPad) {
@@ -3852,7 +3910,8 @@ public class KMKeymasterDevice {
 
   private void validateHmacKey() {
     // If params does not contain any digest throw unsupported digest error.
-    KMTag.assertPresence(data[KEY_PARAMETERS],KMType.ENUM_ARRAY_TAG,KMType.DIGEST,KMError.UNSUPPORTED_DIGEST);
+    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.DIGEST,
+        KMError.UNSUPPORTED_DIGEST);
 
     // check whether digest sizes are greater then or equal to min mac length.
     // Only SHA256 digest must be supported.
@@ -3860,7 +3919,8 @@ public class KMKeymasterDevice {
       KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
     }
     // Read Minimum Mac length
-    KMTag.assertPresence(data[KEY_PARAMETERS],KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, KMError.MISSING_MIN_MAC_LENGTH);
+    KMTag.assertPresence(data[KEY_PARAMETERS], KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,
+        KMError.MISSING_MIN_MAC_LENGTH);
     short minMacLength =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[KEY_PARAMETERS]);
 
@@ -3870,14 +3930,15 @@ public class KMKeymasterDevice {
       KMException.throwIt(KMError.UNSUPPORTED_MIN_MAC_LENGTH);
     }
     // Read Keysize
-    if(!KMTag.isValidKeySize(data[KEY_PARAMETERS])){
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
     }
   }
 
   private void generateHmacKey(byte[] scratchPad) {
     validateHmacKey();
-    short keysize = KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
+    short keysize = KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE,
+        data[KEY_PARAMETERS]);
     // generate HMAC Key
     short len = seProvider.createSymmetricKey(KMType.HMAC, keysize, scratchPad, (short) 0);
     data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, len);
@@ -3924,13 +3985,13 @@ public class KMKeymasterDevice {
     }
   }
 
-  protected short getBootPatchLevel(byte[] scratchPad){
-    Util.arrayFillNonAtomic(scratchPad,(short)0, BOOT_PATCH_LVL_SIZE, (byte)0);
-    short len = bootParamsProv.getBootPatchLevel(scratchPad,(short)0);
-    if(len != BOOT_PATCH_LVL_SIZE){
+  protected short getBootPatchLevel(byte[] scratchPad) {
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, BOOT_PATCH_LVL_SIZE, (byte) 0);
+    short len = bootParamsProv.getBootPatchLevel(scratchPad, (short) 0);
+    if (len != BOOT_PATCH_LVL_SIZE) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    return KMInteger.uint_32(scratchPad, (short)0);
+    return KMInteger.uint_32(scratchPad, (short) 0);
   }
 
   private void makeKeyCharacteristics(byte[] scratchPad) {
@@ -3985,7 +4046,8 @@ public class KMKeymasterDevice {
     data[KEY_BLOB] = KMByteBlob.instance(repository.getHeap(), buffer, keyBlob);
   }
 
-  private short parseEncryptedKeyBlob(short keyBlob, short appId, short appData, byte[] scratchPad) {
+  private short parseEncryptedKeyBlob(short keyBlob, short appId, short appData,
+      byte[] scratchPad) {
     short parsedBlob = KMType.INVALID_VALUE;
     short rot = readROT(scratchPad);
     if (rot == KMType.INVALID_VALUE) {
@@ -3993,16 +4055,16 @@ public class KMKeymasterDevice {
     }
     try {
       parsedBlob = decoder.decodeArray(keyBlob(),
-              KMByteBlob.getBuffer(keyBlob),
-              KMByteBlob.getStartOff(keyBlob),
-              KMByteBlob.length(keyBlob));
+          KMByteBlob.getBuffer(keyBlob),
+          KMByteBlob.getStartOff(keyBlob),
+          KMByteBlob.length(keyBlob));
       if (KMArray.length(parsedBlob) < 4) {
         KMException.throwIt(KMError.INVALID_KEY_BLOB);
       }
 
       // initialize data
       data[SECRET] = KMArray.get(parsedBlob, KEY_BLOB_SECRET);
-      data[NONCE]= KMArray.get(parsedBlob, KEY_BLOB_NONCE);
+      data[NONCE] = KMArray.get(parsedBlob, KEY_BLOB_NONCE);
       data[AUTH_TAG] = KMArray.get(parsedBlob, KEY_BLOB_AUTH_TAG);
       data[KEY_CHARACTERISTICS] = KMArray.get(parsedBlob, KEY_BLOB_PARAMS);
       data[PUB_KEY] = KMType.INVALID_VALUE;
@@ -4013,7 +4075,7 @@ public class KMKeymasterDevice {
       data[TEE_PARAMETERS] = KMKeyCharacteristics.getTeeEnforced(data[KEY_CHARACTERISTICS]);
       data[SB_PARAMETERS] = KMKeyCharacteristics.getStrongboxEnforced(data[KEY_CHARACTERISTICS]);
       data[SW_PARAMETERS] = KMKeyCharacteristics.getKeystoreEnforced(data[KEY_CHARACTERISTICS]);
-      data[HW_PARAMETERS] = getHardwareParamters( data[SB_PARAMETERS], data[TEE_PARAMETERS]);
+      data[HW_PARAMETERS] = getHardwareParamters(data[SB_PARAMETERS], data[TEE_PARAMETERS]);
 
       data[HIDDEN_PARAMETERS] = KMKeyParameters.makeHidden(appId, appData, rot, scratchPad);
       data[KEY_BLOB] = parsedBlob;
@@ -4030,27 +4092,27 @@ public class KMKeymasterDevice {
 
   // Read RoT
   public short readROT(byte[] scratchPad) {
-    Util.arrayFillNonAtomic(scratchPad,(short)0, (short)256,(byte)0);
-    short len = bootParamsProv.getBootKey(scratchPad, (short)0);
-    len += bootParamsProv.getVerifiedBootHash(scratchPad, (short)len);
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, (short) 256, (byte) 0);
+    short len = bootParamsProv.getBootKey(scratchPad, (short) 0);
+    len += bootParamsProv.getVerifiedBootHash(scratchPad, (short) len);
     short bootState = bootParamsProv.getBootState();
     len = Util.setShort(scratchPad, len, bootState);
-    if(bootParamsProv.isDeviceBootLocked()){
-      scratchPad[len] = (byte)1;
-    }else{
-      scratchPad[len] = (byte)0;
+    if (bootParamsProv.isDeviceBootLocked()) {
+      scratchPad[len] = (byte) 1;
+    } else {
+      scratchPad[len] = (byte) 0;
     }
     len++;
-    return KMByteBlob.instance(scratchPad,(short)0,len);
+    return KMByteBlob.instance(scratchPad, (short) 0, len);
   }
 
   private void decryptSecret(byte[] scratchPad) {
     // derive master key - stored in derivedKey
     short len = deriveKey(scratchPad);
-        if (!seProvider.aesGCMDecrypt(
-            KMByteBlob.getBuffer(data[DERIVED_KEY]),
-            KMByteBlob.getStartOff(data[DERIVED_KEY]),
-            KMByteBlob.length(data[DERIVED_KEY]),
+    if (!seProvider.aesGCMDecrypt(
+        KMByteBlob.getBuffer(data[DERIVED_KEY]),
+        KMByteBlob.getStartOff(data[DERIVED_KEY]),
+        KMByteBlob.length(data[DERIVED_KEY]),
         KMByteBlob.getBuffer(data[SECRET]),
         KMByteBlob.getStartOff(data[SECRET]),
         KMByteBlob.length(data[SECRET]),
@@ -4085,29 +4147,29 @@ public class KMKeymasterDevice {
         KMByteBlob.length(data[NONCE]));
     // derive master key - stored in derivedKey
     short len = deriveKey(scratchPad);
-        len = seProvider.aesGCMEncrypt(
-            KMByteBlob.getBuffer(data[DERIVED_KEY]),
-            KMByteBlob.getStartOff(data[DERIVED_KEY]),
-            KMByteBlob.length(data[DERIVED_KEY]),
-            KMByteBlob.getBuffer(data[SECRET]),
-            KMByteBlob.getStartOff(data[SECRET]),
-            KMByteBlob.length(data[SECRET]),
-            scratchPad,
-            (short) 0,
-            KMByteBlob.getBuffer(data[NONCE]),
-            KMByteBlob.getStartOff(data[NONCE]),
-            KMByteBlob.length(data[NONCE]),
-            repository.getHeap(),
-            data[AUTH_DATA],
-            data[AUTH_DATA_LENGTH],
-            KMByteBlob.getBuffer(data[AUTH_TAG]),
-            KMByteBlob.getStartOff(data[AUTH_TAG]),
-            KMByteBlob.length(data[AUTH_TAG]));
+    len = seProvider.aesGCMEncrypt(
+        KMByteBlob.getBuffer(data[DERIVED_KEY]),
+        KMByteBlob.getStartOff(data[DERIVED_KEY]),
+        KMByteBlob.length(data[DERIVED_KEY]),
+        KMByteBlob.getBuffer(data[SECRET]),
+        KMByteBlob.getStartOff(data[SECRET]),
+        KMByteBlob.length(data[SECRET]),
+        scratchPad,
+        (short) 0,
+        KMByteBlob.getBuffer(data[NONCE]),
+        KMByteBlob.getStartOff(data[NONCE]),
+        KMByteBlob.length(data[NONCE]),
+        repository.getHeap(),
+        data[AUTH_DATA],
+        data[AUTH_DATA_LENGTH],
+        KMByteBlob.getBuffer(data[AUTH_TAG]),
+        KMByteBlob.getStartOff(data[AUTH_TAG]),
+        KMByteBlob.length(data[AUTH_TAG]));
 
     if (len > 0 && len != KMByteBlob.length(data[SECRET])) {
       KMException.throwIt(KMError.INVALID_KEY_BLOB);
     }
-    data[SECRET] = KMByteBlob.instance(scratchPad, (short)0, len);
+    data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, len);
   }
 
   private void makeAuthData(byte[] scratchPad) {
@@ -4164,15 +4226,15 @@ public class KMKeymasterDevice {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
     len = 16;
-    data[DERIVED_KEY] = KMByteBlob.instance(scratchPad, (short)0, len);
+    data[DERIVED_KEY] = KMByteBlob.instance(scratchPad, (short) 0, len);
     return len;
   }
 
   public void sendError(APDU apdu, short err) {
-    short resp = KMArray.instance((short)1);
+    short resp = KMArray.instance((short) 1);
     err = KMError.translate(err);
     short error = KMInteger.uint_16(err);
-    KMArray.add(resp, (short)0, error);
+    KMArray.add(resp, (short) 0, error);
     sendOutgoing(apdu, resp);
   }
 
@@ -4212,7 +4274,7 @@ public class KMKeymasterDevice {
     makeKeyCharacteristics(scratchPad);
     createEncryptedKeyBlob(scratchPad);
   }
-  
+
   public static short getPubKey() {
     return data[PUB_KEY];
   }
@@ -4224,10 +4286,10 @@ public class KMKeymasterDevice {
   /**
    * Encodes the object to the provided apdu buffer.
    *
-   * @param object  Object to be encoded.
+   * @param object Object to be encoded.
    * @param apduBuf Buffer on which the encoded data is copied.
    * @param apduOff Start offset of the buffer.
-   * @param maxLen  Max value of the expected out length.
+   * @param maxLen Max value of the expected out length.
    * @return length of the encoded buffer.
    */
   public short encodeToApduBuffer(short object, byte[] apduBuf, short apduOff,
@@ -4241,34 +4303,34 @@ public class KMKeymasterDevice {
   }
 
 
-
   private void updateTrustedConfirmationOperation(KMOperationState op) {
     if (op.isTrustedConfirmationRequired()) {
       op.getTrustedConfirmationSigner().update(KMByteBlob.getBuffer(data[INPUT_DATA]),
-	KMByteBlob.getStartOff(data[INPUT_DATA]), KMByteBlob.length(data[INPUT_DATA]));
+          KMByteBlob.getStartOff(data[INPUT_DATA]), KMByteBlob.length(data[INPUT_DATA]));
     }
   }
 
   private void finishTrustedConfirmationOperation(KMOperationState op) {
-	// Perform trusted confirmation if required
-	if (op.isTrustedConfirmationRequired()) {	
-	  short confToken = getConfirmationToken(data[CONFIRMATION_TOKEN], data[KEY_PARAMETERS]);	
-	  boolean verified = op.getTrustedConfirmationSigner().verify(KMByteBlob.getBuffer(data[INPUT_DATA]),
-	    KMByteBlob.getStartOff(data[INPUT_DATA]), KMByteBlob.length(data[INPUT_DATA]),
-		KMByteBlob.getBuffer(confToken),
-		KMByteBlob.getStartOff(confToken),
-		KMByteBlob.length(confToken));
-	  if (!verified) {
-		KMException.throwIt(KMError.NO_USER_CONFIRMATION);
-	  }
-	}
+    // Perform trusted confirmation if required
+    if (op.isTrustedConfirmationRequired()) {
+      short confToken = getConfirmationToken(data[CONFIRMATION_TOKEN], data[KEY_PARAMETERS]);
+      boolean verified = op.getTrustedConfirmationSigner()
+          .verify(KMByteBlob.getBuffer(data[INPUT_DATA]),
+              KMByteBlob.getStartOff(data[INPUT_DATA]), KMByteBlob.length(data[INPUT_DATA]),
+              KMByteBlob.getBuffer(confToken),
+              KMByteBlob.getStartOff(confToken),
+              KMByteBlob.length(confToken));
+      if (!verified) {
+        KMException.throwIt(KMError.NO_USER_CONFIRMATION);
+      }
+    }
   }
-  
+
   public short getHardwareInfo() {
-	short respPtr = KMArray.instance((short) 4);
-	KMArray.add(respPtr, (short) 0, buildErrorStatus(KMError.OK));
-	KMArray.add(respPtr, (short) 1, KMEnum.instance(KMType.HARDWARE_TYPE, KMType.STRONGBOX));
-    KMArray.add(respPtr, 
+    short respPtr = KMArray.instance((short) 4);
+    KMArray.add(respPtr, (short) 0, buildErrorStatus(KMError.OK));
+    KMArray.add(respPtr, (short) 1, KMEnum.instance(KMType.HARDWARE_TYPE, KMType.STRONGBOX));
+    KMArray.add(respPtr,
         (short) 2,
         KMByteBlob.instance(
             JAVACARD_KEYMASTER_DEVICE, (short) 0, (short) JAVACARD_KEYMASTER_DEVICE.length));
@@ -4293,7 +4355,7 @@ public class KMKeymasterDevice {
   }
 
   public short makeKeyCharacteristicsForKeyblob(short swParams, short sbParams, short teeParams) {
-	short keyChars = KMKeyCharacteristics.instance();
+    short keyChars = KMKeyCharacteristics.instance();
     KMKeyCharacteristics.setStrongboxEnforced(keyChars, sbParams);
     KMKeyCharacteristics.setKeystoreEnforced(keyChars, swParams);
     KMKeyCharacteristics.setTeeEnforced(keyChars, teeParams);
@@ -4304,11 +4366,13 @@ public class KMKeymasterDevice {
     return KMKeyCharacteristics.exp();
   }
 
-  public void validateEarlyBoot(short Params, byte inst, byte[] sPad, short sPadOff, short errorCode) {
-	
+  public void validateEarlyBoot(short Params, byte inst, byte[] sPad, short sPadOff,
+      short errorCode) {
+
     // As per specification, Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
     // provided to IKeyMintDevice::importKey
-    if (inst == INS_IMPORT_KEY_CMD || readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS, sPad, sPadOff)) {
+    if (inst == INS_IMPORT_KEY_CMD || readBoolean(KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS,
+        sPad, sPadOff)) {
       // Validate early boot
       KMTag.assertAbsence(Params, KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, errorCode);
     }
@@ -4408,27 +4472,27 @@ public class KMKeymasterDevice {
   public short getMgf1Digest(short keyParams, short hwParams) {
     return KMType.SHA1;
   }
-  
-//This function masks the error code with POWER_RESET_MASK_FLAG
- // in case if card reset event occurred. The clients of the Applet
- // has to extract the power reset status from the error code and
- // process accordingly.
-  public short buildErrorStatus(short err) {
-     short int32Ptr = KMInteger.instance((short) 4);
-     short powerResetStatus = 0;
-     if (seProvider.isPowerReset(true)) {
-       powerResetStatus = POWER_RESET_MASK_FLAG;
-     }
-     Util.setShort(KMInteger.getBuffer(int32Ptr),
-       KMInteger.getStartOff(int32Ptr),
-       powerResetStatus);
 
-     Util.setShort(KMInteger.getBuffer(int32Ptr),
-       (short) (KMInteger.getStartOff(int32Ptr) + 2),
-       err);
-     return int32Ptr;
+  //This function masks the error code with POWER_RESET_MASK_FLAG
+  // in case if card reset event occurred. The clients of the Applet
+  // has to extract the power reset status from the error code and
+  // process accordingly.
+  public short buildErrorStatus(short err) {
+    short int32Ptr = KMInteger.instance((short) 4);
+    short powerResetStatus = 0;
+    if (seProvider.isPowerReset(true)) {
+      powerResetStatus = POWER_RESET_MASK_FLAG;
+    }
+    Util.setShort(KMInteger.getBuffer(int32Ptr),
+        KMInteger.getStartOff(int32Ptr),
+        powerResetStatus);
+
+    Util.setShort(KMInteger.getBuffer(int32Ptr),
+        (short) (KMInteger.getStartOff(int32Ptr) + 2),
+        err);
+    return int32Ptr;
   }
-  
+
   public short generateAttestKeyExp() {
     // Arguments
     short keyParams = KMKeyParameters.expAny();
@@ -4438,10 +4502,10 @@ public class KMKeymasterDevice {
     KMArray.add(argsProto, (short) 1, keyParams);
     return argsProto;
   }
-  
+
   public void getAttestKeyInputParameters(short arrPtr, short[] data, byte keyBlobOff,
-	      byte keyParametersOff,
-	      byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
+      byte keyParametersOff,
+      byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
     data[keyBlobOff] = KMArray.get(arrPtr, (short) 0);
     data[keyParametersOff] = KMArray.get(arrPtr, (short) 1);
     data[attestKeyBlobOff] = KMType.INVALID_VALUE;
@@ -4486,7 +4550,7 @@ public class KMKeymasterDevice {
     KMArray.add(cmd, (short) 4, verToken);
     return cmd;
   }
-  
+
   public void getUpdateInputParameters(short arrPtr, short[] data, byte opHandleOff,
       byte keyParametersOff, byte inputDataOff, byte hwTokenOff,
       byte verToken) {
@@ -4541,20 +4605,20 @@ public class KMKeymasterDevice {
   public boolean isAssociatedDataTagSupported() {
     return true;
   }
-  
+
   void assertPrivateOperation(short purpose, short algorithm) {
-    switch(algorithm) {
-    case KMType.RSA:
-      if (purpose == KMType.ENCRYPT || purpose == KMType.VERIFY) {
-        KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
-      }
-      break;
-    case KMType.EC:
-      if (purpose == KMType.VERIFY) {
-        KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
-      }
-      break;
-    default:
+    switch (algorithm) {
+      case KMType.RSA:
+        if (purpose == KMType.ENCRYPT || purpose == KMType.VERIFY) {
+          KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
+        }
+        break;
+      case KMType.EC:
+        if (purpose == KMType.VERIFY) {
+          KMException.throwIt(KMError.PUBLIC_KEY_OPERATION);
+        }
+        break;
+      default:
         break;
     }
   }

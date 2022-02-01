@@ -36,21 +36,21 @@ public class KMEnum extends KMType {
 
   private KMEnum() {
   }
-  
+
   public static void initStatics() {
     types = new short[]{
-		      HARDWARE_TYPE,
-		      KEY_FORMAT,
-		      KEY_DERIVATION_FUNCTION,
-		      VERIFIED_BOOT_STATE,
-		      DEVICE_LOCKED,
-		      USER_AUTH_TYPE,
-		      PURPOSE,
-		      ECCURVE,
-		      RULE
-		  };	  
+        HARDWARE_TYPE,
+        KEY_FORMAT,
+        KEY_DERIVATION_FUNCTION,
+        VERIFIED_BOOT_STATE,
+        DEVICE_LOCKED,
+        USER_AUTH_TYPE,
+        PURPOSE,
+        ECCURVE,
+        RULE
+    };
   }
-  
+
   private static KMEnum proto(short ptr) {
     if (prototype == null) {
       prototype = new KMEnum();
@@ -72,7 +72,7 @@ public class KMEnum extends KMType {
     validate(ptr);
     return proto(ptr);
   }
-  
+
   public static void validate(short ptr) {
     if (heap[ptr] != ENUM_TYPE) {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
@@ -172,22 +172,22 @@ public class KMEnum extends KMType {
     // return false if key does not exist
     return false;
   }
-  
+
   public static void setVal(short bPtr, byte val) {
     KMEnum.cast(bPtr).setVal(val);
   }
 
   public static byte getVal(short bPtr) {
-	return KMEnum.cast(bPtr).getVal();
+    return KMEnum.cast(bPtr).getVal();
   }
 
   public static void setEnumType(short bPtr, short type) {
-	KMEnum.cast(bPtr).setEnumType(type);
+    KMEnum.cast(bPtr).setEnumType(type);
   }
 
   public static short getEnumType(short bPtr) {
-	return KMEnum.cast(bPtr).getEnumType();
+    return KMEnum.cast(bPtr).getEnumType();
   }
 
-  
+
 }

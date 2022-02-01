@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.android.javacard.seprovider;
+
 import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.kmdevice.KMOperation;
 
@@ -76,7 +77,7 @@ public class KMPoolManager {
 
   private KMPoolManager() {
     cipherPool = new Object[(short) (CIPHER_ALGS.length * 4)];
- // Extra 4 algorithms are used to support TRUSTED_CONFIRMATION_REQUIRED feature.
+    // Extra 4 algorithms are used to support TRUSTED_CONFIRMATION_REQUIRED feature.
     signerPool = new Object[(short) ((SIG_ALGS.length * 4) + 4)];
     keyAgreementPool = new Object[(short) (KEY_AGREE_ALGS.length * 4)];
     operationPool = new Object[4];
@@ -104,7 +105,7 @@ public class KMPoolManager {
       index++;
     }
   }
-  
+
   // Create a signature instance of each algorithm once.
   private void initializeSignerPool() {
     short index = 0;
@@ -202,10 +203,10 @@ public class KMPoolManager {
     short index = 0;
     KMOperationImpl impl;
     Object[] oprPool;
-    if(isTrustedConfOpr) {
-    	oprPool = hmacSignOperationPool;
+    if (isTrustedConfOpr) {
+      oprPool = hmacSignOperationPool;
     } else {
-    	oprPool = operationPool;
+      oprPool = operationPool;
     }
     while (index < oprPool.length) {
       impl = (KMOperationImpl) oprPool[index];
@@ -241,7 +242,7 @@ public class KMPoolManager {
     short index = 0;
     while (index < MAX_OPERATION_INSTANCES) {
       if (((KMOperationImpl) operationPool[index]).isResourceMatches(obj)
-    		  || ((KMOperationImpl) hmacSignOperationPool[index]).isResourceMatches(obj)) {
+          || ((KMOperationImpl) hmacSignOperationPool[index]).isResourceMatches(obj)) {
         return true;
       }
       index++;

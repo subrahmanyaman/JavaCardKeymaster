@@ -21,8 +21,9 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCosePairByteBlobTag represents a key-value type, where key can be KMInteger or KMNInteger and value is
- * KMByteBlob type. struct{byte TAG_TYPE; short length; struct{short BYTE_BLOB_TYPE; short key; short value}}.
+ * KMCosePairByteBlobTag represents a key-value type, where key can be KMInteger or KMNInteger and
+ * value is KMByteBlob type. struct{byte TAG_TYPE; short length; struct{short BYTE_BLOB_TYPE; short
+ * key; short value}}.
  */
 public class KMCosePairByteBlobTag extends KMCosePairTagType {
 
@@ -83,12 +84,14 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
 
   @Override
   public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   @Override
   public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
   private static void createKeys() {
@@ -119,7 +122,8 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
     }
     short index = 0;
     while (index < (short) keys.length) {
-      if (0 == Util.arrayCompare((byte[]) keys[index], (short) 0, heap, offset, (short) ((byte[]) keys[index]).length)) {
+      if (0 == Util.arrayCompare((byte[]) keys[index], (short) 0, heap, offset,
+          (short) ((byte[]) keys[index]).length)) {
         return true;
       }
       index++;

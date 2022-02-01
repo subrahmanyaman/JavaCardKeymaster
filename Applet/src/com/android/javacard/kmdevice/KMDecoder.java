@@ -20,6 +20,7 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
+
 public class KMDecoder {
 
   // major types
@@ -263,7 +264,7 @@ public class KMDecoder {
       tagValueType = KMType.COSE_PAIR_SIMPLE_VALUE_TAG_TYPE;
     } else if (majorType == TSTR_TYPE) {
       tagValueType = KMType.COSE_PAIR_TEXT_STR_TAG_TYPE;
-    }else {
+    } else {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
     return tagValueType;
@@ -333,7 +334,7 @@ public class KMDecoder {
     short payloadLength = readMajorTypeWithPayloadLength(MAP_TYPE);
     // allowed tags
     short allowedTags = KMKeyParameters.getVals(exp);
-    short tagRule = KMArray.get(allowedTags, (short)0);
+    short tagRule = KMArray.get(allowedTags, (short) 0);
     boolean ignoreInvalidTags = KMEnum.getVal(tagRule) == KMType.IGNORE_INVALID_TAGS;
     short vals = KMArray.instance(payloadLength);
     short length = KMArray.length(allowedTags);
@@ -362,9 +363,9 @@ public class KMDecoder {
             obj = decode(tagClass);
             KMArray.add(vals, arrPos++, obj);
             break;
-          }catch(KMException e){
-            if(KMException.reason() == KMError.INVALID_TAG &&
-            !ignoreInvalidTags){
+          } catch (KMException e) {
+            if (KMException.reason() == KMError.INVALID_TAG &&
+                !ignoreInvalidTags) {
               KMException.throwIt(KMError.INVALID_TAG);
             }
             break;
@@ -384,7 +385,8 @@ public class KMDecoder {
 
   private short decodeEnumArrayTag(short exp) {
     readTagKey(KMEnumArrayTag.getTagType(exp));
-    return KMEnumArrayTag.instance(scratchBuf[TAG_KEY_OFFSET], decode(KMEnumArrayTag.getValues(exp)));
+    return KMEnumArrayTag.instance(scratchBuf[TAG_KEY_OFFSET],
+        decode(KMEnumArrayTag.getValues(exp)));
   }
 
   private short decodeIntegerArrayTag(short exp) {
@@ -604,7 +606,8 @@ public class KMDecoder {
       short offset = KMByteBlob.getStartOff(scratchpad);
       Util.arrayFillNonAtomic(input, offset, len, (byte) -1);
       Util.arrayCopyNonAtomic(buf, startOffset, input, (short) (offset + len), len);
-      KMUtils.subtract(input, offset, (short) (offset + len), (short) (offset + 2 * len), (byte) len);
+      KMUtils.subtract(input, offset, (short) (offset + len), (short) (offset + 2 * len),
+          (byte) len);
       inst = KMNInteger.instance(input, (short) (offset + 2 * len), len);
       incrementStartOff(len);
     }
@@ -630,14 +633,16 @@ public class KMDecoder {
 
   private short decodeTstr(short exp) {
     short payloadLength = readMajorTypeWithPayloadLength(TSTR_TYPE);
-    short inst = KMTextString.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET], payloadLength);
+    short inst = KMTextString.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET],
+        payloadLength);
     incrementStartOff(payloadLength);
     return inst;
   }
 
   private short decodeByteBlob(short exp) {
     short payloadLength = readMajorTypeWithPayloadLength(BYTES_TYPE);
-    short inst = KMByteBlob.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET], payloadLength);
+    short inst = KMByteBlob.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET],
+        payloadLength);
     incrementStartOff(payloadLength);
     return inst;
   }
@@ -718,7 +723,7 @@ public class KMDecoder {
   }
 
   public short readCertificateChainLengthAndHeaderLen(byte[] buf, short bufOffset,
-                                                      short bufLen) {
+      short bufLen) {
     bufferRef[0] = buf;
     scratchBuf[START_OFFSET] = bufOffset;
     scratchBuf[LEN_OFFSET] = (short) (bufOffset + bufLen);

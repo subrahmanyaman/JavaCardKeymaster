@@ -5,6 +5,7 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 public class KMSimpleValue extends KMType {
+
   private static KMSimpleValue prototype;
 
   public static final byte FALSE = (byte) 20;
@@ -56,9 +57,9 @@ public class KMSimpleValue extends KMType {
   }
 
   public static byte getValue(short bPtr) {
-	 return KMSimpleValue.cast(bPtr).getValue();  
+    return KMSimpleValue.cast(bPtr).getValue();
   }
-  
+
   private static boolean isSimpleValueValid(byte value) {
     switch (value) {
       case TRUE:

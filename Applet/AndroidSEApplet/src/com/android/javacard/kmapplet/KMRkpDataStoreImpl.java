@@ -1,3 +1,18 @@
+/*
+ * Copyright(C) 2022 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.android.javacard.kmapplet;
 
 import org.globalplatform.upgrade.Element;
@@ -21,7 +36,7 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
   private KMDeviceUniqueKey deviceUniqueKey;
   private KMDeviceUniqueKey testDeviceUniqueKey;
   private KMSEProvider seProvider;
-  
+
 
   public KMRkpDataStoreImpl(KMSEProvider provider) {
     seProvider = provider;
@@ -33,7 +48,8 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
       // use certificateData as Additional certficate chain.
       if (additionalCertData == null) {
         // First 2 bytes is reserved for length for all the 3 buffers.
-        additionalCertData = new byte[(short) (2 + KMConfigurations.ADDITIONAL_CERT_CHAIN_MAX_SIZE)];
+        additionalCertData = new byte[(short) (2
+            + KMConfigurations.ADDITIONAL_CERT_CHAIN_MAX_SIZE)];
       }
 
       if (bcc == null) {
@@ -45,12 +61,12 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
   @Override
   public void storeData(byte storeDataIndex, byte[] data, short offset, short length) {
     switch (storeDataIndex) {
-    case KMDataStoreConstants.ADDITIONAL_CERT_CHAIN:
-      persistAdditionalCertChain(data, offset, length);
-      break;
-    case KMDataStoreConstants.BOOT_CERT_CHAIN:
-      persistBootCertificateChain(data, offset, length);
-      break;
+      case KMDataStoreConstants.ADDITIONAL_CERT_CHAIN:
+        persistAdditionalCertChain(data, offset, length);
+        break;
+      case KMDataStoreConstants.BOOT_CERT_CHAIN:
+        persistBootCertificateChain(data, offset, length);
+        break;
     }
   }
 
@@ -86,7 +102,8 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
 
 
   @Override
-  public void createDeviceUniqueKey(boolean testMode, byte[] pubKey, short pubKeyOff, short pubKeyLen, byte[] privKey,
+  public void createDeviceUniqueKey(boolean testMode, byte[] pubKey, short pubKeyOff,
+      short pubKeyLen, byte[] privKey,
       short privKeyOff, short privKeyLen) {
     if (testMode) {
       createTestDeviceUniqueKey(pubKey, pubKeyOff, pubKeyLen, privKey, privKeyOff, privKeyLen);
@@ -104,25 +121,30 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
     }
   }
 
-  private void createTestDeviceUniqueKey(byte[] pubKey, short pubKeyOff, short pubKeyLen, byte[] privKey,
+  private void createTestDeviceUniqueKey(byte[] pubKey, short pubKeyOff, short pubKeyLen,
+      byte[] privKey,
       short privKeyOff, short privKeyLen) {
     if (testDeviceUniqueKey == null) {
-      testDeviceUniqueKey = seProvider.createDeviceUniqueKey(testDeviceUniqueKey, pubKey, pubKeyOff, pubKeyLen, privKey,
+      testDeviceUniqueKey = seProvider.createDeviceUniqueKey(testDeviceUniqueKey, pubKey, pubKeyOff,
+          pubKeyLen, privKey,
           privKeyOff, privKeyLen);
     } else {
-      seProvider.createDeviceUniqueKey(testDeviceUniqueKey, pubKey, pubKeyOff, pubKeyLen, privKey, privKeyOff,
+      seProvider.createDeviceUniqueKey(testDeviceUniqueKey, pubKey, pubKeyOff, pubKeyLen, privKey,
+          privKeyOff,
           privKeyLen);
     }
   }
 
-  private void createDeviceUniqueKey(byte[] pubKey, short pubKeyOff, short pubKeyLen, byte[] privKey, short privKeyOff,
+  private void createDeviceUniqueKey(byte[] pubKey, short pubKeyOff, short pubKeyLen,
+      byte[] privKey, short privKeyOff,
       short privKeyLen) {
     if (deviceUniqueKey == null) {
-      deviceUniqueKey = seProvider.createDeviceUniqueKey(deviceUniqueKey, pubKey, pubKeyOff, pubKeyLen, privKey,
+      deviceUniqueKey = seProvider.createDeviceUniqueKey(deviceUniqueKey, pubKey, pubKeyOff,
+          pubKeyLen, privKey,
           privKeyOff, privKeyLen);
     } else {
-    seProvider.createDeviceUniqueKey(deviceUniqueKey, pubKey, pubKeyOff, pubKeyLen, privKey,
-        privKeyOff, privKeyLen);
+      seProvider.createDeviceUniqueKey(deviceUniqueKey, pubKey, pubKeyOff, pubKeyLen, privKey,
+          privKeyOff, privKeyLen);
     }
   }
 
@@ -143,25 +165,27 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
 
   @Override
   public short getBackupPrimitiveByteCount() {
-    return seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY);
+    return seProvider.getBackupPrimitiveByteCount(
+        KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY);
   }
 
   @Override
   public short getBackupObjectCount() {
     // AdditionalCertificateChain - 1
     // BCC - 1
-    return (short) (2 + seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY));
+    return (short) (2 + seProvider.getBackupObjectCount(
+        KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY));
   }
 
   @Override
   public byte[] getData(byte dataStoreId) {
-    switch(dataStoreId) {
-    case KMDataStoreConstants.ADDITIONAL_CERT_CHAIN:
-      return additionalCertData;
-    case KMDataStoreConstants.BOOT_CERT_CHAIN:
-      return bcc;
-    default:
-      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    switch (dataStoreId) {
+      case KMDataStoreConstants.ADDITIONAL_CERT_CHAIN:
+        return additionalCertData;
+      case KMDataStoreConstants.BOOT_CERT_CHAIN:
+        return bcc;
+      default:
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     return null;
   }

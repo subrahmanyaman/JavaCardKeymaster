@@ -1,5 +1,5 @@
 /*
- * Copyright(C) 2020 The Android Open Source Project
+ * Copyright(C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,12 +38,11 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /**
- * KMRepository class manages persistent and volatile memory usage by the
- * applet. Note the repository is only used by applet and it is not intended to
- * be used by seProvider.
+ * KMRepository class manages persistent and volatile memory usage by the applet. Note the
+ * repository is only used by applet and it is not intended to be used by seProvider.
  */
 public class KMKeymintDataStore implements KMDataStore {
-  
+
 
   // Data table configuration
   private static final short DATA_INDEX_SIZE = 19;
@@ -99,7 +98,8 @@ public class KMKeymintDataStore implements KMDataStore {
   // certificate data constants.
   private static final short CERT_CHAIN_OFFSET = 0;
   private static final short CERT_ISSUER_OFFSET = KMConfigurations.CERT_CHAIN_MAX_SIZE;
-  private static final short CERT_EXPIRY_OFFSET = (short) (CERT_ISSUER_OFFSET + KMConfigurations.CERT_ISSUER_MAX_SIZE);
+  private static final short CERT_EXPIRY_OFFSET = (short) (CERT_ISSUER_OFFSET
+      + KMConfigurations.CERT_ISSUER_MAX_SIZE);
 
   // data table
   private byte[] dataTable;
@@ -114,7 +114,7 @@ public class KMKeymintDataStore implements KMDataStore {
   private KMPreSharedKey preSharedKey;
   private KMAttestationKey attestationKey;
   protected KMSEProvider seProvider;
-  
+
   // Data - originally was in repository
   private byte[] attIdBrand;
   private byte[] attIdDevice;
@@ -142,46 +142,46 @@ public class KMKeymintDataStore implements KMDataStore {
 
   private short mapTodataTableId(byte kmStoreId) {
     switch (kmStoreId) {
-    case KMDataStoreConstants.HMAC_NONCE:
-      return HMAC_NONCE;
-    case KMDataStoreConstants.OS_VERSION:
-      return OS_VERSION;
-    case KMDataStoreConstants.OS_PATCH_LEVEL:
-      return OS_PATCH_LEVEL;
-    case KMDataStoreConstants.VENDOR_PATCH_LEVEL:
-      return VENDOR_PATCH_LEVEL;
-    case KMDataStoreConstants.DEVICE_LOCKED_TIME:
-      return DEVICE_LOCKED_TIME;
-    case KMDataStoreConstants.DEVICE_LOCKED:
-      return DEVICE_LOCKED;
-    case KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY:
-      return DEVICE_LOCKED_PASSWORD_ONLY;
-    case KMDataStoreConstants.BOOT_ENDED_STATUS:
-      return BOOT_ENDED_STATUS;
-    case KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS:
-      return EARLY_BOOT_ENDED_STATUS;
-    case KMDataStoreConstants.PROVISIONED_LOCKED:
-      return PROVISIONED_LOCKED;
-    case KMDataStoreConstants.PROVISIONED_STATUS:
-      return PROVISIONED_STATUS;
-    case KMDataStoreConstants.AUTH_TAG_1:
-      return AUTH_TAG_1;
-    case KMDataStoreConstants.AUTH_TAG_2:
-      return AUTH_TAG_2;
-    case KMDataStoreConstants.AUTH_TAG_3:
-      return AUTH_TAG_3;
-    case KMDataStoreConstants.AUTH_TAG_4:
-      return AUTH_TAG_4;
-    case KMDataStoreConstants.AUTH_TAG_5:
-      return AUTH_TAG_5;
-    case KMDataStoreConstants.AUTH_TAG_6:
-      return AUTH_TAG_6;
-    case KMDataStoreConstants.AUTH_TAG_7:
-      return AUTH_TAG_7;
-    case KMDataStoreConstants.AUTH_TAG_8:
-      return AUTH_TAG_8;
-    default:
-      break;
+      case KMDataStoreConstants.HMAC_NONCE:
+        return HMAC_NONCE;
+      case KMDataStoreConstants.OS_VERSION:
+        return OS_VERSION;
+      case KMDataStoreConstants.OS_PATCH_LEVEL:
+        return OS_PATCH_LEVEL;
+      case KMDataStoreConstants.VENDOR_PATCH_LEVEL:
+        return VENDOR_PATCH_LEVEL;
+      case KMDataStoreConstants.DEVICE_LOCKED_TIME:
+        return DEVICE_LOCKED_TIME;
+      case KMDataStoreConstants.DEVICE_LOCKED:
+        return DEVICE_LOCKED;
+      case KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY:
+        return DEVICE_LOCKED_PASSWORD_ONLY;
+      case KMDataStoreConstants.BOOT_ENDED_STATUS:
+        return BOOT_ENDED_STATUS;
+      case KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS:
+        return EARLY_BOOT_ENDED_STATUS;
+      case KMDataStoreConstants.PROVISIONED_LOCKED:
+        return PROVISIONED_LOCKED;
+      case KMDataStoreConstants.PROVISIONED_STATUS:
+        return PROVISIONED_STATUS;
+      case KMDataStoreConstants.AUTH_TAG_1:
+        return AUTH_TAG_1;
+      case KMDataStoreConstants.AUTH_TAG_2:
+        return AUTH_TAG_2;
+      case KMDataStoreConstants.AUTH_TAG_3:
+        return AUTH_TAG_3;
+      case KMDataStoreConstants.AUTH_TAG_4:
+        return AUTH_TAG_4;
+      case KMDataStoreConstants.AUTH_TAG_5:
+        return AUTH_TAG_5;
+      case KMDataStoreConstants.AUTH_TAG_6:
+        return AUTH_TAG_6;
+      case KMDataStoreConstants.AUTH_TAG_7:
+        return AUTH_TAG_7;
+      case KMDataStoreConstants.AUTH_TAG_8:
+        return AUTH_TAG_8;
+      default:
+        break;
     }
     return KMType.INVALID_VALUE;
   }
@@ -190,60 +190,60 @@ public class KMKeymintDataStore implements KMDataStore {
   public void storeData(byte storeDataIndex, byte[] data, short offset, short length) {
     short maxLen = 0;
     switch (storeDataIndex) {
-    case KMDataStoreConstants.ATT_ID_BRAND:
-    case KMDataStoreConstants.ATT_ID_DEVICE:
-    case KMDataStoreConstants.ATT_ID_PRODUCT:
-    case KMDataStoreConstants.ATT_ID_SERIAL:
-    case KMDataStoreConstants.ATT_ID_IMEI:
-    case KMDataStoreConstants.ATT_ID_MEID:
-    case KMDataStoreConstants.ATT_ID_MANUFACTURER:
-    case KMDataStoreConstants.ATT_ID_MODEL:
-      setAttestationId(storeDataIndex, data, offset, length);
-      return;
-    case KMDataStoreConstants.COMPUTED_HMAC_KEY:
-      persistComputedHmacKey(data, offset, length);
-      return;
-    case KMDataStoreConstants.MASTER_KEY:
-      persistMasterKey(data, offset, length);
-      return;
-    case KMDataStoreConstants.PRE_SHARED_KEY:
-      persistPresharedKey(data, offset, length);
-      return;
-    case KMDataStoreConstants.ATTESTATION_KEY:
-      persistAttestationKey(data, offset, length);
-      return;
-    case KMDataStoreConstants.HMAC_NONCE:
-      maxLen = HMAC_SEED_NONCE_SIZE;
-      break;
-    case KMDataStoreConstants.OS_VERSION:
-    case KMDataStoreConstants.OS_PATCH_LEVEL:
-    case KMDataStoreConstants.VENDOR_PATCH_LEVEL:
-      maxLen = SB_PROP_SIZE;
-      break;
-    case KMDataStoreConstants.DEVICE_LOCKED_TIME:
-      maxLen = DEVICE_LOCK_TS_SIZE;
-      break;
-    case KMDataStoreConstants.DEVICE_LOCKED:
-      maxLen = DEVICE_LOCKED_FLAG_SIZE;
-      break;
-    case KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY:
-      maxLen = DEVICE_LOCKED_PASSWORD_ONLY_SIZE;
-      break;
-    case KMDataStoreConstants.BOOT_ENDED_STATUS:
-      maxLen = BOOT_ENDED_FLAG_SIZE;
-      break;
-    case KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS:
-      maxLen = EARLY_BOOT_ENDED_FLAG_SIZE;
-      break;
-    case KMDataStoreConstants.PROVISIONED_LOCKED:
-      maxLen = PROVISIONED_LOCKED_SIZE;
-      break;
-    case KMDataStoreConstants.PROVISIONED_STATUS:
-      maxLen = PROVISIONED_STATUS_SIZE;
-      break;
-    default:
-      KMException.throwIt(KMError.INVALID_ARGUMENT);
-      return;
+      case KMDataStoreConstants.ATT_ID_BRAND:
+      case KMDataStoreConstants.ATT_ID_DEVICE:
+      case KMDataStoreConstants.ATT_ID_PRODUCT:
+      case KMDataStoreConstants.ATT_ID_SERIAL:
+      case KMDataStoreConstants.ATT_ID_IMEI:
+      case KMDataStoreConstants.ATT_ID_MEID:
+      case KMDataStoreConstants.ATT_ID_MANUFACTURER:
+      case KMDataStoreConstants.ATT_ID_MODEL:
+        setAttestationId(storeDataIndex, data, offset, length);
+        return;
+      case KMDataStoreConstants.COMPUTED_HMAC_KEY:
+        persistComputedHmacKey(data, offset, length);
+        return;
+      case KMDataStoreConstants.MASTER_KEY:
+        persistMasterKey(data, offset, length);
+        return;
+      case KMDataStoreConstants.PRE_SHARED_KEY:
+        persistPresharedKey(data, offset, length);
+        return;
+      case KMDataStoreConstants.ATTESTATION_KEY:
+        persistAttestationKey(data, offset, length);
+        return;
+      case KMDataStoreConstants.HMAC_NONCE:
+        maxLen = HMAC_SEED_NONCE_SIZE;
+        break;
+      case KMDataStoreConstants.OS_VERSION:
+      case KMDataStoreConstants.OS_PATCH_LEVEL:
+      case KMDataStoreConstants.VENDOR_PATCH_LEVEL:
+        maxLen = SB_PROP_SIZE;
+        break;
+      case KMDataStoreConstants.DEVICE_LOCKED_TIME:
+        maxLen = DEVICE_LOCK_TS_SIZE;
+        break;
+      case KMDataStoreConstants.DEVICE_LOCKED:
+        maxLen = DEVICE_LOCKED_FLAG_SIZE;
+        break;
+      case KMDataStoreConstants.DEVICE_LOCKED_PASSWORD_ONLY:
+        maxLen = DEVICE_LOCKED_PASSWORD_ONLY_SIZE;
+        break;
+      case KMDataStoreConstants.BOOT_ENDED_STATUS:
+        maxLen = BOOT_ENDED_FLAG_SIZE;
+        break;
+      case KMDataStoreConstants.EARLY_BOOT_ENDED_STATUS:
+        maxLen = EARLY_BOOT_ENDED_FLAG_SIZE;
+        break;
+      case KMDataStoreConstants.PROVISIONED_LOCKED:
+        maxLen = PROVISIONED_LOCKED_SIZE;
+        break;
+      case KMDataStoreConstants.PROVISIONED_STATUS:
+        maxLen = PROVISIONED_STATUS_SIZE;
+        break;
+      default:
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
+        return;
     }
     short dataTableId = mapTodataTableId(storeDataIndex);
     if (dataTableId == KMType.INVALID_VALUE) {
@@ -258,17 +258,17 @@ public class KMKeymintDataStore implements KMDataStore {
   @Override
   public short getData(byte storeDataIndex, byte[] data, short offset) {
     switch (storeDataIndex) {
-    case KMDataStoreConstants.ATT_ID_BRAND:
-    case KMDataStoreConstants.ATT_ID_DEVICE:
-    case KMDataStoreConstants.ATT_ID_PRODUCT:
-    case KMDataStoreConstants.ATT_ID_SERIAL:
-    case KMDataStoreConstants.ATT_ID_IMEI:
-    case KMDataStoreConstants.ATT_ID_MEID:
-    case KMDataStoreConstants.ATT_ID_MANUFACTURER:
-    case KMDataStoreConstants.ATT_ID_MODEL:
-      return getAttestationId(storeDataIndex, data, offset);
-    default:
-      break;
+      case KMDataStoreConstants.ATT_ID_BRAND:
+      case KMDataStoreConstants.ATT_ID_DEVICE:
+      case KMDataStoreConstants.ATT_ID_PRODUCT:
+      case KMDataStoreConstants.ATT_ID_SERIAL:
+      case KMDataStoreConstants.ATT_ID_IMEI:
+      case KMDataStoreConstants.ATT_ID_MEID:
+      case KMDataStoreConstants.ATT_ID_MANUFACTURER:
+      case KMDataStoreConstants.ATT_ID_MODEL:
+        return getAttestationId(storeDataIndex, data, offset);
+      default:
+        break;
     }
     short dataTableId = mapTodataTableId(storeDataIndex);
     if (dataTableId == KMType.INVALID_VALUE) {
@@ -279,32 +279,32 @@ public class KMKeymintDataStore implements KMDataStore {
 
   @Override
   public void clearData(byte storeDataIndex) {
-    switch(storeDataIndex) {
-    case KMDataStoreConstants.ATT_ID_BRAND:
-      attIdBrand = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_DEVICE:
-      attIdDevice = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_PRODUCT:
-      attIdProduct = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_SERIAL:
-      attIdSerial = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_IMEI:
-      attIdImei = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_MEID:
-      attIdMeId = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_MANUFACTURER:
-      attIdManufacturer = null;
-      return;
-    case KMDataStoreConstants.ATT_ID_MODEL:
-      attIdModel = null;
-      return;
-    default:
+    switch (storeDataIndex) {
+      case KMDataStoreConstants.ATT_ID_BRAND:
+        attIdBrand = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_DEVICE:
+        attIdDevice = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_PRODUCT:
+        attIdProduct = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_SERIAL:
+        attIdSerial = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_IMEI:
+        attIdImei = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_MEID:
+        attIdMeId = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_MANUFACTURER:
+        attIdManufacturer = null;
+        return;
+      case KMDataStoreConstants.ATT_ID_MODEL:
+        attIdModel = null;
+        return;
+      default:
         break;
     }
     short dataTableId = mapTodataTableId(storeDataIndex);
@@ -336,11 +336,13 @@ public class KMKeymintDataStore implements KMDataStore {
     }
   }
 
-  private void initializeCertificateDataBuffer(boolean isUpgrading, boolean isFactoryAttestSupported) {
+  private void initializeCertificateDataBuffer(boolean isUpgrading,
+      boolean isFactoryAttestSupported) {
     if (!isUpgrading) {
       if (isFactoryAttestSupported && certificateData == null) {
         // First 2 bytes is reserved for length for all the 3 buffers.
-        short totalLen = (short) (6 + KMConfigurations.CERT_CHAIN_MAX_SIZE + KMConfigurations.CERT_EXPIRY_MAX_SIZE
+        short totalLen = (short) (6 + KMConfigurations.CERT_CHAIN_MAX_SIZE
+            + KMConfigurations.CERT_EXPIRY_MAX_SIZE
             + KMConfigurations.CERT_ISSUER_MAX_SIZE);
         certificateData = new byte[totalLen];
       }
@@ -362,7 +364,8 @@ public class KMKeymintDataStore implements KMDataStore {
     id = (short) (id * DATA_INDEX_ENTRY_SIZE);
     short len = Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_LENGTH));
     if (len != 0) {
-      Util.arrayCopyNonAtomic(dataTable, Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_OFFSET)), buf, offset,
+      Util.arrayCopyNonAtomic(dataTable,
+          Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_OFFSET)), buf, offset,
           len);
     }
     return len;
@@ -402,7 +405,8 @@ public class KMKeymintDataStore implements KMDataStore {
       return KMType.INVALID_VALUE;
     }
     if (len != 0) {
-      Util.arrayCopyNonAtomic(dataTable, Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_OFFSET)), buf,
+      Util.arrayCopyNonAtomic(dataTable,
+          Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_OFFSET)), buf,
           startOff, len);
     }
     return len;
@@ -418,7 +422,8 @@ public class KMKeymintDataStore implements KMDataStore {
   }
 
   @Override
-  public boolean storeAuthTag(byte[] data, short offset, short length, byte[] scratchPad, short scratchPadOff) {
+  public boolean storeAuthTag(byte[] data, short offset, short length, byte[] scratchPad,
+      short scratchPadOff) {
     if (length != AUTH_TAG_LENGTH) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
@@ -427,13 +432,15 @@ public class KMKeymintDataStore implements KMDataStore {
     while (index < MAX_BLOB_STORAGE) {
       if ((dataLength((short) (index + AUTH_TAG_1)) == 0)
           || isAuthTagSlotAvailable((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff)) {
-        Util.arrayFillNonAtomic(scratchPad, scratchPadOff, AUTH_TAG_ENTRY_SIZE, (byte)0);
+        Util.arrayFillNonAtomic(scratchPad, scratchPadOff, AUTH_TAG_ENTRY_SIZE, (byte) 0);
         // prepare auth tag buffer
         writeAuthTagState(scratchPad, scratchPadOff, (byte) 1);
-        Util.arrayCopyNonAtomic(data, offset, scratchPad, (short) (scratchPadOff + 1), AUTH_TAG_LENGTH);
+        Util.arrayCopyNonAtomic(data, offset, scratchPad, (short) (scratchPadOff + 1),
+            AUTH_TAG_LENGTH);
         Util.setShort(scratchPad, (short) (scratchPadOff + AUTH_TAG_LENGTH + 1 + 2), (short) 1);
         // write the auth tag buffer to persistent memroy.
-        writeDataEntry((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff, AUTH_TAG_ENTRY_SIZE);
+        writeDataEntry((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff,
+            AUTH_TAG_ENTRY_SIZE);
         return true;
       }
       index++;
@@ -451,11 +458,13 @@ public class KMKeymintDataStore implements KMDataStore {
   }
 
   @Override
-  public boolean isAuthTagPersisted(byte[] data, short offset, short length, byte[] scratchPad, short scratchPadOff) {
+  public boolean isAuthTagPersisted(byte[] data, short offset, short length, byte[] scratchPad,
+      short scratchPadOff) {
     return (KMType.INVALID_VALUE != findTag(data, offset, length, scratchPad, scratchPadOff));
   }
 
-  private short findTag(byte[] data, short offset, short length, byte[] scratchPad, short scratchPadOff) {
+  private short findTag(byte[] data, short offset, short length, byte[] scratchPad,
+      short scratchPadOff) {
     if (length != AUTH_TAG_LENGTH) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
@@ -465,7 +474,8 @@ public class KMKeymintDataStore implements KMDataStore {
     while (index < MAX_BLOB_STORAGE) {
       if (dataLength((short) (index + AUTH_TAG_1)) != 0) {
         readDataEntry((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff);
-        found = Util.arrayCompare(scratchPad, (short) (scratchPadOff + 1), data, offset, AUTH_TAG_LENGTH);
+        found = Util.arrayCompare(scratchPad, (short) (scratchPadOff + 1), data, offset,
+            AUTH_TAG_LENGTH);
         if (found == 0) {
           return (short) (index + AUTH_TAG_1);
         }
@@ -476,12 +486,14 @@ public class KMKeymintDataStore implements KMDataStore {
   }
 
   @Override
-  public short getRateLimitedKeyCount(byte[] data, short offset, short length, byte[] scratchPad, short scratchPadOff) {
+  public short getRateLimitedKeyCount(byte[] data, short offset, short length, byte[] scratchPad,
+      short scratchPadOff) {
     short tag = findTag(data, offset, length, scratchPad, scratchPadOff);
     short blob;
     if (tag != KMType.INVALID_VALUE) {
       readDataEntry(tag, scratchPad, scratchPadOff);
-      Util.arrayCopyNonAtomic(scratchPad, (short) (scratchPadOff + AUTH_TAG_LENGTH + 1), scratchPad, scratchPadOff,
+      Util.arrayCopyNonAtomic(scratchPad, (short) (scratchPadOff + AUTH_TAG_LENGTH + 1), scratchPad,
+          scratchPadOff,
           AUTH_TAG_COUNTER_SIZE);
       return AUTH_TAG_COUNTER_SIZE;
     }
@@ -489,12 +501,14 @@ public class KMKeymintDataStore implements KMDataStore {
   }
 
   @Override
-  public void setRateLimitedKeyCount(byte[] data, short dataOffset, short dataLen, byte[] counter, short counterOff,
+  public void setRateLimitedKeyCount(byte[] data, short dataOffset, short dataLen, byte[] counter,
+      short counterOff,
       short counterLen, byte[] scratchPad, short scratchPadOff) {
     short tag = findTag(data, dataOffset, dataLen, scratchPad, scratchPadOff);
     if (tag != KMType.INVALID_VALUE) {
       short len = readDataEntry(tag, scratchPad, scratchPadOff);
-      Util.arrayCopyNonAtomic(counter, counterOff, scratchPad, (short) (scratchPadOff + AUTH_TAG_LENGTH + 1),
+      Util.arrayCopyNonAtomic(counter, counterOff, scratchPad,
+          (short) (scratchPadOff + AUTH_TAG_LENGTH + 1),
           counterLen);
       writeDataEntry(tag, scratchPad, scratchPadOff, len);
     }
@@ -502,44 +516,52 @@ public class KMKeymintDataStore implements KMDataStore {
 
   private short getcertificateDataBufferOffset(byte dataType) {
     switch (dataType) {
-    case KMDataStoreConstants.CERTIFICATE_CHAIN:
-      return CERT_CHAIN_OFFSET;
-    case KMDataStoreConstants.CERTIFICATE_ISSUER:
-      return CERT_ISSUER_OFFSET;
-    case KMDataStoreConstants.CERTIFICATE_EXPIRY:
-      return CERT_EXPIRY_OFFSET;
-    default:
-      KMException.throwIt(KMError.INVALID_ARGUMENT);
+      case KMDataStoreConstants.CERTIFICATE_CHAIN:
+        return CERT_CHAIN_OFFSET;
+      case KMDataStoreConstants.CERTIFICATE_ISSUER:
+        return CERT_ISSUER_OFFSET;
+      case KMDataStoreConstants.CERTIFICATE_EXPIRY:
+        return CERT_EXPIRY_OFFSET;
+      default:
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     return 0;
   }
 
-  private void persistcertificateData(byte[] buf, short off, short len, short maxSize, short copyToOff) {
+  private void persistcertificateData(byte[] buf, short off, short len, short maxSize,
+      short copyToOff) {
     if (len > maxSize) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
     JCSystem.beginTransaction();
-    Util.arrayCopyNonAtomic(buf, off, certificateData, Util.setShort(certificateData, copyToOff, len), len);
+    Util.arrayCopyNonAtomic(buf, off, certificateData,
+        Util.setShort(certificateData, copyToOff, len), len);
     JCSystem.commitTransaction();
   }
 
   private void persistCertificateChain(byte[] certChain, short certChainOff, short certChainLen) {
-    persistcertificateData(certChain, certChainOff, certChainLen, KMConfigurations.CERT_CHAIN_MAX_SIZE,
+    persistcertificateData(certChain, certChainOff, certChainLen,
+        KMConfigurations.CERT_CHAIN_MAX_SIZE,
         CERT_CHAIN_OFFSET);
   }
 
-  private void persistCertficateIssuer(byte[] certIssuer, short certIssuerOff, short certIssuerLen) {
-    persistcertificateData(certIssuer, certIssuerOff, certIssuerLen, KMConfigurations.CERT_ISSUER_MAX_SIZE,
+  private void persistCertficateIssuer(byte[] certIssuer, short certIssuerOff,
+      short certIssuerLen) {
+    persistcertificateData(certIssuer, certIssuerOff, certIssuerLen,
+        KMConfigurations.CERT_ISSUER_MAX_SIZE,
         CERT_ISSUER_OFFSET);
   }
 
-  private void persistCertificateExpiryTime(byte[] certExpiry, short certExpiryOff, short certExpiryLen) {
-    persistcertificateData(certExpiry, certExpiryOff, certExpiryLen, KMConfigurations.CERT_EXPIRY_MAX_SIZE,
+  private void persistCertificateExpiryTime(byte[] certExpiry, short certExpiryOff,
+      short certExpiryLen) {
+    persistcertificateData(certExpiry, certExpiryOff, certExpiryLen,
+        KMConfigurations.CERT_EXPIRY_MAX_SIZE,
         CERT_EXPIRY_OFFSET);
   }
 
   @Override
-  public void persistCertificateData(byte[] buffer, short certChainOff, short certChainLen, short certIssuerOff,
+  public void persistCertificateData(byte[] buffer, short certChainOff, short certChainLen,
+      short certIssuerOff,
       short certIssuerLen, short certExpiryOff, short certExpiryLen) {
     // All the buffers uses first two bytes for length. The certificate chain
     // is stored as shown below.
@@ -605,7 +627,8 @@ public class KMKeymintDataStore implements KMDataStore {
 
   private void persistAttestationKey(byte[] privateKey, short privateKeyOff, short privateKeyLen) {
     if (attestationKey == null) {
-      attestationKey = seProvider.createAttestationKey(attestationKey, privateKey, privateKeyOff, privateKeyLen);
+      attestationKey = seProvider.createAttestationKey(attestationKey, privateKey, privateKeyOff,
+          privateKeyLen);
     } else {
       seProvider.createAttestationKey(attestationKey, privateKey, privateKeyOff, privateKeyLen);
     }
@@ -634,37 +657,37 @@ public class KMKeymintDataStore implements KMDataStore {
   public short getAttestationId(short id, byte[] buffer, short start) {
     switch (id) {
       // Attestation Id Brand
-    case KMDataStoreConstants.ATT_ID_BRAND:
+      case KMDataStoreConstants.ATT_ID_BRAND:
         Util.arrayCopyNonAtomic(attIdBrand, (short) 0, buffer, start, (short) attIdBrand.length);
         return (short) attIdBrand.length;
       // Attestation Id Device
-    case KMDataStoreConstants.ATT_ID_DEVICE:
+      case KMDataStoreConstants.ATT_ID_DEVICE:
         Util.arrayCopyNonAtomic(attIdDevice, (short) 0, buffer, start, (short) attIdDevice.length);
         return (short) attIdDevice.length;
       // Attestation Id Product
-    case KMDataStoreConstants.ATT_ID_PRODUCT:
+      case KMDataStoreConstants.ATT_ID_PRODUCT:
         Util.arrayCopyNonAtomic(attIdProduct, (short) 0, buffer, start,
             (short) attIdProduct.length);
         return (short) attIdProduct.length;
       // Attestation Id Serial
-    case KMDataStoreConstants.ATT_ID_SERIAL:
+      case KMDataStoreConstants.ATT_ID_SERIAL:
         Util.arrayCopyNonAtomic(attIdSerial, (short) 0, buffer, start, (short) attIdSerial.length);
         return (short) attIdSerial.length;
       // Attestation Id IMEI
-    case KMDataStoreConstants.ATT_ID_IMEI:
+      case KMDataStoreConstants.ATT_ID_IMEI:
         Util.arrayCopyNonAtomic(attIdImei, (short) 0, buffer, start, (short) attIdImei.length);
         return (short) attIdImei.length;
       // Attestation Id MEID
-    case KMDataStoreConstants.ATT_ID_MEID:
+      case KMDataStoreConstants.ATT_ID_MEID:
         Util.arrayCopyNonAtomic(attIdMeId, (short) 0, buffer, start, (short) attIdMeId.length);
         return (short) attIdMeId.length;
       // Attestation Id Manufacturer
-    case KMDataStoreConstants.ATT_ID_MANUFACTURER:
+      case KMDataStoreConstants.ATT_ID_MANUFACTURER:
         Util.arrayCopyNonAtomic(attIdManufacturer, (short) 0, buffer, start,
             (short) attIdManufacturer.length);
         return (short) attIdManufacturer.length;
       // Attestation Id Model
-    case KMDataStoreConstants.ATT_ID_MODEL:
+      case KMDataStoreConstants.ATT_ID_MODEL:
         Util.arrayCopyNonAtomic(attIdModel, (short) 0, buffer, start, (short) attIdModel.length);
         return (short) attIdModel.length;
     }
@@ -738,7 +761,8 @@ public class KMKeymintDataStore implements KMDataStore {
     element.write(bootPatchLevel);
     // Key Objects
     seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY, masterKey);
-    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY, computedHmacKey);
+    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY,
+        computedHmacKey);
     seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY, preSharedKey);
     seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY, attestationKey);
   }
@@ -780,9 +804,11 @@ public class KMKeymintDataStore implements KMDataStore {
     // interface types - 4 bytes
     return (short) (12 +
         seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY) +
-        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY) +
+        seProvider.getBackupPrimitiveByteCount(
+            KMDataStoreConstants.INTERFACE_TYPE_COMPUTED_HMAC_KEY) +
         seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
-        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY));
+        seProvider.getBackupPrimitiveByteCount(
+            KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY));
   }
 
   @Override
@@ -797,7 +823,7 @@ public class KMKeymintDataStore implements KMDataStore {
         seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
         seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_ATTESTATION_KEY));
   }
-  
+
   // Below functions are related boot paramters.
   public void setVerifiedBootHash(byte[] buffer, short start, short length) {
     if (verifiedHash == null) {
@@ -856,7 +882,8 @@ public class KMKeymintDataStore implements KMDataStore {
   }
 
   public short getBootPatchLevel(byte[] buffer, short start) {
-    Util.arrayCopyNonAtomic(bootPatchLevel, (short) 0, buffer, start, (short) bootPatchLevel.length);
+    Util.arrayCopyNonAtomic(bootPatchLevel, (short) 0, buffer, start,
+        (short) bootPatchLevel.length);
     return (short) bootPatchLevel.length;
   }
 

@@ -21,8 +21,8 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMBignumTag represents BIGNUM Tag Type from android keymaster hal specifications. The tag value of
- * this tag is the KMByteBlob pointer i.e. offset of KMByteBlob in memory heap. struct{byte
+ * KMBignumTag represents BIGNUM Tag Type from android keymaster hal specifications. The tag value
+ * of this tag is the KMByteBlob pointer i.e. offset of KMByteBlob in memory heap. struct{byte
  * TAG_TYPE; short length; struct{short BIGNUM_TAG; short tagKey; short blobPtr}}
  */
 
@@ -35,10 +35,10 @@ public class KMBignumTag extends KMTag {
 
   public static void initStatics() {
     tags = new short[]{
-		      CERTIFICATE_SERIAL_NUM,
-		  };
+        CERTIFICATE_SERIAL_NUM,
+    };
   }
-  
+
   private KMBignumTag() {
   }
 
@@ -92,7 +92,8 @@ public class KMBignumTag extends KMTag {
   }
 
   public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   public short getTagType() {
@@ -100,30 +101,32 @@ public class KMBignumTag extends KMTag {
   }
 
   public short getValue() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
   public short length() {
-    short blobPtr = Util.getShort(heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    short blobPtr = Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
     return KMByteBlob.length(blobPtr);
   }
 
   public static short getKey(short bPtr) {
-	return KMBignumTag.cast(bPtr).getKey();
+    return KMBignumTag.cast(bPtr).getKey();
   }
 
   public static short getTagType(short bPtr) {
-	return KMBignumTag.cast(bPtr).getTagType();
+    return KMBignumTag.cast(bPtr).getTagType();
   }
 
   public static short getValue(short bPtr) {
-	return KMBignumTag.cast(bPtr).getValue();
+    return KMBignumTag.cast(bPtr).getValue();
   }
 
   public static short length(short bPtr) {
     return KMBignumTag.cast(bPtr).length();
   }
-  
+
   private static boolean validateKey(short key) {
     short index = (short) tags.length;
     while (--index >= 0) {

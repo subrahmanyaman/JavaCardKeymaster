@@ -22,9 +22,10 @@ import javacard.framework.Util;
 
 /**
  * KMCoseKey represents COSE_Key section from the Cose standard https://datatracker.ietf.org/doc/html/rfc8152#section-7
- * The supported key types are KMNInteger, KMInteger and the supported value types are KMInteger, KMNInteger,
- * KMKeymasterApplet, KMSimpleValue. It corresponds to a CBOR Map type.  struct{byte TAG_TYPE; short length; short arrayPtr }
- * where arrayPtr is a pointer to array with any KMTag subtype instances.
+ * The supported key types are KMNInteger, KMInteger and the supported value types are KMInteger,
+ * KMNInteger, KMKeymasterApplet, KMSimpleValue. It corresponds to a CBOR Map type.  struct{byte
+ * TAG_TYPE; short length; short arrayPtr } where arrayPtr is a pointer to array with any KMTag
+ * subtype instances.
  */
 public class KMCoseKey extends KMCoseMap {
 
@@ -123,8 +124,9 @@ public class KMCoseKey extends KMCoseMap {
           break;
 
       }
-      if (found)
+      if (found) {
         break;
+      }
       index++;
     }
     return valPtr;
@@ -163,22 +165,24 @@ public class KMCoseKey extends KMCoseMap {
             Util.getShort(KMCose.COSE_TEST_KEY, (short) 0) // MSB (Significant)
         );
     boolean isTestKey = false;
-    if (ptr != 0)
+    if (ptr != 0) {
       isTestKey = (KMSimpleValue.getValue(ptr) == KMSimpleValue.NULL);
+    }
     return isTestKey;
   }
 
   /**
    * Verifies the KMCoseKey values against the input values.
    *
-   * @param keyType  value of the key type
+   * @param keyType value of the key type
    * @param keyIdPtr instance of KMKeymasterApplet containing the key id.
-   * @param keyAlg   value of the algorithm.
-   * @param keyOps   value of the key operations.
-   * @param curve    value of the curve.
+   * @param keyAlg value of the algorithm.
+   * @param keyOps value of the key operations.
+   * @param curve value of the curve.
    * @return true if valid, otherwise false.
    */
-  public boolean isDataValid(short keyType, short keyIdPtr, short keyAlg, short keyOps, short curve) {
+  public boolean isDataValid(short keyType, short keyIdPtr, short keyAlg, short keyOps,
+      short curve) {
     short[] coseKeyTags = {
         KMCose.COSE_KEY_KEY_TYPE, keyType,
         KMCose.COSE_KEY_KEY_ID, keyIdPtr,
@@ -218,8 +222,9 @@ public class KMCoseKey extends KMCoseMap {
             }
             break;
         }
-        if (!valid)
+        if (!valid) {
           break;
+        }
       }
       tagIndex += 2;
     }

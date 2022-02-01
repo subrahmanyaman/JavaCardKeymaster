@@ -20,11 +20,10 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCoseHeaders represents headers section from the Cose standard
- * https://datatracker.ietf.org/doc/html/rfc8152#section-3. The supported key types are
- * KMInteger, KMNInteger and the supported value types are KMInteger, KMNInteger, KMByteBlob,
- * KMCoseKey. It corresponds to a CBOR Map type. struct{byte TAG_TYPE; short length; short arrayPtr }  where
- * arrayPtr is a pointer to array with any KMTag subtype instances.
+ * KMCoseHeaders represents headers section from the Cose standard https://datatracker.ietf.org/doc/html/rfc8152#section-3.
+ * The supported key types are KMInteger, KMNInteger and the supported value types are KMInteger,
+ * KMNInteger, KMByteBlob, KMCoseKey. It corresponds to a CBOR Map type. struct{byte TAG_TYPE; short
+ * length; short arrayPtr }  where arrayPtr is a pointer to array with any KMTag subtype instances.
  */
 public class KMCoseHeaders extends KMCoseMap {
 
@@ -128,8 +127,9 @@ public class KMCoseHeaders extends KMCoseMap {
         default:
           break;
       }
-      if (found)
+      if (found) {
         break;
+      }
       index++;
     }
     return valPtr;
@@ -190,8 +190,9 @@ public class KMCoseHeaders extends KMCoseMap {
           default:
             break;
         }
-        if (!valid)
+        if (!valid) {
           break;
+        }
       }
       tagIndex += 2;
     }

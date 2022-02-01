@@ -43,41 +43,41 @@ public class KMUtils {
 
   // --------------------------------------
   public static void initStatics() {
-    oneSecMsec = new byte[] {
-	      0, 0, 0, 0, 0, 0, 0x03, (byte) 0xE8}; // 1000 msec
-	oneMinMsec = new byte[] {
-	      0, 0, 0, 0, 0, 0, (byte) 0xEA, 0x60}; // 60000 msec
-	oneHourMsec = new byte[] {
-	      0, 0, 0, 0, 0, 0x36, (byte) 0xEE, (byte) 0x80}; // 3600000 msec
-	oneDayMsec = new byte[] {
-	      0, 0, 0, 0, 0x05, 0x26, 0x5C, 0x00}; // 86400000 msec
-	oneMonthMsec = new byte[] {
-	      0, 0, 0, 0, (byte) 0x9C, (byte) 0xBE, (byte) 0xBD, 0x50}; // 2629746000 msec
-	leapYearMsec = new byte[] {
-	      0, 0, 0, 0x07, (byte) 0x5C, (byte) 0xD7, (byte) 0x88, 0x00}; //31622400000;
-	yearMsec = new byte[] {
-	      0, 0, 0, 0x07, 0x57, (byte) 0xB1, 0x2C, 0x00}; //31536000000
-	  //Leap year(366) + 3 * 365
-	fourYrsMsec = new byte[] {
-	      0, 0, 0, 0x1D, 0x63, (byte) 0xEB, 0x0C, 0x00};//126230400000
-	firstJan2020 = new byte[] {
-	      0, 0, 0x01, 0x6F, 0x5E, 0x66, (byte) 0xE8, 0x00}; // 1577836800000 msec
-	firstJan2051 = new byte[] {
-	      0, 0, 0x02, 0x53, 0x26, (byte) 0x0E, (byte) 0x1C, 0x00}; // 2556144000000
-	  // msec
-	febMonthLeapMSec = new byte[] {
-	      0, 0, 0, 0, (byte) 0x95, 0x58, 0x6C, 0x00}; //2505600000
-	febMonthMsec = new byte[] {
-	      0, 0, 0, 0, (byte) 0x90, 0x32, 0x10, 0x00}; //2419200000
-	ThirtyOneDaysMonthMsec = new byte[] {
-	      0, 0, 0, 0, (byte) 0x9F, (byte) 0xA5, 0x24, 0x00};//2678400000
-	ThirtDaysMonthMsec = new byte[] {
-	      0, 0, 0, 0, (byte) 0x9A, 0x7E, (byte) 0xC8, 0x00};//2592000000
-	  // Convert to milliseconds constants
-	SEC_TO_MILLIS_SHIFT_POS = new byte[] {9, 8, 7, 6, 5, 3};
+    oneSecMsec = new byte[]{
+        0, 0, 0, 0, 0, 0, 0x03, (byte) 0xE8}; // 1000 msec
+    oneMinMsec = new byte[]{
+        0, 0, 0, 0, 0, 0, (byte) 0xEA, 0x60}; // 60000 msec
+    oneHourMsec = new byte[]{
+        0, 0, 0, 0, 0, 0x36, (byte) 0xEE, (byte) 0x80}; // 3600000 msec
+    oneDayMsec = new byte[]{
+        0, 0, 0, 0, 0x05, 0x26, 0x5C, 0x00}; // 86400000 msec
+    oneMonthMsec = new byte[]{
+        0, 0, 0, 0, (byte) 0x9C, (byte) 0xBE, (byte) 0xBD, 0x50}; // 2629746000 msec
+    leapYearMsec = new byte[]{
+        0, 0, 0, 0x07, (byte) 0x5C, (byte) 0xD7, (byte) 0x88, 0x00}; //31622400000;
+    yearMsec = new byte[]{
+        0, 0, 0, 0x07, 0x57, (byte) 0xB1, 0x2C, 0x00}; //31536000000
+    //Leap year(366) + 3 * 365
+    fourYrsMsec = new byte[]{
+        0, 0, 0, 0x1D, 0x63, (byte) 0xEB, 0x0C, 0x00};//126230400000
+    firstJan2020 = new byte[]{
+        0, 0, 0x01, 0x6F, 0x5E, 0x66, (byte) 0xE8, 0x00}; // 1577836800000 msec
+    firstJan2051 = new byte[]{
+        0, 0, 0x02, 0x53, 0x26, (byte) 0x0E, (byte) 0x1C, 0x00}; // 2556144000000
+    // msec
+    febMonthLeapMSec = new byte[]{
+        0, 0, 0, 0, (byte) 0x95, 0x58, 0x6C, 0x00}; //2505600000
+    febMonthMsec = new byte[]{
+        0, 0, 0, 0, (byte) 0x90, 0x32, 0x10, 0x00}; //2419200000
+    ThirtyOneDaysMonthMsec = new byte[]{
+        0, 0, 0, 0, (byte) 0x9F, (byte) 0xA5, 0x24, 0x00};//2678400000
+    ThirtDaysMonthMsec = new byte[]{
+        0, 0, 0, 0, (byte) 0x9A, 0x7E, (byte) 0xC8, 0x00};//2592000000
+    // Convert to milliseconds constants
+    SEC_TO_MILLIS_SHIFT_POS = new byte[]{9, 8, 7, 6, 5, 3};
 
   }
-  
+
   public static short convertToDate(short time, byte[] scratchPad,
       boolean utcFlag) {
 

@@ -30,9 +30,9 @@ public class KMIntegerArrayTag extends KMTag {
   private static KMIntegerArrayTag prototype;
 
   private static short[] tags;
-  
+
   public static void initStatics() {
-    tags = new short[]{USER_SECURE_ID};	  
+    tags = new short[]{USER_SECURE_ID};
   }
 
   private KMIntegerArrayTag() {
@@ -98,15 +98,18 @@ public class KMIntegerArrayTag extends KMTag {
   }
 
   public short getTagType() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   public short getValues() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
   public short length() {
@@ -162,30 +165,30 @@ public class KMIntegerArrayTag extends KMTag {
     }
     return false;
   }
-  
+
   public static boolean contains(short bPtr, short tagValue) {
-	return KMIntegerArrayTag.cast(bPtr).contains(tagValue);
+    return KMIntegerArrayTag.cast(bPtr).contains(tagValue);
   }
-  
+
   public static short getValues(short bPtr) {
     return KMIntegerArrayTag.cast(bPtr).getValues();
   }
-  
+
   public static short get(short bPtr, short index) {
-	return KMIntegerArrayTag.cast(bPtr).get(index);
+    return KMIntegerArrayTag.cast(bPtr).get(index);
   }
-  
+
   public static short getTagType(short bPtr) {
-	return KMIntegerArrayTag.cast(bPtr).getTagType();
+    return KMIntegerArrayTag.cast(bPtr).getTagType();
   }
-  
+
   public static short getKey(short bPtr) {
-	return KMIntegerArrayTag.cast(bPtr).getKey();
+    return KMIntegerArrayTag.cast(bPtr).getKey();
   }
-  
+
   public static short length(short bPtr) {
-	return KMIntegerArrayTag.cast(bPtr).length();
+    return KMIntegerArrayTag.cast(bPtr).length();
   }
-  
-  
+
+
 }

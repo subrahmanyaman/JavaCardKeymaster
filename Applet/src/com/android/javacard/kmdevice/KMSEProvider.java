@@ -72,7 +72,7 @@ public interface KMSEProvider {
    * @return instance of KMOperation.
    */
   KMOperation initTrustedConfirmationSymmetricOperation(KMComputedHmacKey computedHmacKey);
-  
+
   /**
    * Verify that the imported key is valid. If the algorithm and/or keysize are not supported then
    * it should throw a CryptoException.
@@ -569,8 +569,9 @@ public interface KMSEProvider {
    * @param length length of the buffer.
    * @return An instance of the KMComputedHmacKey.
    */
-  KMComputedHmacKey createComputedHmacKey(KMComputedHmacKey createComputedHmacKey, byte[] keyData, short offset, short length);
-  
+  KMComputedHmacKey createComputedHmacKey(KMComputedHmacKey createComputedHmacKey, byte[] keyData,
+      short offset, short length);
+
   /**
    * This function generates an AES Key of keySizeBits, which is used as an master key. This
    * generated key is maintained by the SEProvider. This function should be called only once at the
@@ -580,8 +581,9 @@ public interface KMSEProvider {
    * @return An instance of KMMasterKey.
    */
   KMMasterKey createMasterKey(KMMasterKey masterKey, byte[] key, short offset, short length);
-  
-  KMPreSharedKey createPreSharedKey(KMPreSharedKey presharedKey, byte[] key, short offset, short length);
+
+  KMPreSharedKey createPreSharedKey(KMPreSharedKey presharedKey, byte[] key, short offset,
+      short length);
 
   /**
    * Returns true if factory provisioned attestation key is supported.
@@ -624,7 +626,7 @@ public interface KMSEProvider {
       short outOffset);
 
 
-/**
+  /**
    * This function creates an ECKey and initializes the ECPrivateKey with the provided input key
    * data. The initialized Key is maintained by the SEProvider. This function should be called only
    * while provisioning the attestation key.
@@ -634,16 +636,20 @@ public interface KMSEProvider {
    * @param length length of the buffer.
    * @return An instance of KMAttestationKey.
    */
-  KMAttestationKey createAttestationKey(KMAttestationKey attestationKey, byte[] keyData, short offset,
+  KMAttestationKey createAttestationKey(KMAttestationKey attestationKey, byte[] keyData,
+      short offset,
       short length);
- 
-  
+
+
   boolean isPowerReset(boolean isForStatusUpdate);
-  
+
   void onSave(Element element, byte interfaceType, Object object);
+
   Object onResore(Element element);
+
   short getBackupPrimitiveByteCount(byte interfaceType);
-  short getBackupObjectCount(byte interfaceType); 
-  
-  
+
+  short getBackupObjectCount(byte interfaceType);
+
+
 }

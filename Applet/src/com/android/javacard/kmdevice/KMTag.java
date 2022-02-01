@@ -28,6 +28,7 @@ import javacard.framework.Util;
  * of KMType.
  */
 public class KMTag extends KMType {
+
   public static short getKMTagType(short ptr) {
     return Util.getShort(heap, (short) (ptr + TLV_HEADER_SIZE));
   }
@@ -36,24 +37,25 @@ public class KMTag extends KMType {
     return Util.getShort(heap, (short) (ptr + TLV_HEADER_SIZE + 2));
   }
 
-  public static void assertPresence(short params, short tagType, short tagKey, short error){
-    if(!isPresent(params, tagType, tagKey)){
-      KMException.throwIt(error);
-    }
-  }
-  public static void assertAbsence(short params, short tagType, short tagKey, short error){
-    if(isPresent(params, tagType, tagKey)){
+  public static void assertPresence(short params, short tagType, short tagKey, short error) {
+    if (!isPresent(params, tagType, tagKey)) {
       KMException.throwIt(error);
     }
   }
 
-  public static boolean isPresent(short params, short tagType, short tagKey){
+  public static void assertAbsence(short params, short tagType, short tagKey, short error) {
+    if (isPresent(params, tagType, tagKey)) {
+      KMException.throwIt(error);
+    }
+  }
+
+  public static boolean isPresent(short params, short tagType, short tagKey) {
     short tag = KMKeyParameters.findTag(params, tagType, tagKey);
     return tag != KMType.INVALID_VALUE;
   }
 
-  public static boolean isEqual(short params, short tagType, short tagKey, short value){
-    switch(tagType){
+  public static boolean isEqual(short params, short tagType, short tagKey, short value) {
+    switch (tagType) {
       case KMType.ENUM_TAG:
         return KMEnumTag.getValue(tagKey, params) == value;
       case KMType.UINT_TAG:
@@ -61,39 +63,40 @@ public class KMTag extends KMType {
       case KMType.ULONG_TAG:
         return KMIntegerTag.isEqual(params, tagType, tagKey, value);
       case KMType.ENUM_ARRAY_TAG:
-        return KMEnumArrayTag.contains(tagKey,value,params);
+        return KMEnumArrayTag.contains(tagKey, value, params);
       case KMType.UINT_ARRAY_TAG:
       case KMType.ULONG_ARRAY_TAG:
         return KMIntegerArrayTag.contains(tagKey, value, params);
     }
     return false;
   }
-  public static void assertTrue(boolean condition, short error){
-    if(!condition){
+
+  public static void assertTrue(boolean condition, short error) {
+    if (!condition) {
       KMException.throwIt(error);
     }
   }
 
   public static boolean isValidPublicExponent(short params) {
     short pubExp = KMKeyParameters.findTag(params, KMType.ULONG_TAG, KMType.RSA_PUBLIC_EXPONENT);
-    if(pubExp == KMType.INVALID_VALUE){
+    if (pubExp == KMType.INVALID_VALUE) {
       return false;
     }
     // Only exponent support is F4 - 65537 which is 0x00010001. 
     pubExp = KMIntegerTag.getValue(pubExp);
-    if(!(KMInteger.getShort(pubExp) == 0x01 &&
-        KMInteger.getSignificantShort(pubExp) == 0x01)){
+    if (!(KMInteger.getShort(pubExp) == 0x01 &&
+        KMInteger.getSignificantShort(pubExp) == 0x01)) {
       return false;
     }
     return true;
   }
 
-  public static boolean isValidKeySize(short params){
+  public static boolean isValidKeySize(short params) {
     short keysize = KMKeyParameters.findTag(params, KMType.UINT_TAG, KMType.KEYSIZE);
-    if(keysize == KMType.INVALID_VALUE){
+    if (keysize == KMType.INVALID_VALUE) {
       return false;
     }
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, params);
-    return KMIntegerTag.isValidKeySize(keysize, (byte)alg);
+    return KMIntegerTag.isValidKeySize(keysize, (byte) alg);
   }
 }

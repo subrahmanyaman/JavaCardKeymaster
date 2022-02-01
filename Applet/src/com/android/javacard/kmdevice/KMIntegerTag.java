@@ -34,33 +34,33 @@ public class KMIntegerTag extends KMTag {
 
   public static void initStatics() {
     tags = new short[]{
-		      // UINT
-		      KEYSIZE,
-		      MIN_MAC_LENGTH,
-		      MIN_SEC_BETWEEN_OPS,
-		      MAX_USES_PER_BOOT,
-		      USERID,
-		      AUTH_TIMEOUT,
-		      OS_VERSION,
-		      OS_PATCH_LEVEL,
-		      VENDOR_PATCH_LEVEL,
-		      BOOT_PATCH_LEVEL,
-		      MAC_LENGTH,
-		      // ULONG
-		      RSA_PUBLIC_EXPONENT,
-		      // DATE
-		      ACTIVE_DATETIME,
-		      ORIGINATION_EXPIRE_DATETIME,
-		      USAGE_EXPIRE_DATETIME,
-		      CREATION_DATETIME,
-		      CERTIFICATE_NOT_BEFORE,
-		      CERTIFICATE_NOT_AFTER,
-		      USAGE_COUNT_LIMIT,
-		      // custom tag
-		      AUTH_TIMEOUT_MILLIS,
-		  };	  
+        // UINT
+        KEYSIZE,
+        MIN_MAC_LENGTH,
+        MIN_SEC_BETWEEN_OPS,
+        MAX_USES_PER_BOOT,
+        USERID,
+        AUTH_TIMEOUT,
+        OS_VERSION,
+        OS_PATCH_LEVEL,
+        VENDOR_PATCH_LEVEL,
+        BOOT_PATCH_LEVEL,
+        MAC_LENGTH,
+        // ULONG
+        RSA_PUBLIC_EXPONENT,
+        // DATE
+        ACTIVE_DATETIME,
+        ORIGINATION_EXPIRE_DATETIME,
+        USAGE_EXPIRE_DATETIME,
+        CREATION_DATETIME,
+        CERTIFICATE_NOT_BEFORE,
+        CERTIFICATE_NOT_AFTER,
+        USAGE_COUNT_LIMIT,
+        // custom tag
+        AUTH_TIMEOUT_MILLIS,
+    };
   }
-  
+
   private KMIntegerTag() {
   }
 
@@ -124,15 +124,18 @@ public class KMIntegerTag extends KMTag {
   }
 
   public short getTagType() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   public short getValue() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
   public short length() {
@@ -217,19 +220,19 @@ public class KMIntegerTag extends KMTag {
     }
     return false;
   }
-  
+
   public static boolean isValidKeySize(short bPtr, byte alg) {
-	return KMIntegerTag.cast(bPtr).isValidKeySize(alg);
+    return KMIntegerTag.cast(bPtr).isValidKeySize(alg);
   }
-  
+
   public static short getTagType(short bPtr) {
     return KMIntegerTag.cast(bPtr).getTagType();
   }
-  
+
   public static short getValue(short bPtr) {
-	return KMIntegerTag.cast(bPtr).getValue();
+    return KMIntegerTag.cast(bPtr).getValue();
   }
-  
+
   public static short getKey(short bPtr) {
     return KMIntegerTag.cast(bPtr).getKey();
   }

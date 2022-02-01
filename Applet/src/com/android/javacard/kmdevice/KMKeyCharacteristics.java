@@ -35,7 +35,7 @@ public class KMKeyCharacteristics extends KMType {
 
   private KMKeyCharacteristics() {
   }
-  
+
   public static short exp() {
     short sb = KMKeyParameters.exp();
     short tee = KMKeyParameters.exp();
@@ -55,7 +55,7 @@ public class KMKeyCharacteristics extends KMType {
     KMType.instanceTable[KM_KEY_CHARACTERISTICS_OFFSET] = ptr;
     return prototype;
   }
-  
+
   public static short instance() {
     short arrPtr = KMArray.instance((short) 3);
     return instance(arrPtr);
@@ -63,8 +63,8 @@ public class KMKeyCharacteristics extends KMType {
 
   public static short instance(short vals) {
     short ptr = KMType.instance(KEY_CHAR_TYPE, (short) 3);
-	if (KMArray.length(vals) != 3) {
-	  ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+    if (KMArray.length(vals) != 3) {
+      ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE), vals);
     return ptr;
@@ -82,7 +82,8 @@ public class KMKeyCharacteristics extends KMType {
   }
 
   public short getVals() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_KEY_CHARACTERISTICS_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_KEY_CHARACTERISTICS_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short length() {
@@ -122,37 +123,37 @@ public class KMKeyCharacteristics extends KMType {
     short arrPtr = getVals();
     KMArray.add(arrPtr, STRONGBOX_ENFORCED, ptr);
   }
-  
+
   public static short getVals(short bPtr) {
     return KMKeyCharacteristics.cast(bPtr).getVals();
   }
 
   public static short length(short bPtr) {
-	return KMKeyCharacteristics.cast(bPtr).length();
+    return KMKeyCharacteristics.cast(bPtr).length();
   }
 
   public static short getKeystoreEnforced(short bPtr) {
-	return KMKeyCharacteristics.cast(bPtr).getKeystoreEnforced();
+    return KMKeyCharacteristics.cast(bPtr).getKeystoreEnforced();
   }
 
   public static short getTeeEnforced(short bPtr) {
-	return KMKeyCharacteristics.cast(bPtr).getTeeEnforced();
+    return KMKeyCharacteristics.cast(bPtr).getTeeEnforced();
   }
 
   public static short getStrongboxEnforced(short bPtr) {
-	return KMKeyCharacteristics.cast(bPtr).getStrongboxEnforced();
+    return KMKeyCharacteristics.cast(bPtr).getStrongboxEnforced();
   }
 
   public static void setKeystoreEnforced(short bPtr, short ptr) {
-	KMKeyCharacteristics.cast(bPtr).setKeystoreEnforced(ptr);
+    KMKeyCharacteristics.cast(bPtr).setKeystoreEnforced(ptr);
   }
 
   public static void setTeeEnforced(short bPtr, short ptr) {
-	KMKeyCharacteristics.cast(bPtr).setTeeEnforced(ptr);
+    KMKeyCharacteristics.cast(bPtr).setTeeEnforced(ptr);
   }
 
   public static void setStrongboxEnforced(short bPtr, short ptr) {
-	KMKeyCharacteristics.cast(bPtr).setStrongboxEnforced(ptr);
+    KMKeyCharacteristics.cast(bPtr).setStrongboxEnforced(ptr);
   }
-  
+
 }

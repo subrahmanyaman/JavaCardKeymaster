@@ -36,10 +36,10 @@ public class KMEnumTag extends KMTag {
 
   public static void initStatics() {
     tags = new short[]{
-	      ALGORITHM, ECCURVE, BLOB_USAGE_REQ, USER_AUTH_TYPE, ORIGIN, HARDWARE_TYPE
-	    };  
+        ALGORITHM, ECCURVE, BLOB_USAGE_REQ, USER_AUTH_TYPE, ORIGIN, HARDWARE_TYPE
+    };
   }
-  
+
   private KMEnumTag() {
   }
 
@@ -90,7 +90,8 @@ public class KMEnumTag extends KMTag {
   }
 
   public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   public short getTagType() {
@@ -154,17 +155,17 @@ public class KMEnumTag extends KMTag {
     }
     return KMType.INVALID_VALUE;
   }
-  
+
   public static byte getValue(short bPtr) {
     return KMEnumTag.cast(bPtr).getValue();
   }
-  
+
   public static short getTagType(short bPtr) {
     return KMEnumTag.cast(bPtr).getTagType();
   }
-  
+
   public static short getKey(short bPtr) {
-	return KMEnumTag.cast(bPtr).getKey();
+    return KMEnumTag.cast(bPtr).getKey();
   }
 
 }

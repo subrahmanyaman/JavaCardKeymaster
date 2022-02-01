@@ -26,6 +26,7 @@ import javacard.framework.Util;
  * BYTE_BLOB_TYPE; short length; sequence of bytes}
  */
 public class KMByteBlob extends KMType {
+
   private static short OFFSET_SIZE = 2;
   private static KMByteBlob prototype;
 
@@ -47,25 +48,27 @@ public class KMByteBlob extends KMType {
 
   // return an empty byte blob instance
   public static short instance(short length) {
-    short ptr = KMType.instance(BYTE_BLOB_TYPE, (short)(length + OFFSET_SIZE));
-    Util.setShort(heap, (short)(ptr+TLV_HEADER_SIZE), (short)(ptr+TLV_HEADER_SIZE+OFFSET_SIZE));
-    Util.setShort(heap, (short)(ptr + 1), length);
+    short ptr = KMType.instance(BYTE_BLOB_TYPE, (short) (length + OFFSET_SIZE));
+    Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE),
+        (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE));
+    Util.setShort(heap, (short) (ptr + 1), length);
     return ptr;
   }
 
   // byte blob from existing buf
   public static short instance(byte[] buf, short startOff, short length) {
     short ptr = instance(length);
-    Util.arrayCopyNonAtomic(buf, startOff, heap, (short)(ptr+TLV_HEADER_SIZE+OFFSET_SIZE), length);
+    Util.arrayCopyNonAtomic(buf, startOff, heap, (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE),
+        length);
     return ptr;
   }
 
   // cast the ptr to KMByteBlob
   private static KMByteBlob cast(short ptr) {
-    validate(ptr);   
+    validate(ptr);
     return proto(ptr);
   }
-  
+
   public static void validate(short ptr) {
     if (heap[ptr] != BYTE_BLOB_TYPE) {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
@@ -74,7 +77,7 @@ public class KMByteBlob extends KMType {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }
   }
-  
+
   // Add the byte
   public void add(short index, byte val) {
     short len = length();
@@ -95,7 +98,7 @@ public class KMByteBlob extends KMType {
 
   // Get the start of blob
   public short getStartOff() {
-    return Util.getShort(heap, (short)(getBaseOffset() + TLV_HEADER_SIZE));
+    return Util.getShort(heap, (short) (getBaseOffset() + TLV_HEADER_SIZE));
   }
 
   // Get the length of the blob
@@ -130,60 +133,60 @@ public class KMByteBlob extends KMType {
     return (length() != 0);
   }
 
-  public void setStartOff(short offset){
-    Util.setShort(heap, (short)(getBaseOffset() + TLV_HEADER_SIZE), offset);
+  public void setStartOff(short offset) {
+    Util.setShort(heap, (short) (getBaseOffset() + TLV_HEADER_SIZE), offset);
   }
 
   protected short getBaseOffset() {
     return instanceTable[KM_BYTE_BLOB_OFFSET];
   }
 
-  public void setLength(short len){
-    Util.setShort(heap, (short)(getBaseOffset() + 1), len);
+  public void setLength(short len) {
+    Util.setShort(heap, (short) (getBaseOffset() + 1), len);
   }
-  
+
 
   public static void add(short bPtr, short index, byte val) {
-	  cast(bPtr).add(index, val);
+    cast(bPtr).add(index, val);
   }
-  
+
   public static byte get(short bPtr, short index) {
-	return cast(bPtr).get(index);
+    return cast(bPtr).get(index);
   }
-  
+
   public static short getStartOff(short bPtr) {
     return cast(bPtr).getStartOff();
   }
-  
+
   public static short length(short bPtr) {
-     return cast(bPtr).length();
+    return cast(bPtr).length();
   }
-  
+
   public static byte[] getBuffer(short bPtr) {
-	 return cast(bPtr).getBuffer();    
+    return cast(bPtr).getBuffer();
   }
-  
+
   public static void getValue(short bPtr, byte[] destBuf, short destStart, short destLength) {
-	  cast(bPtr).getValue(destBuf, destStart, destLength);
+    cast(bPtr).getValue(destBuf, destStart, destLength);
   }
-  
+
   public static short getValues(short bPtr, byte[] destBuf, short destStart) {
-	  return cast(bPtr).getValues(destBuf, destStart);
+    return cast(bPtr).getValues(destBuf, destStart);
   }
-  
+
   public static void setValue(short bPtr, byte[] srcBuf, short srcStart, short srcLength) {
-	  cast(bPtr).setValue(srcBuf, srcStart, srcLength);
+    cast(bPtr).setValue(srcBuf, srcStart, srcLength);
   }
-  
+
   public static boolean isValid(short bPtr) {
-	  return cast(bPtr).isValid();
+    return cast(bPtr).isValid();
   }
-  
-  public static void setStartOff(short bPtr, short offset){
-	  cast(bPtr).setStartOff(offset);
+
+  public static void setStartOff(short bPtr, short offset) {
+    cast(bPtr).setStartOff(offset);
   }
-  
-  public static void setLength(short bPtr, short len){
-	  cast(bPtr).setLength(len);
+
+  public static void setLength(short bPtr, short len) {
+    cast(bPtr).setLength(len);
   }
 }

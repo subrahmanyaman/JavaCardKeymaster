@@ -1,3 +1,18 @@
+/*
+ * Copyright(C) 2022 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.android.javacard.seprovider;
 
 import org.globalplatform.upgrade.Element;
@@ -23,8 +38,8 @@ import javacard.framework.APDU;
 import javacard.framework.Util;
 
 public class KMKeymasterProvision {
-	
-//Provision reporting status
+
+  //Provision reporting status
   private static final byte NOT_PROVISIONED = 0x00;
   private static final byte PROVISION_STATUS_ATTESTATION_KEY = 0x01;
   private static final byte PROVISION_STATUS_ATTESTATION_CERT_CHAIN = 0x02;
@@ -34,28 +49,29 @@ public class KMKeymasterProvision {
   private static final byte PROVISION_STATUS_PROVISIONING_LOCKED = 0x20;
 
   private static final short POWER_RESET_MASK_FLAG = (short) 0x4000;
- 
+
   public static final short SHARED_SECRET_KEY_SIZE = 32;
   //protected static byte provisionStatus = NOT_PROVISIONED;
-  
+
   protected KMKeymasterDevice kmDeviceInst;
   protected KMSEProvider seProvider;
   protected KMDecoder kmDecoder;
   protected KMRepository kmRepositroyInst;
   protected KMDataStore kmStoreDataInst;
 
-  public KMKeymasterProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,  KMDecoder decoder, KMRepository repoInst,
+  public KMKeymasterProvision(KMKeymasterDevice deviceInst, KMSEProvider provider,
+      KMDecoder decoder, KMRepository repoInst,
       KMDataStore storeData) {
-	  kmDeviceInst = deviceInst;
-	  seProvider = provider;
-	  kmDecoder = decoder;
-	  kmRepositroyInst = repoInst;
-	  kmStoreDataInst = storeData;
-	  if (!seProvider.isUpgrading()) {
-	    writeProvisionStatus(NOT_PROVISIONED);
-	  }
-	}
-  
+    kmDeviceInst = deviceInst;
+    seProvider = provider;
+    kmDecoder = decoder;
+    kmRepositroyInst = repoInst;
+    kmStoreDataInst = storeData;
+    if (!seProvider.isUpgrading()) {
+      writeProvisionStatus(NOT_PROVISIONED);
+    }
+  }
+
   protected void writeProvisionStatus(byte provisionStatus) {
     short offset = kmRepositroyInst.alloc((short) 1);
     byte[] buffer = kmRepositroyInst.getHeap();
@@ -65,7 +81,7 @@ public class KMKeymasterProvision {
     kmStoreDataInst.storeData(KMDataStoreConstants.PROVISIONED_STATUS,
         buffer, offset, (short) 1);
   }
-  
+
   private byte getProvisionStatus(byte[] buffer, short offset) {
     short len = kmStoreDataInst.getData(KMDataStoreConstants.PROVISIONED_STATUS, buffer, offset);
     if (len == 0) {
@@ -73,7 +89,7 @@ public class KMKeymasterProvision {
     }
     return buffer[offset];
   }
-  
+
   public void processProvisionAttestationKey(APDU apdu) {
     // Arguments
     short keyparams = KMKeyParameters.exp();
@@ -86,7 +102,7 @@ public class KMKeymasterProvision {
 
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
-    
+
     short args = kmDeviceInst.receiveIncoming(apdu, argsProto);
 
     // key params should have os patch, os version and verified root of trust
@@ -150,11 +166,11 @@ public class KMKeymasterProvision {
         KMByteBlob.getBuffer(secret),
         KMByteBlob.getStartOff(secret),
         KMByteBlob.length(secret));
-    
+
     writeProvisionStatus(PROVISION_STATUS_ATTESTATION_KEY);
     kmDeviceInst.sendError(apdu, KMError.OK);
-  }  
-  
+  }
+
   public void processProvisionAttestationCertDataCmd(APDU apdu) {
     // Buffer holds the corresponding offsets and lengths of the certChain, certIssuer and certExpiry
     // in the bufferRef[0] buffer.
@@ -168,7 +184,7 @@ public class KMKeymasterProvision {
     short bufferStartOffset = kmRepositroyInst.allocReclaimableMemory(bufferLength);
     byte[] buffer = kmRepositroyInst.getHeap();
     kmDeviceInst.receiveIncomingCertData(apdu, buffer, bufferLength,
-    		     bufferStartOffset, recvLen,  KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
+        bufferStartOffset, recvLen, KMByteBlob.getBuffer(var), KMByteBlob.getStartOff(var));
     // persist data
     kmStoreDataInst.persistCertificateData(
         (byte[]) buffer,
@@ -180,12 +196,12 @@ public class KMKeymasterProvision {
         Util.getShort(KMByteBlob.getBuffer(var), (short) (certExpiryPos + 2))); // length
 
     // reclaim memory
-    kmRepositroyInst.reclaimMemory(bufferLength);	
+    kmRepositroyInst.reclaimMemory(bufferLength);
     writeProvisionStatus((byte) (PROVISION_STATUS_ATTESTATION_CERT_CHAIN |
-            PROVISION_STATUS_ATTESTATION_CERT_PARAMS));
-        kmDeviceInst.sendError(apdu, KMError.OK);
+        PROVISION_STATUS_ATTESTATION_CERT_PARAMS));
+    kmDeviceInst.sendError(apdu, KMError.OK);
   }
-  
+
   public void processProvisionAttestIdsCmd(APDU apdu) {
     short keyparams = KMKeyParameters.exp();
     short cmd = KMArray.instance((short) 1);
@@ -219,28 +235,30 @@ public class KMKeymasterProvision {
     writeProvisionStatus(PROVISION_STATUS_PRESHARED_SECRET);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
-  
+
   public void processGetProvisionStatusCmd(APDU apdu) {
     short resp = KMArray.instance((short) 2);
     KMArray.add(resp, (short) 0, kmDeviceInst.buildErrorStatus(KMError.OK));
-    KMArray.add(resp, (short) 1, KMInteger.uint_16(getProvisionStatus(apdu.getBuffer(), (short) 0)));
+    KMArray.add(resp, (short) 1,
+        KMInteger.uint_16(getProvisionStatus(apdu.getBuffer(), (short) 0)));
     kmDeviceInst.sendOutgoing(apdu, resp);
   }
 
   public void processLockProvisioningCmd(APDU apdu) {
     byte[] buffer = apdu.getBuffer();
     buffer[0] = 0x01;
-    kmStoreDataInst.storeData(KMDataStoreConstants.PROVISIONED_LOCKED, buffer, (short) 0, (short) 1);
+    kmStoreDataInst.storeData(KMDataStoreConstants.PROVISIONED_LOCKED, buffer, (short) 0,
+        (short) 1);
     writeProvisionStatus(PROVISION_STATUS_PROVISIONING_LOCKED);
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
-  
+
   public void processProvisionDeviceUniqueKey(APDU apdu) {
-	kmDeviceInst.sendError(apdu, KMError.CMD_NOT_ALLOWED); 	  
+    kmDeviceInst.sendError(apdu, KMError.CMD_NOT_ALLOWED);
   }
-  
+
   public void processProvisionAdditionalCertChain(APDU apdu) {
-	kmDeviceInst.sendError(apdu, KMError.CMD_NOT_ALLOWED);	  
+    kmDeviceInst.sendError(apdu, KMError.CMD_NOT_ALLOWED);
   }
 
   public short mapAttestIdToStoreId(short tag) {
@@ -270,7 +288,7 @@ public class KMKeymasterProvision {
       case KMType.ATTESTATION_ID_MODEL:
         return KMDataStoreConstants.ATT_ID_MODEL;
       default:
-          KMException.throwIt(KMError.INVALID_ARGUMENT);
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     return KMType.INVALID_VALUE;
   }
@@ -291,13 +309,13 @@ public class KMKeymasterProvision {
         KMException.throwIt(KMError.INVALID_ARGUMENT);
       }
       obj = KMByteTag.getValue(obj);
-      kmStoreDataInst.storeData((byte)mapAttestIdToStoreId(key), KMByteBlob.getBuffer(obj),
-        KMByteBlob.getStartOff(obj),KMByteBlob.length(obj));
+      kmStoreDataInst.storeData((byte) mapAttestIdToStoreId(key), KMByteBlob.getBuffer(obj),
+          KMByteBlob.getStartOff(obj), KMByteBlob.length(obj));
       index++;
     }
   }
-  
-//This function masks the error code with POWER_RESET_MASK_FLAG
+
+  //This function masks the error code with POWER_RESET_MASK_FLAG
   // in case if card reset event occurred. The clients of the Applet
   // has to extract the power reset status from the error code and
   // process accordingly.

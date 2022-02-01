@@ -20,10 +20,11 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 
 /**
- * This class constructs the Cose messages like CoseKey, CoseMac0, MacStructure,
- * CoseSign1, SignStructure, CoseEncrypt, EncryptStructure and ReceipientStructures.
+ * This class constructs the Cose messages like CoseKey, CoseMac0, MacStructure, CoseSign1,
+ * SignStructure, CoseEncrypt, EncryptStructure and ReceipientStructures.
  */
 public class KMCose {
+
   //COSE SIGN1
   public static final byte COSE_SIGN1_ENTRY_COUNT = 4;
   public static final byte COSE_SIGN1_PROTECTED_PARAMS_OFFSET = 0;
@@ -116,50 +117,52 @@ public class KMCose {
   public static byte[] MAC_DERIVE_KEY_CTX; // "Key to MAC public keys"
 
   private static KMCose prototype;
-  
+
   public static void initStatics() {
-    COSE_TEST_KEY = new byte[] {(byte) 0xFF, (byte) 0xFE, (byte) 0xEE, (byte) 0x90}; // -70000
-    client = new byte[] {0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74};
-    server = new byte[] {0x73, 0x65, 0x72, 0x76, 0x65, 0x72};
-    MAC_CONTEXT = new byte[] {0x4d, 0x41, 0x43, 0x30}; // MAC0
-	SIGNATURE1_CONTEXT = new byte[]
-	      {0x53, 0x69, 0x67, 0x6E, 0x61, 0x74, 0x75, 0x72, 0x65, 0x31}; // Signature1
-    ENCRYPT_CONTEXT = new byte[] {0x45, 0x6E, 0x63, 0x72, 0x79, 0x70, 0x74}; // Encrypt
+    COSE_TEST_KEY = new byte[]{(byte) 0xFF, (byte) 0xFE, (byte) 0xEE, (byte) 0x90}; // -70000
+    client = new byte[]{0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74};
+    server = new byte[]{0x73, 0x65, 0x72, 0x76, 0x65, 0x72};
+    MAC_CONTEXT = new byte[]{0x4d, 0x41, 0x43, 0x30}; // MAC0
+    SIGNATURE1_CONTEXT = new byte[]
+        {0x53, 0x69, 0x67, 0x6E, 0x61, 0x74, 0x75, 0x72, 0x65, 0x31}; // Signature1
+    ENCRYPT_CONTEXT = new byte[]{0x45, 0x6E, 0x63, 0x72, 0x79, 0x70, 0x74}; // Encrypt
     EMPTY_MAC_KEY = new byte[]
-	      {0x45, 0x6d, 0x70, 0x74, 0x79, 0x20, 0x4d, 0x41, 0x43, 0x20, 0x6b, 0x65, 0x79}; // "Empty MAC key"
-    
-    
-	CODE_HASH = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAF};
-	CODE_DESCRIPTOR = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAE};
-	CONFIG_HASH = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAD};
-	CONFIG_DESCRIPTOR = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAC};
-	AUTHORITY_HASH = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAB};
-	AUTHORITY_DESCRIPTOR = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAA};
-    MODE = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xA9};
-    SUBJECT_PUBLIC_KEY = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xA8};
-	KEY_USAGE = new byte[] {(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xA7};
-	  // text strings
-	TEST_ISSUER_NAME = new byte[] {(byte) 0x49, 0x73, 0x73, 0x75, 0x65, 0x72}; // "Issuer"
-	TEST_SUBJECT_NAME = new byte[] {0x53, 0x75, 0x62, 0x6A, 0x65, 0x63, 0x74}; // "Subject"
-	KEY_USAGE_SIGN = new byte[] {0x20}; // Key usage sign
-	MAC_DERIVE_KEY_CTX = new byte[] 
-	      {0x4B, 0x65, 0x79, 0x20, 0x74, 0x6F, 0x20, 0x4D, 0x41, 0x43, 0x20, 0x70, 0x75, 0x62, 0x6C, 0x69, 0x63,
-	          0x20, 0x6B, 0x65, 0x79, 0x73}; // "Key to MAC public keys"
-	  
+        {0x45, 0x6d, 0x70, 0x74, 0x79, 0x20, 0x4d, 0x41, 0x43, 0x20, 0x6b, 0x65,
+            0x79}; // "Empty MAC key"
+
+    CODE_HASH = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAF};
+    CODE_DESCRIPTOR = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAE};
+    CONFIG_HASH = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAD};
+    CONFIG_DESCRIPTOR = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAC};
+    AUTHORITY_HASH = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAB};
+    AUTHORITY_DESCRIPTOR = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xAA};
+    MODE = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xA9};
+    SUBJECT_PUBLIC_KEY = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xA8};
+    KEY_USAGE = new byte[]{(byte) 0xFF, (byte) 0xB8, (byte) 0xBB, (byte) 0xA7};
+    // text strings
+    TEST_ISSUER_NAME = new byte[]{(byte) 0x49, 0x73, 0x73, 0x75, 0x65, 0x72}; // "Issuer"
+    TEST_SUBJECT_NAME = new byte[]{0x53, 0x75, 0x62, 0x6A, 0x65, 0x63, 0x74}; // "Subject"
+    KEY_USAGE_SIGN = new byte[]{0x20}; // Key usage sign
+    MAC_DERIVE_KEY_CTX = new byte[]
+        {0x4B, 0x65, 0x79, 0x20, 0x74, 0x6F, 0x20, 0x4D, 0x41, 0x43, 0x20, 0x70, 0x75, 0x62, 0x6C,
+            0x69, 0x63,
+            0x20, 0x6B, 0x65, 0x79, 0x73}; // "Key to MAC public keys"
+
   }
-  
+
   public static KMCose getInstance() {
     if (prototype == null) {
-	  prototype = new KMCose();
-	}
+      prototype = new KMCose();
+    }
     return prototype;
   }
+
   /**
    * Constructs the Cose MAC structure.
    *
    * @param protectedHeader Bstr pointer which holds the protected header.
-   * @param extAad          Bstr pointer which holds the external Aad.
-   * @param payload         Bstr pointer which holds the payload of the MAC structure.
+   * @param extAad Bstr pointer which holds the external Aad.
+   * @param payload Bstr pointer which holds the payload of the MAC structure.
    * @return KMArray instance of MAC structure.
    */
   public short constructCoseMacStructure(short protectedHeader, short extAad, short payload) {
@@ -186,14 +189,15 @@ public class KMCose {
   /**
    * Constructs the COSE_MAC0 object.
    *
-   * @param protectedHeader   Bstr pointer which holds the protected header.
+   * @param protectedHeader Bstr pointer which holds the protected header.
    * @param unprotectedHeader Bstr pointer which holds the unprotected header.
-   * @param payload           Bstr pointer which holds the payload of the MAC structure.
-   * @param tag               Bstr pointer which holds the tag value.
+   * @param payload Bstr pointer which holds the payload of the MAC structure.
+   * @param tag Bstr pointer which holds the tag value.
    * @return KMArray instance of COSE_MAC0 object.
    */
-  public short constructCoseMac0(short protectedHeader, short unprotectedHeader, short payload, short tag) {
-	// Construct Cose_MAC0
+  public short constructCoseMac0(short protectedHeader, short unprotectedHeader, short payload,
+      short tag) {
+    // Construct Cose_MAC0
     //   COSE_Mac0 = [
     //      protectedHeader,
     //      unprotectedHeader,
@@ -217,8 +221,8 @@ public class KMCose {
    * Constructs the COSE_Signature structure.
    *
    * @param protectedHeader Bstr pointer which holds the protected header.
-   * @param extAad          Bstr pointer which holds the aad.
-   * @param payload         Bstr pointer which holds the payload.
+   * @param extAad Bstr pointer which holds the aad.
+   * @param payload Bstr pointer which holds the payload.
    * @return KMArray instance of COSE_Signature object.
    */
   public short constructCoseSignStructure(short protectedHeader, short extAad, short payload) {
@@ -245,14 +249,14 @@ public class KMCose {
   /**
    * Constructs the COSE_Sign1 object.
    *
-   * @param protectedHeader   Bstr pointer which holds the protected header.
+   * @param protectedHeader Bstr pointer which holds the protected header.
    * @param unProtectedHeader Bstr pointer which holds the unprotected header.
-   * @param payload           Bstr pointer which holds the payload.
-   * @param signature         Bstr pointer which holds the signature.
+   * @param payload Bstr pointer which holds the payload.
+   * @param signature Bstr pointer which holds the signature.
    * @return KMArray instance of COSE_Sign1 object.
    */
   public short constructCoseSign1(short protectedHeader, short unProtectedHeader, short payload,
-                                         short signature) {
+      short signature) {
     //   COSE_Sign = [
     //      protectedHeader,
     //      unprotectedHeader,
@@ -274,7 +278,7 @@ public class KMCose {
   /**
    * Constructs array based on the tag values provided.
    *
-   * @param tags            array of tag values to be constructed.
+   * @param tags array of tag values to be constructed.
    * @param includeTestMode flag which indicates if TEST_COSE_KEY should be included or not.
    * @return instance of KMArray.
    */
@@ -307,13 +311,14 @@ public class KMCose {
   /**
    * Constructs the COSE_sign1 payload for certificate.
    *
-   * @param issuer       instance of KMCosePairTextStringTag which contains issuer value.
-   * @param subject      instance of KMCosePairTextStringTag which contains subject value.
+   * @param issuer instance of KMCosePairTextStringTag which contains issuer value.
+   * @param subject instance of KMCosePairTextStringTag which contains subject value.
    * @param subPublicKey instance of KMCosePairByteBlobTag which contains encoded KMCoseKey.
-   * @param keyUsage     instance of KMCosePairByteBlobTag which contains key usage value.
+   * @param keyUsage instance of KMCosePairByteBlobTag which contains key usage value.
    * @return instance of KMArray.
    */
-  public short constructCoseCertPayload(short issuer, short subject, short subPublicKey, short keyUsage) {
+  public short constructCoseCertPayload(short issuer, short subject, short subPublicKey,
+      short keyUsage) {
     short certPayload = KMArray.instance((short) 4);
     KMArray.add(certPayload, (short) 0, issuer);
     KMArray.add(certPayload, (short) 1, subject);
@@ -325,12 +330,12 @@ public class KMCose {
   }
 
   /**
-   * Construct headers structure. Headers can be part of COSE_Sign1, COSE_Encrypt,
-   * COSE_Mac0 and COSE_Key.
+   * Construct headers structure. Headers can be part of COSE_Sign1, COSE_Encrypt, COSE_Mac0 and
+   * COSE_Key.
    *
-   * @param alg          instance of either KMNInteger or KMInteger, based on the sign of algorithm value.
-   * @param keyId        instance of KMByteBlob which contains the key identifier.
-   * @param iv           instance of KMByteblob which contains the iv buffer.
+   * @param alg instance of either KMNInteger or KMInteger, based on the sign of algorithm value.
+   * @param keyId instance of KMByteBlob which contains the key identifier.
+   * @param iv instance of KMByteblob which contains the iv buffer.
    * @param ephemeralKey instance of KMCoseKey.
    * @return instance of KMCoseHeaders.
    */
@@ -350,13 +355,13 @@ public class KMCose {
   /**
    * Construct Recipients structure for COSE_Encrypt message.
    *
-   * @param protectedHeaders   instance of KMByteBlob which contains encoded KMCoseHeaders.
+   * @param protectedHeaders instance of KMByteBlob which contains encoded KMCoseHeaders.
    * @param unprotectedHeaders instance of KMCoseHeaders.
-   * @param cipherText         instance of KMSimple
+   * @param cipherText instance of KMSimple
    * @return instance of KMArray.
    */
   public short constructRecipientsStructure(short protectedHeaders, short unprotectedHeaders,
-                                                   short cipherText) {
+      short cipherText) {
     // recipients : [+COSE_recipient]
     //  COSE_recipient = [
     //       Headers,
@@ -380,7 +385,7 @@ public class KMCose {
    * Construct Encrypt structure required for COSE_Encrypt message.
    *
    * @param protectedHeader instance of KMByteBlob which wraps KMCoseHeaders.
-   * @param aad             instance of KMByteBlob.
+   * @param aad instance of KMByteBlob.
    * @return instance of KMArray.
    */
   public short constructCoseEncryptStructure(short protectedHeader, short aad) {
@@ -404,14 +409,15 @@ public class KMCose {
   /**
    * Constructs COSE_Encrypt message.
    *
-   * @param protectedHeader   instance of KMByteBlob which wraps KMCoseHeaders.
+   * @param protectedHeader instance of KMByteBlob which wraps KMCoseHeaders.
    * @param unProtectedHeader instance of KMCoseHeaders.
-   * @param cipherText        instance of KMByteBlob containing the cipher text.
-   * @param recipients        instance of KMArray containing the recipients instance
+   * @param cipherText instance of KMByteBlob containing the cipher text.
+   * @param recipients instance of KMArray containing the recipients instance
    * @return instance of KMArray.
    */
-  public short constructCoseEncrypt(short protectedHeader, short unProtectedHeader, short cipherText,
-                                           short recipients) {
+  public short constructCoseEncrypt(short protectedHeader, short unProtectedHeader,
+      short cipherText,
+      short recipients) {
     // COSE_Encrypt = [
     //      protectedHeader,
     //      unprotectedHeader,
@@ -433,7 +439,7 @@ public class KMCose {
   /**
    * Constructs the instance of KMCosePair*Tag.
    *
-   * @param key      value of the key.
+   * @param key value of the key.
    * @param valuePtr instance of one of KMType.
    * @return instance of KMCosePair*Value object.
    */
@@ -465,16 +471,16 @@ public class KMCose {
   /**
    * Constructs a CoseKey with the provided input paramters.
    *
-   * @param keyType    Instance of the identification of the key type.
-   * @param keyId      Instance of key identification value.
-   * @param keyAlg     Instance of the algorithm that is used with this key.
-   * @param keyOps     Instance of the operation that this key is used for.
-   * @param curve      Instance of the EC curve that is used with this key.
-   * @param pubKey     Buffer containing the public key.
-   * @param pubKeyOff  Start offset of the buffer.
-   * @param pubKeyLen  Length of the public key.
+   * @param keyType Instance of the identification of the key type.
+   * @param keyId Instance of key identification value.
+   * @param keyAlg Instance of the algorithm that is used with this key.
+   * @param keyOps Instance of the operation that this key is used for.
+   * @param curve Instance of the EC curve that is used with this key.
+   * @param pubKey Buffer containing the public key.
+   * @param pubKeyOff Start offset of the buffer.
+   * @param pubKeyLen Length of the public key.
    * @param privKeyPtr Instance of the private key.
-   * @param testMode   Represents if key is used in test mode or production mode.
+   * @param testMode Represents if key is used in test mode or production mode.
    * @return Instance of the CoseKey structure.
    */
   public short constructCoseKey(short keyType, short keyId, short keyAlg, short keyOps,
@@ -487,28 +493,29 @@ public class KMCose {
     pubKeyLen = (short) (pubKeyLen / 2);
     short xPtr = KMByteBlob.instance(pubKey, pubKeyOff, pubKeyLen);
     short yPtr = KMByteBlob.instance(pubKey, (short) (pubKeyOff + pubKeyLen), pubKeyLen);
-    short coseKey = constructCoseKey(keyType, keyId, keyAlg, keyOps, curve, xPtr, yPtr, privKeyPtr, testMode);
+    short coseKey = constructCoseKey(keyType, keyId, keyAlg, keyOps, curve, xPtr, yPtr, privKeyPtr,
+        testMode);
     KMCoseKey.cast(coseKey).canonicalize();
     return coseKey;
   }
 
   /**
-   * Constructs the cose key based on input parameters supplied. All the parameters must be instantiated from
-   * either KMInteger or KMNInteger or KMByteblob types.
+   * Constructs the cose key based on input parameters supplied. All the parameters must be
+   * instantiated from either KMInteger or KMNInteger or KMByteblob types.
    *
-   * @param keyType        instance of KMInteger/KMNInteger which holds valid COSE key types.
-   * @param keyId          instance of KMByteBlob which holds key identifier value.
-   * @param keyAlg         instance of KMInteger/KMNInteger which holds valid COSE key algorithm.
-   * @param keyOps         instance of KMInteger/KMNInteger which holds valid COSE key operations.
-   * @param curve          instance of KMInteger/KMNInteger which holds valid COSE EC curve.
-   * @param pubX           instance of KMByteBlob which holds EC public key's x value.
-   * @param pubY           instance of KMByteBlob which holds EC public key's y value.
-   * @param priv           instance of KMByteBlob which holds EC private value.
+   * @param keyType instance of KMInteger/KMNInteger which holds valid COSE key types.
+   * @param keyId instance of KMByteBlob which holds key identifier value.
+   * @param keyAlg instance of KMInteger/KMNInteger which holds valid COSE key algorithm.
+   * @param keyOps instance of KMInteger/KMNInteger which holds valid COSE key operations.
+   * @param curve instance of KMInteger/KMNInteger which holds valid COSE EC curve.
+   * @param pubX instance of KMByteBlob which holds EC public key's x value.
+   * @param pubY instance of KMByteBlob which holds EC public key's y value.
+   * @param priv instance of KMByteBlob which holds EC private value.
    * @param includeTestKey flag which identifies whether to construct test key or production key.
    * @return instance of the KMCoseKey object.
    */
   public short constructCoseKey(short keyType, short keyId, short keyAlg, short keyOps, short curve,
-                                       short pubX, short pubY, short priv, boolean includeTestKey) {
+      short pubX, short pubY, short priv, boolean includeTestKey) {
     short[] coseKeyTags = {
         KMCose.COSE_KEY_KEY_TYPE, keyType, KMType.INVALID_VALUE,
         KMCose.COSE_KEY_KEY_ID, keyId, KMType.INVALID_VALUE,
@@ -534,18 +541,18 @@ public class KMCose {
   /**
    * Constructs key derivation context which is required to compute HKDF.
    *
-   * @param publicKeyA    public key buffer from the first party.
+   * @param publicKeyA public key buffer from the first party.
    * @param publicKeyAOff start position of the public key buffer from first party.
    * @param publicKeyALen length of the public key buffer from first party.
-   * @param publicKeyB    public key buffer from the second party.
+   * @param publicKeyB public key buffer from the second party.
    * @param publicKeyBOff start position of the public key buffer from second party.
    * @param publicKeyBLen length of the public key buffer from second party.
-   * @param senderIsA     true if caller is first party, false if caller is second party.
+   * @param senderIsA true if caller is first party, false if caller is second party.
    * @return instance of KMArray.
    */
   public short constructKdfContext(byte[] publicKeyA, short publicKeyAOff, short publicKeyALen,
-                                          byte[] publicKeyB, short publicKeyBOff, short publicKeyBLen,
-                                          boolean senderIsA) {
+      byte[] publicKeyB, short publicKeyBOff, short publicKeyBLen,
+      boolean senderIsA) {
     short index = 0;
     // Prepare sender info
     short senderInfo = KMArray.instance((short) 3);
@@ -558,7 +565,8 @@ public class KMCose {
     // Prepare recipient info
     index = 0;
     short recipientInfo = KMArray.instance((short) 3);
-    KMArray.add(recipientInfo, index++, KMByteBlob.instance(server, (short) 0, (short) server.length));
+    KMArray.add(recipientInfo, index++,
+        KMByteBlob.instance(server, (short) 0, (short) server.length));
     KMArray.add(recipientInfo, index++, KMByteBlob.instance((short) 0));
     KMArray.add(recipientInfo, index, senderIsA ?
         KMByteBlob.instance(publicKeyB, publicKeyBOff, publicKeyBLen) :

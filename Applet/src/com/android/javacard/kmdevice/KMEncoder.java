@@ -106,7 +106,8 @@ public class KMEncoder {
   }
 
   //array{KMError.OK,Array{KMByteBlobs}}
-  public short encodeCert(byte[] certBuffer, short bufferStart, short certStart, short certLength, short errInt32Ptr) {
+  public short encodeCert(byte[] certBuffer, short bufferStart, short certStart, short certLength,
+      short errInt32Ptr) {
     bufferRef[0] = certBuffer;
     scratchBuf[START_OFFSET] = certStart;
     scratchBuf[LEN_OFFSET] = (short) (certStart + 1);
@@ -330,13 +331,14 @@ public class KMEncoder {
     short subObj;
     while (index >= 0) {
       subObj = KMArray.get(obj, index);
-      if (subObj != KMType.INVALID_VALUE)
+      if (subObj != KMType.INVALID_VALUE) {
         encode(subObj);
+      }
       index--;
     }
   }
 
-public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, short length) {
+  public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, short length) {
     bufferRef[0] = buffer;
     scratchBuf[START_OFFSET] = offset;
     scratchBuf[LEN_OFFSET] = (short) (offset + length + 1);
@@ -480,7 +482,8 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     return handleNegIntegerEncodingRule(buf, offset, len);
   }
 
-  public void removeNegIntegerEncodingRule(byte[] buf, short offset, short len, short origMsbIndex) {
+  public void removeNegIntegerEncodingRule(byte[] buf, short offset, short len,
+      short origMsbIndex) {
     // Do -1-N, where N is the negative integer
     // The value of -1-N is equal to the 1s compliment of N.
     computeOnesCompliment(origMsbIndex, buf, offset, len);
@@ -622,8 +625,9 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     short subObj;
     while (index < arrLen) {
       subObj = KMArray.get(obj, index);
-      if (subObj != KMType.INVALID_VALUE)
+      if (subObj != KMType.INVALID_VALUE) {
         len += getEncodedLength(subObj);
+      }
       index++;
     }
     return len;
@@ -670,7 +674,8 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     // find the difference between most significant byte and len
     short diff = (short) (len - msbIndex);
     switch (diff) {
-      case 0: case 1: //Byte
+      case 0:
+      case 1: //Byte
         if ((val[(short) (startOff + msbIndex)] < KMEncoder.UINT8_LENGTH) &&
             (val[(short) (startOff + msbIndex)] >= 0)) {
           return (short) 1;
@@ -679,9 +684,13 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
         }
       case 2: //Short
         return (short) 3;
-      case 3: case 4: //UInt32
+      case 3:
+      case 4: //UInt32
         return (short) 5;
-      case 5: case 6: case 7: case 8: //UInt64
+      case 5:
+      case 6:
+      case 7:
+      case 8: //UInt64
         return (short) 9;
       default:
         ISOException.throwIt(ISO7816.SW_DATA_INVALID);

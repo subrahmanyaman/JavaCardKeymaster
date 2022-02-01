@@ -22,7 +22,7 @@ import com.android.javacard.kmdevice.KMPreSharedKey;
 
 import javacard.security.HMACKey;
 
-public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey  {
+public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey {
 
   private HMACKey hmacKey;
 
@@ -37,11 +37,11 @@ public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey  {
   public byte getKey(byte[] keyData, short kOff) {
     return hmacKey.getKey(keyData, kOff);
   }
-  
+
   public HMACKey getKey() {
     return hmacKey;
   }
-  
+
   public short getKeySizeBits() {
     return hmacKey.getSize();
   }
@@ -51,8 +51,9 @@ public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey  {
   }
 
   public static KMHmacKey onRestore(HMACKey hmacKey) {
-    if (hmacKey == null)
+    if (hmacKey == null) {
       return null;
+    }
     return new KMHmacKey(hmacKey);
   }
 

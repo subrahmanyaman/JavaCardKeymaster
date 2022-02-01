@@ -43,7 +43,7 @@ public class KMRepository {
 
   public KMRepository(boolean isUpgrading) {
     heap = JCSystem.makeTransientByteArray(HEAP_SIZE, JCSystem.CLEAR_ON_RESET);
-    heapIndex = JCSystem.makeTransientShortArray((short)1, JCSystem.CLEAR_ON_RESET);
+    heapIndex = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
     reclaimIndex = HEAP_SIZE;
     heapIndex[0] = (short) 0;
     repository = this;

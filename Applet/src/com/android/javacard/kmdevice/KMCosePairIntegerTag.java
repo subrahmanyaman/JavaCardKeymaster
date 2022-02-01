@@ -21,8 +21,9 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCosePairIntegerTag represents a key-value type, where key can be KMInteger or KMNInteger and value is
- * KMInteger type. struct{byte TAG_TYPE; short length; struct{short INT_VALUE_TYPE; short key; short value}}.
+ * KMCosePairIntegerTag represents a key-value type, where key can be KMInteger or KMNInteger and
+ * value is KMInteger type. struct{byte TAG_TYPE; short length; struct{short INT_VALUE_TYPE; short
+ * key; short value}}.
  */
 public class KMCosePairIntegerTag extends KMCosePairTagType {
 
@@ -81,12 +82,14 @@ public class KMCosePairIntegerTag extends KMCosePairTagType {
 
   @Override
   public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(heap,
+        (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   @Override
   public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(heap,
+        (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
 

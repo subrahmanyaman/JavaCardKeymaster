@@ -60,7 +60,7 @@ public interface KMAttestationCert {
    * @param attestAppIdOff Start offset of the attestAppId buffer.
    * @param attestAppIdLen Length of the attestAppId buffer.
    * @param resetSinceIdRotation This holds the information of RESET_SINCE_ID_ROTATION.
-   * @param masterKey
+   * @param masterKey instance of the KMMasterKey.
    * @return instance of KMAttestationCert.
    */
   KMAttestationCert makeUniqueId(byte[] scratchpad, short scratchPadOff, byte[] creationTime,
@@ -83,8 +83,7 @@ public interface KMAttestationCert {
    * Set expiry time received from expiry time tag or ca certificates expiry time. Used for
    * certificate's valid period.
    *
-   * @param usageExpiryTimeObj This is a KMByteBlob containing expiry time.
-   * certificate.
+   * @param usageExpiryTimeObj This is a KMByteBlob containing expiry time. certificate.
    * @param scratchPad Buffer to store intermediate results.
    * @return instance of KMAttestationCert
    */
@@ -167,27 +166,30 @@ public interface KMAttestationCert {
   /**
    * Set the Serial number in the certificate. If no serial number is set then serial  number is 1.
    *
-   * @param serialNumber
+   * @param serialNumber is serial number represented as KMByteBlob.
    */
   boolean serialNumber(short serialNumber);
 
   /**
    * Set the Subject Name in the certificate.
    *
-   * @param subject
+   * @param subject is serial number represented as KMByteBlob.
    */
   boolean subjectName(short subject);
 
   /**
    * Set attestation key and mode.
+   *
    * @param attestKey KMByteBlob of the key
-   * @param mode
+   * @param mode is the attestation mode.
    */
   KMAttestationCert ecAttestKey(short attestKey, byte mode);
+
   /**
    * Set attestation key and mode.
+   *
    * @param attestKey KMByteBlob of the key
-   * @param mode
+   * @param mode is the attestation mode
    */
   KMAttestationCert rsaAttestKey(short attestPrivExp, short attestMod, byte mode);
 

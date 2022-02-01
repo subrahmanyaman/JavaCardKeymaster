@@ -50,8 +50,9 @@ public class KMECPrivateKey implements KMAttestationKey {
   }
 
   public static KMECPrivateKey onRestore(KeyPair ecKey) {
-    if (ecKey == null)
+    if (ecKey == null) {
       return null;
+    }
     return new KMECPrivateKey(ecKey);
   }
 

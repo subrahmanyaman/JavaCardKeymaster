@@ -21,5 +21,6 @@ package com.android.javacard.kmdevice;
  * additional security. The attestation key is maintained by the SEProvider.
  */
 public interface KMAttestationKey {
+
 }
 

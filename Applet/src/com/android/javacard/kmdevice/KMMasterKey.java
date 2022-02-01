@@ -21,8 +21,8 @@ package com.android.javacard.kmdevice;
  * master key is maintained by the SEProvider.
  */
 public interface KMMasterKey {
-  
-	public byte getKey(byte[] keyData, short kOff);
-	
-	public short getKeySizeBits(); 
+
+  public byte getKey(byte[] keyData, short kOff);
+
+  public short getKeySizeBits();
 }

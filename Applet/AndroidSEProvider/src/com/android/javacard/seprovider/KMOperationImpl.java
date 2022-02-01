@@ -346,7 +346,8 @@ public class KMOperationImpl implements KMOperation {
     // a workaround to reset the hmac signer instance in case of abort/failure of the operation
     // the corresponding sign / verify function is called.
     if (operationInst[0] != null) {
-      if ((parameters[PURPOSE_OFFSET] == KMType.SIGN || parameters[PURPOSE_OFFSET] == KMType.VERIFY) &&
+      if ((parameters[PURPOSE_OFFSET] == KMType.SIGN || parameters[PURPOSE_OFFSET] == KMType.VERIFY)
+          &&
           (((Signature) operationInst[0]).getAlgorithm() == Signature.ALG_HMAC_SHA_256)) {
         Signature signer = (Signature) operationInst[0];
         try {
@@ -355,7 +356,7 @@ public class KMOperationImpl implements KMOperation {
           } else {
             signer.verify(EMPTY, (short) 0, (short) 0, EMPTY, (short) 0, (short) 0);
           }
-        } catch(Exception e) {
+        } catch (Exception e) {
           // Ignore.
         }
       }

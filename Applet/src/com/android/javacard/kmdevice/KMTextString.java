@@ -47,8 +47,8 @@ public class KMTextString extends KMType {
 
   // return an empty byte blob instance
   public static short instance(short length) {
-    short ptr = KMType.instance(TEXT_STRING_TYPE, (short) (length ));
-    Util.setShort(heap, (short)(ptr + 1), length);
+    short ptr = KMType.instance(TEXT_STRING_TYPE, (short) (length));
+    Util.setShort(heap, (short) (ptr + 1), length);
     return ptr;
   }
 
@@ -74,29 +74,29 @@ public class KMTextString extends KMType {
   protected short getBaseOffset() {
     return instanceTable[KM_TEXT_STRING_OFFSET];
   }
-  
+
   // Get the length of the blob
   private short length() {
     return Util.getShort(heap, (short) (getBaseOffset() + 1));
   }
-  
+
   private byte[] getBuffer() {
-	return heap;
+    return heap;
   }
-  
+
   // Get the start of blob
   public short getStartOff() {
-    return (short)(getBaseOffset() + TLV_HEADER_SIZE);
+    return (short) (getBaseOffset() + TLV_HEADER_SIZE);
   }
-  
+
   public static short length(short bPtr) {
     return cast(bPtr).length();
   }
-  
+
   public static byte[] getBuffer(short bPtr) {
-	 return cast(bPtr).getBuffer();    
+    return cast(bPtr).getBuffer();
   }
-  
+
   public static short getStartOff(short bPtr) {
     return cast(bPtr).getStartOff();
   }

@@ -43,8 +43,9 @@ public class KMAESKey implements KMMasterKey {
   }
 
   public static KMAESKey onRestore(AESKey aesKey) {
-    if (aesKey == null)
+    if (aesKey == null) {
       return null;
+    }
     return new KMAESKey(aesKey);
   }
 

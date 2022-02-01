@@ -16,6 +16,7 @@
 package com.android.javacard.kmapplet;
 
 public class KMConfigurations {
+
   // Machine types
   public static final byte LITTLE_ENDIAN = 0x00;
   public static final byte BIG_ENDIAN = 0x01;

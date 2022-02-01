@@ -22,21 +22,22 @@ import javacard.framework.Util;
 
 /**
  * This class represents the COSE_Key as defined in https://datatracker.ietf.org/doc/html/rfc8152#section-7.
- * This is basically a map containing key value pairs. The label for the key can be (uint / int / tstr) and
- * the value can be of any type. But this class is confined to support only key and value types which are
- * required for remote key provisioning. So keys of type (int / uint) and values of type (int / uint / simple / bstr)
- * only are supported. The structure representing all the sub classes of KMCosePairTagType is as follows:
- * KM_COSE_PAIR_TAG_TYPE(1byte), Length(2 bytes), COSE_PAIR_*_TAG_TYPE(2 bytes), Key(2 bytes), Value(2 bytes).
- * Key can be either KMInteger or KMNInteger and Value can be either KMIntger or KMNinteger or KMSimpleValue
- * or KMByteBlob or KMTextString or KMCoseKey. Each subclass of KMCosePairTagType is named after their corresponding
+ * This is basically a map containing key value pairs. The label for the key can be (uint / int /
+ * tstr) and the value can be of any type. But this class is confined to support only key and value
+ * types which are required for remote key provisioning. So keys of type (int / uint) and values of
+ * type (int / uint / simple / bstr) only are supported. The structure representing all the sub
+ * classes of KMCosePairTagType is as follows: KM_COSE_PAIR_TAG_TYPE(1byte), Length(2 bytes),
+ * COSE_PAIR_*_TAG_TYPE(2 bytes), Key(2 bytes), Value(2 bytes). Key can be either KMInteger or
+ * KMNInteger and Value can be either KMIntger or KMNinteger or KMSimpleValue or KMByteBlob or
+ * KMTextString or KMCoseKey. Each subclass of KMCosePairTagType is named after their corresponding
  * value type of the Cose pair.
  */
 public abstract class KMCosePairTagType extends KMType {
 
   /**
-   * Below table represents the allowed values for a key. The maximum length of the key
-   * can be 4 bytes so each key is represented as 4 bytes. The allowed values are
-   * placed next to their corresponding key.
+   * Below table represents the allowed values for a key. The maximum length of the key can be 4
+   * bytes so each key is represented as 4 bytes. The allowed values are placed next to their
+   * corresponding key.
    */
   public static Object[] allowedKeyPairs;
 
@@ -45,20 +46,25 @@ public abstract class KMCosePairTagType extends KMType {
       allowedKeyPairs =
           new Object[]{
               // Key type
-              (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_KEY_TYPE}, (Object) new byte[]{KMCose.COSE_KEY_TYPE_EC2,
-              KMCose.COSE_KEY_TYPE_SYMMETRIC_KEY},
+              (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_KEY_TYPE},
+              (Object) new byte[]{KMCose.COSE_KEY_TYPE_EC2,
+                  KMCose.COSE_KEY_TYPE_SYMMETRIC_KEY},
               // Key Algorithm
               (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_ALGORITHM},
               (Object) new byte[]{KMCose.COSE_ALG_AES_GCM_256, KMCose.COSE_ALG_HMAC_256,
                   KMCose.COSE_ALG_ECDH_ES_HKDF_256, KMCose.COSE_ALG_ES256},
               // Key operations
-              (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_KEY_OPS}, (Object) new byte[]{KMCose.COSE_KEY_OP_SIGN, KMCose.COSE_KEY_OP_VERIFY,
-              KMCose.COSE_KEY_OP_ENCRYPT, KMCose.COSE_KEY_OP_DECRYPT},
+              (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_KEY_OPS},
+              (Object) new byte[]{KMCose.COSE_KEY_OP_SIGN, KMCose.COSE_KEY_OP_VERIFY,
+                  KMCose.COSE_KEY_OP_ENCRYPT, KMCose.COSE_KEY_OP_DECRYPT},
               // Key Curve
-              (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_CURVE}, (Object) new byte[]{KMCose.COSE_ECCURVE_256},
+              (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_CURVE},
+              (Object) new byte[]{KMCose.COSE_ECCURVE_256},
               // Header Label Algorithm
-              (Object) new byte[]{0, 0, 0, KMCose.COSE_LABEL_ALGORITHM}, (Object) new byte[]{KMCose.COSE_ALG_AES_GCM_256,
-              KMCose.COSE_ALG_HMAC_256, KMCose.COSE_ALG_ES256, KMCose.COSE_ALG_ECDH_ES_HKDF_256},
+              (Object) new byte[]{0, 0, 0, KMCose.COSE_LABEL_ALGORITHM},
+              (Object) new byte[]{KMCose.COSE_ALG_AES_GCM_256,
+                  KMCose.COSE_ALG_HMAC_256, KMCose.COSE_ALG_ES256,
+                  KMCose.COSE_ALG_ECDH_ES_HKDF_256},
               // Test Key
               KMCose.COSE_TEST_KEY, (Object) new byte[]{KMSimpleValue.NULL},
           };
@@ -69,10 +75,10 @@ public abstract class KMCosePairTagType extends KMType {
   /**
    * Validates the key and the values corresponding to key.
    *
-   * @param key    Buffer containing the key.
+   * @param key Buffer containing the key.
    * @param keyOff Offset in the buffer from where key starts.
    * @param keyLen Length of the key buffer.
-   * @param value  Value corresponding to the key.
+   * @param value Value corresponding to the key.
    * @return true if key pair is valid, otherwise false.
    */
   public static boolean isKeyPairValid(byte[] key, short keyOff, short keyLen, short value) {
@@ -83,7 +89,8 @@ public abstract class KMCosePairTagType extends KMType {
     createAllowedKeyPairs();
     while (index < allowedKeyPairs.length) {
       valueIdx = 0;
-      if (isEqual((byte[]) allowedKeyPairs[index], (short) 0, (short) ((byte[]) allowedKeyPairs[index]).length,
+      if (isEqual((byte[]) allowedKeyPairs[index], (short) 0,
+          (short) ((byte[]) allowedKeyPairs[index]).length,
           key, keyOff, keyLen)) {
         values = (byte[]) allowedKeyPairs[(short) (index + 1)];
         while (valueIdx < values.length) {
@@ -93,8 +100,9 @@ public abstract class KMCosePairTagType extends KMType {
           }
           valueIdx++;
         }
-        if (valid)
+        if (valid) {
           break;
+        }
       }
       index += (short) 2;
     }
@@ -104,18 +112,20 @@ public abstract class KMCosePairTagType extends KMType {
   /**
    * Compares two key buffers.
    *
-   * @param key1    First buffer containing the key.
+   * @param key1 First buffer containing the key.
    * @param offset1 Offset of the first buffer.
    * @param length1 Length of the first buffer.
-   * @param key2    Second buffer containing the key.
+   * @param key2 Second buffer containing the key.
    * @param offset2 Offset of the second buffer.
    * @param length2 Length of the second buffer.
    * @return true if both keys are equal, otherwise false.
    */
-  private static boolean isEqual(byte[] key1, short offset1, short length1, byte[] key2, short offset2,
-                                 short length2) {
-    if (length1 != length2)
+  private static boolean isEqual(byte[] key1, short offset1, short length1, byte[] key2,
+      short offset2,
+      short length2) {
+    if (length1 != length2) {
       return false;
+    }
     return (0 == KMInteger.unsignedByteArrayCompare(key1, offset1, key2, offset2, length1));
   }
 
@@ -207,8 +217,7 @@ public abstract class KMCosePairTagType extends KMType {
   }
 
   /**
-   * This function returns one of COSE_KEY_TAG_*_VALUE_TYPE tag
-   * information.
+   * This function returns one of COSE_KEY_TAG_*_VALUE_TYPE tag information.
    *
    * @param ptr Pointer to one of the KMCoseKey*Value class.
    * @return Tag value type.

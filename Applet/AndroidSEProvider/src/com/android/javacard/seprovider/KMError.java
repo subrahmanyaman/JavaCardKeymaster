@@ -72,7 +72,7 @@ public class KMError {
 
   public static final short DEVICE_LOCKED = 72;
   public static final short EARLY_BOOT_ENDED = 73;
-  public static final short ATTESTATION_KEYS_NOT_PROVISIONED =74;
+  public static final short ATTESTATION_KEYS_NOT_PROVISIONED = 74;
   public static final short INCOMPATIBLE_MGF_DIGEST = 78;
   public static final short UNSUPPORTED_MGF_DIGEST = 79;
   public static final short MISSING_NOT_BEFORE = 80;
@@ -110,7 +110,7 @@ public class KMError {
   public static final short INVALID_STATE = 32005;
 
   public static short translate(short err) {
-    switch(err) {
+    switch (err) {
       case SW_CONDITIONS_NOT_SATISFIED:
       case UNSUPPORTED_CLA:
       case INVALID_P1P2:

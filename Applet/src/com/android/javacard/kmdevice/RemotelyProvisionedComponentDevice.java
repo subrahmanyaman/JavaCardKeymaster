@@ -118,18 +118,20 @@ public class RemotelyProvisionedComponentDevice {
   private KMSEProvider seProvider;
   private Object[] operation;
   private short[] dataIndex;
-  private  Object[] authorizedEekRoots;
+  private Object[] authorizedEekRoots;
   private KMKeymintDevice KMAppletInst;
   private KMDataStore storeDataInst;
   private KMRkpDataStore rkpStoreDataInst;
   private KMBootDataStore bootParamsProv;
   private KMCose kmCoseInst;
-  private short[] deviceIds; 
+  private short[] deviceIds;
 
-  public RemotelyProvisionedComponentDevice(KMKeymintDevice KMApplet, KMEncoder encoder, KMDecoder decoder,
-      KMRepository repository, KMSEProvider seProvider, KMDataStore storeData, KMRkpDataStore rkpStore,
+  public RemotelyProvisionedComponentDevice(KMKeymintDevice KMApplet, KMEncoder encoder,
+      KMDecoder decoder,
+      KMRepository repository, KMSEProvider seProvider, KMDataStore storeData,
+      KMRkpDataStore rkpStore,
       KMBootDataStore bootParamsProvider) {
-	initStatics();  
+    initStatics();
     this.encoder = encoder;
     this.decoder = decoder;
     this.repository = repository;
@@ -137,7 +139,7 @@ public class RemotelyProvisionedComponentDevice {
     this.KMAppletInst = KMApplet;
     storeDataInst = storeData;
     rkpStoreDataInst = rkpStore;
-    bootParamsProv = bootParamsProvider; 
+    bootParamsProv = bootParamsProvider;
     deviceIds = JCSystem.makeTransientShortArray((short) 30, JCSystem.CLEAR_ON_RESET);
     data = JCSystem.makeTransientByteArray(DATA_SIZE, JCSystem.CLEAR_ON_RESET);
     operation = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
@@ -148,51 +150,51 @@ public class RemotelyProvisionedComponentDevice {
   }
 
   public static void initStatics() {
-	// Device Info labels
-	BRAND = new byte[] {0x62, 0x72, 0x61, 0x6E, 0x64};
-	MANUFACTURER = new byte[] {0x6D, 0x61, 0x6E, 0x75, 0x66, 0x61, 0x63, 0x74, 0x75,
-	      0x72, 0x65, 0x72};
-	PRODUCT = new byte[] {0x70, 0x72, 0x6F, 0x64, 0x75, 0x63, 0x74};
-	MODEL = new byte[] {0x6D, 0x6F, 0x64, 0x65, 0x6C};
-	BOARD = new byte[] {0x62, 0x6F, 0x61, 0x72, 0x64};
-	VB_STATE = new byte[] {0x76, 0x62, 0x5F, 0x73, 0x74, 0x61, 0x74, 0x65};
-	BOOTLOADER_STATE = new byte[] 
-	      {0x62, 0x6F, 0x6F, 0x74, 0x6C, 0x6F, 0x61, 0x64, 0x65, 0x72, 0x5F, 0x73, 0x74, 0x61, 0x74,
-	          0x65};
-	VB_META_DIGEST = new byte[] 
-	      {0X76, 0X62, 0X6D, 0X65, 0X74, 0X61, 0X5F, 0X64, 0X69, 0X67, 0X65, 0X73, 0X74};
-	OS_VERSION = new byte[] {0x6F, 0x73, 0x5F, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6F,
-	      0x6E};
-	SYSTEM_PATCH_LEVEL = new byte[] 
-	      {0x73, 0x79, 0x73, 0x74, 0x65, 0x6D, 0x5F, 0x70, 0x61, 0x74, 0x63, 0x68, 0x5F, 0x6C, 0x65,
-	          0x76, 0x65, 0x6C};
-	BOOT_PATCH_LEVEL = new byte[] 
-	      {0x62, 0x6F, 0x6F, 0x74, 0x5F, 0x70, 0x61, 0x74, 0x63, 0x68, 0x5F, 0x6C, 0x65, 0x76, 0x65,
-	          0x6C};
-	VENDOR_PATCH_LEVEL = new byte[] 
-	      {0x76, 0x65, 0x6E, 0x64, 0x6F, 0x72, 0x5F, 0x70, 0x61, 0x74, 0x63, 0x68, 0x5F, 0x6C, 0x65,
-	          0x76, 0x65, 0x6C};
-	DEVICE_INFO_VERSION = new byte[] 
-	      {0x76, 0x65, 0x72, 0x73, 0x69, 0x6F, 0x6E};
-	SECURITY_LEVEL = new byte[] 
-	      {0x73, 0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x5F, 0x6C, 0x65, 0x76, 0x65, 0x6C};
-	ATTEST_ID_STATE = new byte[] 
-	      {0x61, 0x74, 0x74, 0x5f, 0x69, 0x64, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x65};
-	  // Verified boot state values
-	VB_STATE_GREEN = new byte[] {0x67, 0x72, 0x65, 0x65, 0x6E};
-	VB_STATE_YELLOW = new byte[] {0x79, 0x65, 0x6C, 0x6C, 0x6F, 0x77};
-	VB_STATE_ORANGE = new byte[] {0x6F, 0x72, 0x61, 0x6E, 0x67, 0x65};
-	VB_STATE_RED = new byte[] {0x72, 0x65, 0x64};
-	  // Boot loader state values
-	UNLOCKED = new byte[] {0x75, 0x6E, 0x6C, 0x6F, 0x63, 0x6B, 0x65, 0x64};
-	LOCKED = new byte[] {0x6C, 0x6F, 0x63, 0x6B, 0x65, 0x64};
+    // Device Info labels
+    BRAND = new byte[]{0x62, 0x72, 0x61, 0x6E, 0x64};
+    MANUFACTURER = new byte[]{0x6D, 0x61, 0x6E, 0x75, 0x66, 0x61, 0x63, 0x74, 0x75,
+        0x72, 0x65, 0x72};
+    PRODUCT = new byte[]{0x70, 0x72, 0x6F, 0x64, 0x75, 0x63, 0x74};
+    MODEL = new byte[]{0x6D, 0x6F, 0x64, 0x65, 0x6C};
+    BOARD = new byte[]{0x62, 0x6F, 0x61, 0x72, 0x64};
+    VB_STATE = new byte[]{0x76, 0x62, 0x5F, 0x73, 0x74, 0x61, 0x74, 0x65};
+    BOOTLOADER_STATE = new byte[]
+        {0x62, 0x6F, 0x6F, 0x74, 0x6C, 0x6F, 0x61, 0x64, 0x65, 0x72, 0x5F, 0x73, 0x74, 0x61, 0x74,
+            0x65};
+    VB_META_DIGEST = new byte[]
+        {0X76, 0X62, 0X6D, 0X65, 0X74, 0X61, 0X5F, 0X64, 0X69, 0X67, 0X65, 0X73, 0X74};
+    OS_VERSION = new byte[]{0x6F, 0x73, 0x5F, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6F,
+        0x6E};
+    SYSTEM_PATCH_LEVEL = new byte[]
+        {0x73, 0x79, 0x73, 0x74, 0x65, 0x6D, 0x5F, 0x70, 0x61, 0x74, 0x63, 0x68, 0x5F, 0x6C, 0x65,
+            0x76, 0x65, 0x6C};
+    BOOT_PATCH_LEVEL = new byte[]
+        {0x62, 0x6F, 0x6F, 0x74, 0x5F, 0x70, 0x61, 0x74, 0x63, 0x68, 0x5F, 0x6C, 0x65, 0x76, 0x65,
+            0x6C};
+    VENDOR_PATCH_LEVEL = new byte[]
+        {0x76, 0x65, 0x6E, 0x64, 0x6F, 0x72, 0x5F, 0x70, 0x61, 0x74, 0x63, 0x68, 0x5F, 0x6C, 0x65,
+            0x76, 0x65, 0x6C};
+    DEVICE_INFO_VERSION = new byte[]
+        {0x76, 0x65, 0x72, 0x73, 0x69, 0x6F, 0x6E};
+    SECURITY_LEVEL = new byte[]
+        {0x73, 0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x5F, 0x6C, 0x65, 0x76, 0x65, 0x6C};
+    ATTEST_ID_STATE = new byte[]
+        {0x61, 0x74, 0x74, 0x5f, 0x69, 0x64, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x65};
+    // Verified boot state values
+    VB_STATE_GREEN = new byte[]{0x67, 0x72, 0x65, 0x65, 0x6E};
+    VB_STATE_YELLOW = new byte[]{0x79, 0x65, 0x6C, 0x6C, 0x6F, 0x77};
+    VB_STATE_ORANGE = new byte[]{0x6F, 0x72, 0x61, 0x6E, 0x67, 0x65};
+    VB_STATE_RED = new byte[]{0x72, 0x65, 0x64};
+    // Boot loader state values
+    UNLOCKED = new byte[]{0x75, 0x6E, 0x6C, 0x6F, 0x63, 0x6B, 0x65, 0x64};
+    LOCKED = new byte[]{0x6C, 0x6F, 0x63, 0x6B, 0x65, 0x64};
 
-	DI_SECURITY_LEVEL = new byte[] {0x73, 0x74, 0x72, 0x6F, 0x6E, 0x67, 0x62, 0x6F,
-	      0x78};
-	ATTEST_ID_LOCKED = new byte[] {0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64};
-	ATTEST_ID_OPEN = new byte[] {0x6f, 0x70, 0x65, 0x6e};	  
+    DI_SECURITY_LEVEL = new byte[]{0x73, 0x74, 0x72, 0x6F, 0x6E, 0x67, 0x62, 0x6F,
+        0x78};
+    ATTEST_ID_LOCKED = new byte[]{0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64};
+    ATTEST_ID_OPEN = new byte[]{0x6f, 0x70, 0x65, 0x6e};
   }
-  
+
   private void createAuthorizedEEKRoot() {
     if (authorizedEekRoots == null) {
       authorizedEekRoots =
@@ -200,18 +202,18 @@ public class RemotelyProvisionedComponentDevice {
               {
                   new byte[]{
                       0x04,
-                      (byte)0xf7, (byte)0x14, (byte)0x8a, (byte)0xdb, (byte)0x97, (byte)0xf4,
-                      (byte)0xcc, (byte)0x53, (byte)0xef, (byte)0xd2, (byte)0x64, (byte)0x11,
-                      (byte)0xc4, (byte)0xe3, (byte)0x75, (byte)0x1f, (byte)0x66, (byte)0x1f,
-                      (byte)0xa4, (byte)0x71, (byte)0x0c, (byte)0x6c, (byte)0xcf, (byte)0xfa,
-                      (byte)0x09, (byte)0x46, (byte)0x80, (byte)0x74, (byte)0x87, (byte)0x54,
-                      (byte)0xf2, (byte)0xad,
-                      (byte)0x5e, (byte)0x7f, (byte)0x5b, (byte)0xf6, (byte)0xec, (byte)0xe4,
-                      (byte)0xf6, (byte)0x19, (byte)0xcc, (byte)0xff, (byte)0x13, (byte)0x37,
-                      (byte)0xfd, (byte)0x0f, (byte)0xa1, (byte)0xc8, (byte)0x93, (byte)0xdb,
-                      (byte)0x18, (byte)0x06, (byte)0x76, (byte)0xc4, (byte)0x5d, (byte)0xe6,
-                      (byte)0xd7, (byte)0x6a, (byte)0x77, (byte)0x86, (byte)0xc3, (byte)0x2d,
-                      (byte)0xaf, (byte)0x8f
+                      (byte) 0xf7, (byte) 0x14, (byte) 0x8a, (byte) 0xdb, (byte) 0x97, (byte) 0xf4,
+                      (byte) 0xcc, (byte) 0x53, (byte) 0xef, (byte) 0xd2, (byte) 0x64, (byte) 0x11,
+                      (byte) 0xc4, (byte) 0xe3, (byte) 0x75, (byte) 0x1f, (byte) 0x66, (byte) 0x1f,
+                      (byte) 0xa4, (byte) 0x71, (byte) 0x0c, (byte) 0x6c, (byte) 0xcf, (byte) 0xfa,
+                      (byte) 0x09, (byte) 0x46, (byte) 0x80, (byte) 0x74, (byte) 0x87, (byte) 0x54,
+                      (byte) 0xf2, (byte) 0xad,
+                      (byte) 0x5e, (byte) 0x7f, (byte) 0x5b, (byte) 0xf6, (byte) 0xec, (byte) 0xe4,
+                      (byte) 0xf6, (byte) 0x19, (byte) 0xcc, (byte) 0xff, (byte) 0x13, (byte) 0x37,
+                      (byte) 0xfd, (byte) 0x0f, (byte) 0xa1, (byte) 0xc8, (byte) 0x93, (byte) 0xdb,
+                      (byte) 0x18, (byte) 0x06, (byte) 0x76, (byte) 0xc4, (byte) 0x5d, (byte) 0xe6,
+                      (byte) 0xd7, (byte) 0x6a, (byte) 0x77, (byte) 0x86, (byte) 0xc3, (byte) 0x2d,
+                      (byte) 0xaf, (byte) 0x8f
                   },
               };
     }
@@ -359,7 +361,7 @@ public class RemotelyProvisionedComponentDevice {
       short coseKey = validateAndExtractPublicKey(arrInst, scratchPad);
       // Encode CoseKey
       short length = KMAppletInst.encodeToApduBuffer(coseKey, scratchPad, (short) 0,
-         MAX_COSE_BUF_SIZE);
+          MAX_COSE_BUF_SIZE);
       // Do Hmac update with input as encoded CoseKey.
       ((KMOperation) operation[0]).update(scratchPad, (short) 0, length);
       // Increment the count each time this function gets executed.
@@ -486,8 +488,8 @@ public class RemotelyProvisionedComponentDevice {
       short coseEncryptProtectedHeader = getCoseEncryptProtectedHeader(scratchPad);
       short coseEncryptUnProtectedHeader = getCoseEncryptUnprotectedHeader(scratchPad, nonce);
       len = KMAppletInst.encodeToApduBuffer(deviceInfo, scratchPad,
-              (short) 0,MAX_COSE_BUF_SIZE);
-      short encodedDeviceInfo =  KMByteBlob.instance(scratchPad, (short) 0, len);
+          (short) 0, MAX_COSE_BUF_SIZE);
+      short encodedDeviceInfo = KMByteBlob.instance(scratchPad, (short) 0, len);
       updateState(FINISH);
       short arr = KMArray.instance((short) 7);
       KMArray.add(arr, (short) 0, KMInteger.uint_16(KMError.OK));
@@ -537,9 +539,9 @@ public class RemotelyProvisionedComponentDevice {
       }
       short data = KMByteBlob.instance(scratchPad, (short) 0, len);
       short arr = KMArray.instance((short) 4);
-      KMArray.add(arr,(short) 0, KMInteger.uint_16(KMError.OK));
-      KMArray.add(arr,(short) 1, data);
-      KMArray.add(arr,(short) 2, recipientStructure);
+      KMArray.add(arr, (short) 0, KMInteger.uint_16(KMError.OK));
+      KMArray.add(arr, (short) 1, data);
+      KMArray.add(arr, (short) 2, recipientStructure);
       // represents there is more output to retrieve
       KMArray.add(arr, (short) 3, KMInteger.uint_8(moreData));
       KMAppletInst.sendOutgoing(apdu, arr);
@@ -550,7 +552,7 @@ public class RemotelyProvisionedComponentDevice {
     }
   }
 
-  public void process(short ins, APDU apdu) throws Exception  {
+  public void process(short ins, APDU apdu) throws Exception {
     switch (ins) {
       case KMKeymasterDevice.INS_GET_RKP_HARDWARE_INFO:
         processGetRkpHwInfoCmd(apdu);
@@ -681,7 +683,7 @@ public class RemotelyProvisionedComponentDevice {
     // Compute CoseMac Structure and compare the macs.
     short macStructure =
         kmCoseInst.constructCoseMacStructure(KMArray.get(coseMacPtr,
-            KMCose.COSE_MAC0_PROTECTED_PARAMS_OFFSET),
+                KMCose.COSE_MAC0_PROTECTED_PARAMS_OFFSET),
             KMByteBlob.instance((short) 0),
             KMArray.get(coseMacPtr, KMCose.COSE_MAC0_PAYLOAD_OFFSET));
     short encodedLen = KMAppletInst.encodeToApduBuffer(macStructure, scratchPad, (short) 0,
@@ -705,7 +707,6 @@ public class RemotelyProvisionedComponentDevice {
   }
 
 
-
   /**
    * This function validates the EEK Chain and extracts the leaf public key, which is used to
    * generate shared secret using ECDH.
@@ -718,13 +719,13 @@ public class RemotelyProvisionedComponentDevice {
     short leafPubKey = 0;
     try {
       leafPubKey = KMAppletInst.validateCertChain(
-              (TRUE == data[getEntry(TEST_MODE)]) ? false : true, // validate EEK root
-              KMCose.COSE_ALG_ES256,
-              KMCose.COSE_ALG_ECDH_ES_HKDF_256,
-              eekArr,
-              scratchPad,
-              authorizedEekRoots
-          );
+          (TRUE == data[getEntry(TEST_MODE)]) ? false : true, // validate EEK root
+          KMCose.COSE_ALG_ES256,
+          KMCose.COSE_ALG_ECDH_ES_HKDF_256,
+          eekArr,
+          scratchPad,
+          authorizedEekRoots
+      );
     } catch (KMException e) {
       KMException.throwIt(KMError.STATUS_INVALID_EEK);
     }
@@ -871,10 +872,10 @@ public class RemotelyProvisionedComponentDevice {
           (short) 128,
           (short) 128,
           lengths);
-        rkpStoreDataInst.createDeviceUniqueKey(true, scratchPad, (short) 128, lengths[1],
-              scratchPad, (short) 0, lengths[0]);
-        deviceUniqueKey =
-            rkpStoreDataInst.getDeviceUniqueKey(true);
+      rkpStoreDataInst.createDeviceUniqueKey(true, scratchPad, (short) 128, lengths[1],
+          scratchPad, (short) 0, lengths[0]);
+      deviceUniqueKey =
+          rkpStoreDataInst.getDeviceUniqueKey(true);
     } else {
       deviceUniqueKey = rkpStoreDataInst.getDeviceUniqueKey(false);
     }
@@ -884,28 +885,19 @@ public class RemotelyProvisionedComponentDevice {
   /**
    * DeviceInfo is a CBOR Map structure described by the following CDDL.
    * <p>
-   * DeviceInfo = {
-   * ? "brand" : tstr,
-   * ? "manufacturer" : tstr,
-   * ? "product" : tstr,
-   * ? "model" : tstr,
-   * ? "board" : tstr,
-   * ? "vb_state" : "green" / "yellow" / "orange",    // Taken from the AVB values
-   * ? "bootloader_state" : "locked" / "unlocked",    // Taken from the AVB values
-   * ? "vbmeta_digest": bstr,                         // Taken from the AVB values
-   * ? "os_version" : tstr,                    // Same as android.os.Build.VERSION.release
-   * ? "system_patch_level" : uint,                   // YYYYMMDD
-   * ? "boot_patch_level" : uint,                     //YYYYMMDD
-   * ? "vendor_patch_level" : uint,                   // YYYYMMDD
-   * "version" : 1, // TheCDDL schema version
-   * "security_level" : "tee" / "strongbox"
-   * "att_id_state": "locked" / "open"
-   * }
+   * DeviceInfo = { ? "brand" : tstr, ? "manufacturer" : tstr, ? "product" : tstr, ? "model" : tstr,
+   * ? "board" : tstr, ? "vb_state" : "green" / "yellow" / "orange",    // Taken from the AVB values
+   * ? "bootloader_state" : "locked" / "unlocked",    // Taken from the AVB values ?
+   * "vbmeta_digest": bstr,                         // Taken from the AVB values ? "os_version" :
+   * tstr,                    // Same as android.os.Build.VERSION.release ? "system_patch_level" :
+   * uint,                   // YYYYMMDD ? "boot_patch_level" : uint,                     //YYYYMMDD
+   * ? "vendor_patch_level" : uint,                   // YYYYMMDD "version" : 1, // TheCDDL schema
+   * version "security_level" : "tee" / "strongbox" "att_id_state": "locked" / "open" }
    */
   private short createDeviceInfo(byte[] scratchpad) {
     // Device Info Key Value pairs.
-    for(short i = 0; i < 30; i++) {
-      deviceIds[i] =  KMType.INVALID_VALUE;
+    for (short i = 0; i < 30; i++) {
+      deviceIds[i] = KMType.INVALID_VALUE;
     }
     short[] out = {0/* index */, 0 /* length */};
     updateItem(deviceIds, out, BRAND, getAttestationId(KMType.ATTESTATION_ID_BRAND, scratchpad));
@@ -960,7 +952,7 @@ public class RemotelyProvisionedComponentDevice {
       meta[1]++;
     }
   }
-  
+
   public short mapAttestIdToStoreId(short tag) {
     switch (tag) {
       // Attestation Id Brand
@@ -988,14 +980,14 @@ public class RemotelyProvisionedComponentDevice {
       case KMType.ATTESTATION_ID_MODEL:
         return KMDataStoreConstants.ATT_ID_MODEL;
       default:
-          KMException.throwIt(KMError.INVALID_ARGUMENT);
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     return KMType.INVALID_VALUE;
   }
 
   private short getAttestationId(short attestId, byte[] scratchpad) {
-    short attIdTagLen = storeDataInst.getData((byte)mapAttestIdToStoreId(attestId),
-        scratchpad, (short)0);
+    short attIdTagLen = storeDataInst.getData((byte) mapAttestIdToStoreId(attestId),
+        scratchpad, (short) 0);
     if (attIdTagLen != 0) {
       return KMTextString.instance(scratchpad, (short) 0, attIdTagLen);
     }
@@ -1090,7 +1082,8 @@ public class RemotelyProvisionedComponentDevice {
     key = KMByteBlob.instance(scratchPad, (short) 0, key);
 
     short kdfContext =
-        kmCoseInst.constructKdfContext(pubKeyA, pubKeyAOff, pubKeyALen, pubKeyB, pubKeyBOff, pubKeyBLen,
+        kmCoseInst.constructKdfContext(pubKeyA, pubKeyAOff, pubKeyALen, pubKeyB, pubKeyBOff,
+            pubKeyBLen,
             true);
     kdfContext = KMAppletInst
         .encodeToApduBuffer(kdfContext, scratchPad, (short) 0, MAX_COSE_BUF_SIZE);
@@ -1242,7 +1235,8 @@ public class RemotelyProvisionedComponentDevice {
             coseKey);
 
     // Construct recipients structure.
-    return kmCoseInst.constructRecipientsStructure(protectedHeaderRecipient, unprotectedHeaderRecipient,
+    return kmCoseInst.constructRecipientsStructure(protectedHeaderRecipient,
+        unprotectedHeaderRecipient,
         KMSimpleValue.instance(KMSimpleValue.NULL));
   }
 
@@ -1407,7 +1401,8 @@ public class RemotelyProvisionedComponentDevice {
     short protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, len);
     // create MAC_Structure
     short macStructure =
-        kmCoseInst.constructCoseMacStructure(protectedHeader, KMByteBlob.instance((short) 0), payload);
+        kmCoseInst.constructCoseMacStructure(protectedHeader, KMByteBlob.instance((short) 0),
+            payload);
     // Encode the Mac_structure and do HMAC_Sign to produce the tag for COSE_MAC0
     len = KMAppletInst.encodeToApduBuffer(macStructure, scratchPad, (short) 0,
         MAX_COSE_BUF_SIZE);

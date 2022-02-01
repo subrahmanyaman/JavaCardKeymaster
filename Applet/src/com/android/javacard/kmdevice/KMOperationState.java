@@ -81,18 +81,20 @@ public class KMOperationState {
     }
     Util.arrayFillNonAtomic(opHandle, (short) 0, OPERATION_HANDLE_SIZE, (byte) 0);
     Util.arrayFillNonAtomic(authTime, (short) 0, AUTH_TIME_SIZE, (byte) 0);
-    
-    if(null != operations[OPERATION])
-    	((KMOperation)operations[OPERATION]).abort();
+
+    if (null != operations[OPERATION]) {
+      ((KMOperation) operations[OPERATION]).abort();
+    }
     operations[OPERATION] = null;
-    
-    if(null != operations[HMAC_SIGNER_OPERATION])
-    	((KMOperation)operations[HMAC_SIGNER_OPERATION]).abort();
+
+    if (null != operations[HMAC_SIGNER_OPERATION]) {
+      ((KMOperation) operations[HMAC_SIGNER_OPERATION]).abort();
+    }
     operations[HMAC_SIGNER_OPERATION] = null;
   }
 
-  public short compare(byte[] handle, short start, short len){
-    return Util.arrayCompare(handle, start, opHandle, (short)0, (short)opHandle.length);
+  public short compare(byte[] handle, short start, short len) {
+    return Util.arrayCompare(handle, start, opHandle, (short) 0, (short) opHandle.length);
   }
 
   public void setKeySize(short keySize) {
@@ -314,13 +316,13 @@ public class KMOperationState {
     }
     return KMType.BUF_NONE;
   }
-  
+
   public void setTrustedConfirmationSigner(KMOperation hmacSignerOp) {
     operations[HMAC_SIGNER_OPERATION] = hmacSignerOp;
   }
 
   public KMOperation getTrustedConfirmationSigner() {
-    return (KMOperation)operations[HMAC_SIGNER_OPERATION];
+    return (KMOperation) operations[HMAC_SIGNER_OPERATION];
   }
 
   public boolean isTrustedConfirmationRequired() {
