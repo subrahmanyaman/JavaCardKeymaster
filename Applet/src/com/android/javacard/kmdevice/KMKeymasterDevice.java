@@ -40,7 +40,6 @@ public class KMKeymasterDevice {
   public static final short VERIFIED_BOOT_KEY_SIZE = 32;
   public static final short VERIFIED_BOOT_HASH_SIZE = 32;
   public static final short BOOT_PATCH_LVL_SIZE = 4;
-  public static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
   public static final short KEYMINT_HAL_VERSION = (short) 0x5000;
   public static final short KEYMASTER_HAL_VERSION = (short) 0x4000;
   private static final short MAX_AUTH_DATA_SIZE = (short) 512;
@@ -313,12 +312,11 @@ public class KMKeymasterDevice {
     KMEnumArrayTag.initStatics();
     KMIntegerArrayTag.initStatics();
   }
-  
-  
+
   public void clean() {
-	repository.clean();
+    repository.clean();
   }
-  
+
   protected void initHmacNonceAndSeed(byte[] scratchPad, short offset) {
     seProvider.newRandomNumber(scratchPad, offset, HMAC_SEED_NONCE_SIZE);
     storeDataInst.storeData(KMDataStoreConstants.HMAC_NONCE, scratchPad, offset, HMAC_SEED_NONCE_SIZE);
@@ -4531,20 +4529,13 @@ public class KMKeymasterDevice {
     return resp;
   }
 
-  public short validateApduHeader(APDU apdu) {
+  public void validateP1P2(APDU apdu) {
     byte[] apduBuffer = apdu.getBuffer();
-    byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
     short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
-
-    // Validate APDU Header.
-    if ((apduClass != CLA_ISO7816_NO_SM_NO_CHAN)) {
-    	return ISO7816.SW_CLA_NOT_SUPPORTED;
-    }
     // Validate P1P2.
     if (P1P2 != KEYMASTER_HAL_VERSION) {
-      return ISO7816.SW_INCORRECT_P1P2;
+      ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
-    return KMError.OK;
   }
 
   public boolean isAssociatedDataTagSupported() {

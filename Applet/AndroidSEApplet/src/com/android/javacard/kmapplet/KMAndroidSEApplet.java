@@ -56,6 +56,7 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
   // MSB byte is for Major version and LSB byte is for Minor version.
   private static final short CURRENT_PACKAGE_VERSION = 0x0009; // 0.9
 
+  public static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
   private static final byte KM_BEGIN_STATE = 0x00;
   private static final byte ILLEGAL_STATE = KM_BEGIN_STATE + 1;
 
@@ -323,11 +324,14 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
   private short validateApdu(APDU apdu) {
     // Read the apdu header and buffer.
     byte[] apduBuffer = apdu.getBuffer();
-    short err = kmDeviceInst.validateApduHeader(apdu);
-    if (err != KMError.OK) {
-      kmDeviceInst.sendError(apdu, err);
-      return KMType.INVALID_VALUE;
+    byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
+
+    // Validate APDU Header.
+    if ((apduClass != CLA_ISO7816_NO_SM_NO_CHAN)) {
+      ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
     }
+
+    kmDeviceInst.validateP1P2(apdu);
     return apduBuffer[ISO7816.OFFSET_INS];
   }
   

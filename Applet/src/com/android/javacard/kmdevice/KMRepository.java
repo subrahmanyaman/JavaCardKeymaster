@@ -16,7 +16,6 @@
 
 package com.android.javacard.kmdevice;
 
-import org.globalplatform.upgrade.Element;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
@@ -46,6 +45,7 @@ public class KMRepository {
     heap = JCSystem.makeTransientByteArray(HEAP_SIZE, JCSystem.CLEAR_ON_RESET);
     heapIndex = JCSystem.makeTransientShortArray((short)1, JCSystem.CLEAR_ON_RESET);
     reclaimIndex = HEAP_SIZE;
+    heapIndex[0] = (short) 0;
     repository = this;
   }
 

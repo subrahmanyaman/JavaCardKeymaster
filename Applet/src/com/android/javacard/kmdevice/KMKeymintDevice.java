@@ -42,7 +42,6 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     try {
       resetData();
       repository.onProcess();
-      // Validate APDU Header.
       byte[] apduBuffer = apdu.getBuffer();
       byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
 
@@ -385,14 +384,12 @@ public class KMKeymintDevice extends KMKeymasterDevice {
   }
 
   @Override
-  public short validateApduHeader(APDU apdu) {
+  public void validateP1P2(APDU apdu) {
     byte[] apduBuffer = apdu.getBuffer();
     short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
-    byte ins = apduBuffer[ISO7816.OFFSET_INS];
     if (P1P2 != KEYMINT_HAL_VERSION) {
-      return KMError.INVALID_P1P2;
+      ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
-    return KMError.OK;
   }
 
   @Override
