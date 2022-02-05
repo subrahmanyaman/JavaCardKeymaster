@@ -23,6 +23,7 @@
 #include <cppbor/cppbor_parse.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -45,6 +46,7 @@ ErrMsgOr<bytevec> ECDSA_sign(const bytevec& key, bytevec& input) {
     if (EVP_PKEY_set1_EC_KEY(privPkey.get(), privEcKey.get()) != 1) {
         return "Error setting private key";
     }
+    auto degree = EC_GROUP_get_degree(EC_KEY_get0_group(privEcKey.get()));
 
     if (EVP_DigestSignInit(digestCtx.get(), &pkeyCtx, EVP_sha256(), nullptr /* engine */, privPkey.get()) !=
         1) {
@@ -55,7 +57,24 @@ ErrMsgOr<bytevec> ECDSA_sign(const bytevec& key, bytevec& input) {
     if (!EVP_DigestSign(digestCtx.get(), signature.data(), &outlen, input.data(), input.size())) {
         return "Ecdsa sign failed.";
     }
-    return signature;
+    const unsigned char* derBuf = signature.data();
+    ECDSA_SIG* ecdsaSig = d2i_ECDSA_SIG(NULL, &derBuf, outlen);
+    if (ecdsaSig == NULL) {
+      return " Decoding ecdsa signature failed";
+    }
+    const BIGNUM *sr, *ss;
+    ECDSA_SIG_get0(ecdsaSig, &sr, &ss);
+    auto r_len = BN_num_bytes(sr);
+    auto s_len = BN_num_bytes(ss);
+    auto bn_len = (degree + 7) / 8;
+    if ((r_len > bn_len) || (s_len > bn_len)) {
+      return " Decoding ecdsa signature failed wrong length";
+    }
+    bytevec rawSignature(2 * bn_len, 0);
+    BN_bn2bin(sr, rawSignature.data() + bn_len - r_len);
+    BN_bn2bin(ss, rawSignature.data() + 2 * bn_len - s_len);
+
+    return rawSignature;
 }
 
 bool ECDSA_verify(const bytevec& input, const bytevec& signature, const bytevec& key) {
