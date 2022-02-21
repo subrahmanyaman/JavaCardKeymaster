@@ -19,10 +19,11 @@ import org.globalplatform.upgrade.Element;
 
 import com.android.javacard.kmdevice.KMComputedHmacKey;
 import com.android.javacard.kmdevice.KMPreSharedKey;
+import com.android.javacard.kmdevice.KMRkpMacKey;
 
 import javacard.security.HMACKey;
 
-public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey {
+public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey, KMRkpMacKey {
 
   private HMACKey hmacKey;
 

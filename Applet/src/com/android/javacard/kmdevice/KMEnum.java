@@ -32,7 +32,7 @@ public class KMEnum extends KMType {
   // The allowed enum types.
   private static short[] types;
 
-  private static Object[] enums = null;
+  private static Object[] enums ;
 
   private KMEnum() {
   }
@@ -48,6 +48,24 @@ public class KMEnum extends KMType {
         PURPOSE,
         ECCURVE,
         RULE
+    };
+    enums = new Object[]{
+        new byte[]{SOFTWARE, TRUSTED_ENVIRONMENT, STRONGBOX},
+        new byte[]{X509, PKCS8, RAW},
+        new byte[]{
+            DERIVATION_NONE,
+            RFC5869_SHA256,
+            ISO18033_2_KDF1_SHA1,
+            ISO18033_2_KDF1_SHA256,
+            ISO18033_2_KDF2_SHA1,
+            ISO18033_2_KDF2_SHA256
+        },
+        new byte[]{SELF_SIGNED_BOOT, VERIFIED_BOOT, UNVERIFIED_BOOT, FAILED_BOOT},
+        new byte[]{DEVICE_LOCKED_TRUE, DEVICE_LOCKED_FALSE},
+        new byte[]{USER_AUTH_NONE, PASSWORD, FINGERPRINT, BOTH},
+        new byte[]{ENCRYPT, DECRYPT, SIGN, VERIFY, WRAP_KEY, ATTEST_KEY, AGREE_KEY},
+        new byte[]{P_224, P_256, P_384, P_521},
+        new byte[]{IGNORE_INVALID_TAGS, FAIL_ON_INVALID_TAGS}
     };
   }
 
@@ -101,31 +119,6 @@ public class KMEnum extends KMType {
     return ptr;
   }
 
-  private static void create() {
-    // The allowed enum values to corresponding enum types in the types array.
-    if (enums == null) {
-      enums =
-          new Object[]{
-              new byte[]{SOFTWARE, TRUSTED_ENVIRONMENT, STRONGBOX},
-              new byte[]{X509, PKCS8, RAW},
-              new byte[]{
-                  DERIVATION_NONE,
-                  RFC5869_SHA256,
-                  ISO18033_2_KDF1_SHA1,
-                  ISO18033_2_KDF1_SHA256,
-                  ISO18033_2_KDF2_SHA1,
-                  ISO18033_2_KDF2_SHA256
-              },
-              new byte[]{SELF_SIGNED_BOOT, VERIFIED_BOOT, UNVERIFIED_BOOT, FAILED_BOOT},
-              new byte[]{DEVICE_LOCKED_TRUE, DEVICE_LOCKED_FALSE},
-              new byte[]{USER_AUTH_NONE, PASSWORD, FINGERPRINT, BOTH},
-              new byte[]{ENCRYPT, DECRYPT, SIGN, VERIFY, WRAP_KEY, ATTEST_KEY, AGREE_KEY},
-              new byte[]{P_224, P_256, P_384, P_521},
-              new byte[]{IGNORE_INVALID_TAGS, FAIL_ON_INVALID_TAGS}
-          };
-    }
-  }
-
   public void setVal(byte val) {
     heap[(short) (KMType.instanceTable[KM_ENUM_OFFSET] + TLV_HEADER_SIZE + 2)] = val;
   }
@@ -144,7 +137,6 @@ public class KMEnum extends KMType {
 
   // isValidTag enumeration keys and values.
   private static boolean validateEnum(short key, byte value) {
-    create();
     byte[] vals;
     short enumInd;
     // check if key exists

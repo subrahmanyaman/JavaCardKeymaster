@@ -32,12 +32,20 @@ public class KMEnumTag extends KMTag {
   // The allowed tag keys of type enum tag.
   private static short[] tags;
 
-  private static Object[] enums = null;
+  private static Object[] enums;
 
   public static void initStatics() {
     tags = new short[]{
         ALGORITHM, ECCURVE, BLOB_USAGE_REQ, USER_AUTH_TYPE, ORIGIN, HARDWARE_TYPE
     };
+    enums = new Object[]{
+        new byte[]{RSA, DES, EC, AES, HMAC},
+        new byte[]{P_224, P_256, P_384, P_521, CURVE_25519},
+        new byte[]{STANDALONE, REQUIRES_FILE_SYSTEM},
+        new byte[]{USER_AUTH_NONE, PASSWORD, FINGERPRINT, BOTH, ANY},
+        new byte[]{GENERATED, DERIVED, IMPORTED, UNKNOWN, SECURELY_IMPORTED},
+        new byte[]{SOFTWARE, TRUSTED_ENVIRONMENT, STRONGBOX}
+    }; 
   }
 
   private KMEnumTag() {
@@ -102,24 +110,8 @@ public class KMEnumTag extends KMTag {
     return heap[(short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4)];
   }
 
-  public static void create() {
-    if (enums == null) {
-      // enum tag values.
-      enums =
-          new Object[]{
-              new byte[]{RSA, DES, EC, AES, HMAC},
-              new byte[]{P_224, P_256, P_384, P_521, CURVE_25519},
-              new byte[]{STANDALONE, REQUIRES_FILE_SYSTEM},
-              new byte[]{USER_AUTH_NONE, PASSWORD, FINGERPRINT, BOTH, ANY},
-              new byte[]{GENERATED, DERIVED, IMPORTED, UNKNOWN, SECURELY_IMPORTED},
-              new byte[]{SOFTWARE, TRUSTED_ENVIRONMENT, STRONGBOX}
-          };
-    }
-  }
-
   // isValidTag enumeration keys and values.
   private static boolean validateEnum(short key, byte value) {
-    create();
     byte[] vals;
     short enumInd;
     // check if key exists

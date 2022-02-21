@@ -26,6 +26,7 @@ import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.kmdevice.KMMasterKey;
 import com.android.javacard.kmdevice.KMOperation;
 import com.android.javacard.kmdevice.KMPreSharedKey;
+import com.android.javacard.kmdevice.KMRkpMacKey;
 import com.android.javacard.kmdevice.KMSEProvider;
 
 import javacard.framework.ISO7816;
@@ -516,43 +517,45 @@ public class KMAndroidSEProvider implements KMSEProvider {
       final byte n = 2; // hardcoded
       // [L] 256 bits - hardcoded 32 bits as per
       // reference impl in keymaster.
-      final byte[] L = {
-          0, 0, 1, 0
-      };
-      // byte
-      final byte[] zero = {
-          0
-      };
+      short zeroIndex = 0;
+      short LIndex = 1;
+      short bufIndex = 5;
+      short keyIndex = 9;
+      //1st byte in tempArray is reserved for zero
+      //next 4 bytes in tempArray is reserved for L
+      tmpArray[0] = 0;
+      tmpArray[1] = 0;
+      tmpArray[2] = 0;
+      tmpArray[3] = 1;
+      tmpArray[4] = 0;
+      
       // [i] counter - 32 bits
       short iBufLen = 4;
       short keyOutLen = n * 16;
       //Convert Hmackey to AES Key as the algorithm is ALG_AES_CMAC_128.
       KMHmacKey hmacKey = ((KMHmacKey) preSharedKey);
-      hmacKey.getKey(tmpArray, (short) 0);
-      aesKeys[KEYSIZE_256_OFFSET].setKey(tmpArray, (short) 0);
+      hmacKey.getKey(tmpArray, keyIndex);
+      aesKeys[KEYSIZE_256_OFFSET].setKey(tmpArray, (short) keyIndex);
       //Initialize the key derivation function.
       kdf.init(aesKeys[KEYSIZE_256_OFFSET], Signature.MODE_SIGN);
       //Clear the tmpArray buffer.
-      Util.arrayFillNonAtomic(tmpArray, (short) 0, (short) 256, (byte) 0);
-
-      Util.arrayFillNonAtomic(tmpArray, (short) 0, iBufLen, (byte) 0);
-      Util.arrayFillNonAtomic(tmpArray, (short) iBufLen, keyOutLen, (byte) 0);
+      Util.arrayFillNonAtomic(tmpArray, keyIndex, (short) 256, (byte) 0);
 
       byte i = 1;
       short pos = 0;
       while (i <= n) {
-        tmpArray[3] = i;
+        tmpArray[(short)(bufIndex + 3)] = i;
         // 4 bytes of iBuf with counter in it
-        kdf.update(tmpArray, (short) 0, (short) iBufLen);
-        kdf.update(label, labelStart, (short) labelLen); // label
-        kdf.update(zero, (short) 0, (short) 1); // 1 byte of 0x00
+        kdf.update(tmpArray, bufIndex, iBufLen);
+        kdf.update(label, labelStart, labelLen); // label
+        kdf.update(tmpArray, zeroIndex, (short) 1); // 1 byte of 0x00
         kdf.update(context, contextStart, contextLength); // context
         // 4 bytes of L - signature of 16 bytes
-        pos = kdf.sign(L, (short) 0, (short) 4, tmpArray,
-            (short) (iBufLen + pos));
+        pos = kdf.sign(tmpArray, LIndex, (short) 4, tmpArray,
+            (short) (keyIndex + pos));
         i++;
       }
-      return createHMACKey(tmpArray, (short) iBufLen, (short) keyOutLen);
+      return createHMACKey(tmpArray, keyIndex, keyOutLen);
     } finally {
       clean();
     }
@@ -569,6 +572,16 @@ public class KMAndroidSEProvider implements KMSEProvider {
       byte[] data, short dataStart, short dataLength, byte[] mac, short macStart) {
     HMACKey key = createHMACKey(keyBuf, keyStart, keyLength);
     return hmacSign(key, data, dataStart, dataLength, mac, macStart);
+  }
+  
+  @Override
+  public short hmacSign(Object key,
+      byte[] data, short dataStart, short dataLength, byte[] mac, short macStart) {
+	if(!(key instanceof KMHmacKey)) {
+	  KMException.throwIt(KMError.INVALID_ARGUMENT);
+	}
+	KMHmacKey hmacKey = (KMHmacKey) key;
+    return hmacSign(hmacKey.getKey(), data, dataStart, dataLength, mac, macStart);
   }
 
   @Override
@@ -587,8 +600,11 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public boolean hmacVerify(KMComputedHmacKey key, byte[] data, short dataStart,
+  public boolean hmacVerify(Object key, byte[] data, short dataStart,
       short dataLength, byte[] mac, short macStart, short macLength) {
+    if(!(key instanceof KMHmacKey)) {
+	  KMException.throwIt(KMError.INVALID_ARGUMENT);
+	}  
     KMHmacKey hmacKey = (KMHmacKey) key;
     hmacSignature.init(hmacKey.getKey(), Signature.MODE_VERIFY);
     return hmacSignature.verify(data, dataStart, dataLength, mac, macStart,
@@ -919,6 +935,18 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
+  public KMRkpMacKey createRkpMacKey(KMRkpMacKey rkpMacKey, byte[] keyData,
+      short offset, short length) {
+    if (rkpMacKey == null) {
+      HMACKey key = (HMACKey) KeyBuilder.buildKey(KeyBuilder.TYPE_HMAC, (short) (length * 8),
+          false);
+      rkpMacKey = new KMHmacKey(key);
+    }
+    ((KMHmacKey) rkpMacKey).setKey(keyData, offset, length);
+    return rkpMacKey;
+  }
+  
+  @Override
   public short ecSign256(byte[] secret, short secretStart, short secretLength,
       byte[] inputDataBuf, short inputDataStart, short inputDataLength,
       byte[] outputDataBuf, short outputDataStart) {
@@ -1048,22 +1076,22 @@ public class KMAndroidSEProvider implements KMSEProvider {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
     }
     HMACKey hmacKey = createHMACKey(prk, prkOff, prkLen);
-    Util.arrayFill(tmpArray, (short) 0, (short) 32, (byte) 0);
-    byte[] cnt = {(byte) 0};
+    //first byte in tmpArray will be used for count.
+    Util.arrayFill(tmpArray, (short) 0, (short) 33, (byte) 0);
     short bytesCopied = 0;
     short len = 0;
     for (short i = 0; i < n; i++) {
-      cnt[0]++;
+      tmpArray[0]++;
       hmacSignature.init(hmacKey, Signature.MODE_SIGN);
       if (i != 0) {
-        hmacSignature.update(tmpArray, (short) 0, (short) 32);
+        hmacSignature.update(tmpArray, (short) 1, (short) 32);
       }
       hmacSignature.update(info, infoOff, infoLen);
-      len = hmacSignature.sign(cnt, (short) 0, (short) 1, tmpArray, (short) 0);
+      len = hmacSignature.sign(tmpArray, (short) 0, (short) 1, tmpArray, (short) 1);
       if ((short) (bytesCopied + len) > outLen) {
         len = (short) (outLen - bytesCopied);
       }
-      Util.arrayCopyNonAtomic(tmpArray, (short) 0, out, (short) (outOff + bytesCopied), len);
+      Util.arrayCopyNonAtomic(tmpArray, (short) 1, out, (short) (outOff + bytesCopied), len);
       bytesCopied += len;
     }
     return outLen;
@@ -1212,6 +1240,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
         return KMECPrivateKey.getBackupPrimitiveByteCount();
       case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY:
         return KMECDeviceUniqueKey.getBackupPrimitiveByteCount();
+      case KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY:
+          return KMHmacKey.getBackupPrimitiveByteCount();  
       default:
         ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }
@@ -1231,6 +1261,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
         return KMECPrivateKey.getBackupObjectCount();
       case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY:
         return KMECDeviceUniqueKey.getBackupObjectCount();
+      case KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY:
+          return KMHmacKey.getBackupObjectCount();
       default:
         ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }

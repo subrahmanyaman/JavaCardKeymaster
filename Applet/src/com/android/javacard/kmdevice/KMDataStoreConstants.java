@@ -52,6 +52,7 @@ public class KMDataStoreConstants {
   public static final byte AUTH_TAG_8 = 32;
   public static final byte ADDITIONAL_CERT_CHAIN = 33;
   public static final byte BOOT_CERT_CHAIN = 34;
+  public static final byte RKP_MAC_KEY = 35;
 
   //certificate data constants.
   public static final byte CERTIFICATE_CHAIN = 0;
@@ -64,6 +65,5 @@ public class KMDataStoreConstants {
   public static final byte INTERFACE_TYPE_DEVICE_UNIQUE_KEY = 0x03;
   public static final byte INTERFACE_TYPE_MASTER_KEY = 0x04;
   public static final byte INTERFACE_TYPE_PRE_SHARED_KEY = 0x05;
-
-
+  public static final byte INTERFACE_TYPE_RKP_MAC_KEY = 0x06;
 }

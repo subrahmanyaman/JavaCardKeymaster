@@ -41,9 +41,8 @@ public abstract class KMCosePairTagType extends KMType {
    */
   public static Object[] allowedKeyPairs;
 
-  private static void createAllowedKeyPairs() {
-    if (allowedKeyPairs == null) {
-      allowedKeyPairs =
+  public static void initStatics() {
+    allowedKeyPairs =
           new Object[]{
               // Key type
               (Object) new byte[]{0, 0, 0, KMCose.COSE_KEY_KEY_TYPE},
@@ -68,10 +67,8 @@ public abstract class KMCosePairTagType extends KMType {
               // Test Key
               KMCose.COSE_TEST_KEY, (Object) new byte[]{KMSimpleValue.NULL},
           };
-    }
   }
-
-
+  
   /**
    * Validates the key and the values corresponding to key.
    *
@@ -86,7 +83,6 @@ public abstract class KMCosePairTagType extends KMType {
     short valueIdx;
     byte[] values;
     boolean valid = false;
-    createAllowedKeyPairs();
     while (index < allowedKeyPairs.length) {
       valueIdx = 0;
       if (isEqual((byte[]) allowedKeyPairs[index], (short) 0,

@@ -61,4 +61,11 @@ public interface KMRkpDataStore extends KMUpgradable {
    * @return KMDeviceUniqueKey instance
    */
   KMDeviceUniqueKey getDeviceUniqueKey(boolean testMode);
+  
+  /**
+   * Returns the persisted RKP mac key.
+   *
+   * @return KMRkpMacKey instance.
+   */
+  KMRkpMacKey getRkpMacacKey();
 }

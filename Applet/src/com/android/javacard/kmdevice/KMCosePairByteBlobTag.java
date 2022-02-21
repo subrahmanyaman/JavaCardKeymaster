@@ -29,11 +29,24 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
 
   private static KMCosePairByteBlobTag prototype;
 
-  public static Object[] keys;
+  private static Object[] keys;
 
   private KMCosePairByteBlobTag() {
   }
-
+ 
+  public static void initStatics() {
+	  keys = new Object[]{
+	          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_X},
+	          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_Y},
+	          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PRIV_KEY},
+	          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_IV},
+	          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_KEYID},
+	          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_KEY_ID},
+	          (Object) KMCose.SUBJECT_PUBLIC_KEY,
+	          (Object) KMCose.KEY_USAGE
+	  };
+  }
+ 
   private static KMCosePairByteBlobTag proto(short ptr) {
     if (prototype == null) {
       prototype = new KMCosePairByteBlobTag();
@@ -94,23 +107,7 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
         (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 
-  private static void createKeys() {
-    if (keys == null) {
-      keys = new Object[]{
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_X},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_Y},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PRIV_KEY},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_IV},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_KEYID},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_KEY_ID},
-          (Object) KMCose.SUBJECT_PUBLIC_KEY,
-          (Object) KMCose.KEY_USAGE
-      };
-    }
-  }
-
   public static boolean isKeyValueValid(short keyPtr) {
-    createKeys();
     short type = KMType.getKMType(keyPtr);
     short offset = 0;
     if (type == INTEGER_TYPE) {

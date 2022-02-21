@@ -275,6 +275,25 @@ public interface KMSEProvider {
       short dataLength,
       byte[] signature,
       short signatureStart);
+  
+  /**
+   * This is a oneshot operation that signs the data using hmac algorithm.
+   *
+   * @param hmacKey is the KMHmacKey.
+   * @param data is the buffer containing data to be signed.
+   * @param dataStart is the start of the data.
+   * @param dataLength is the length of the data.
+   * @param signature is the output signature buffer
+   * @param signatureStart is the start of the signature
+   * @return length of the signature buffer in bytes.
+   */
+  short hmacSign(
+	  Object hmacKey,
+      byte[] data,
+      short dataStart,
+      short dataLength,
+      byte[] signature,
+      short signatureStart);
 
   /**
    * This is a oneshot operation that signs the data using hmac algorithm. This is used to derive
@@ -299,7 +318,7 @@ public interface KMSEProvider {
   /**
    * This is a oneshot operation that verifies the signature using hmac algorithm.
    *
-   * @param hmacKey is the computed hmac key.
+   * @param hmacKey is the KMHmacKey key.
    * @param data is the buffer containing data.
    * @param dataStart is the start of the data.
    * @param dataLength is the length of the data.
@@ -309,7 +328,7 @@ public interface KMSEProvider {
    * @return true if the signature matches.
    */
   boolean hmacVerify(
-      KMComputedHmacKey hmacKey,
+      Object hmacKey,
       byte[] data,
       short dataStart,
       short dataLength,
@@ -583,6 +602,17 @@ public interface KMSEProvider {
    * @return An instance of the KMComputedHmacKey.
    */
   KMComputedHmacKey createComputedHmacKey(KMComputedHmacKey createComputedHmacKey, byte[] keyData,
+      short offset, short length);
+  
+  /**
+   * This function creates an HMACKey and initializes the key with the provided input key data.
+   *
+   * @param keyData buffer containing the key data.
+   * @param offset start of the buffer.
+   * @param length length of the buffer.
+   * @return An instance of the KMRkpMacKey.
+   */
+  KMRkpMacKey createRkpMacKey(KMRkpMacKey createComputedHmacKey, byte[] keyData,
       short offset, short length);
 
   /**

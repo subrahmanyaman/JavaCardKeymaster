@@ -452,7 +452,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     }
     KMDeviceUniqueKey deviceUniqueKey = rkpDataStoreInst.getDeviceUniqueKey(testMode);
     short temp = deviceUniqueKey.getPublicKey(scratchPad, (short) 0);
-    short coseKey = kmCoseInst.constructCoseKey(KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
+    short coseKey = kmCoseInst.constructCoseKey(rkp.rkpTmpVariables, KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
         KMType.INVALID_VALUE,
         KMNInteger.uint_8(KMCose.COSE_ALG_ES256), KMInteger.uint_8(KMCose.COSE_KEY_OP_VERIFY),
         KMInteger.uint_8(KMCose.COSE_ECCURVE_256), scratchPad, (short) 0, temp,
@@ -478,7 +478,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     payload = KMByteBlob.instance(scratchPad, (short) 0, temp);
 
     // protected header
-    short protectedHeader = kmCoseInst.constructHeaders(KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
+    short protectedHeader = kmCoseInst.constructHeaders(rkp.rkpTmpVariables, KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
         KMType.INVALID_VALUE,
         KMType.INVALID_VALUE, KMType.INVALID_VALUE);
     // temp temporarily holds the length of encoded headers.
@@ -540,7 +540,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
       ptr2 = KMArray.get(ptr1, KMCose.COSE_SIGN1_PROTECTED_PARAMS_OFFSET);
       ptr2 = decoder.decode(coseHeadersExp, KMByteBlob.getBuffer(ptr2),
           KMByteBlob.getStartOff(ptr2), KMByteBlob.length(ptr2));
-      if (!KMCoseHeaders.cast(ptr2).isDataValid(alg, KMType.INVALID_VALUE)) {
+      if (!KMCoseHeaders.cast(ptr2).isDataValid(rkp.rkpTmpVariables, alg, KMType.INVALID_VALUE)) {
         KMException.throwIt(KMError.STATUS_FAILED);
       }
 
@@ -551,7 +551,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
       if ((index == (short) (len - 1)) && len > 1) {
         alg = expLeafCertAlg;
       }
-      if (!KMCoseKey.cast(ptr2).isDataValid(KMCose.COSE_KEY_TYPE_EC2, KMType.INVALID_VALUE, alg,
+      if (!KMCoseKey.cast(ptr2).isDataValid(rkp.rkpTmpVariables, KMCose.COSE_KEY_TYPE_EC2, KMType.INVALID_VALUE, alg,
           KMType.INVALID_VALUE, KMCose.COSE_ECCURVE_256)) {
         KMException.throwIt(KMError.STATUS_FAILED);
       }
@@ -620,4 +620,22 @@ public class KMKeymintDevice extends KMKeymasterDevice {
       super.validateEarlyBoot(Params, inst, sPad, sPadOff, errorCode);
     }
   }
+  
+  public void generateRkpKey(byte[] scratchPad, short keyParams) {
+    data[KEY_PARAMETERS] = keyParams;
+    generateECKeys(scratchPad);
+    // create key blob
+    data[ORIGIN] = KMType.GENERATED;
+    makeKeyCharacteristics(scratchPad);
+    createEncryptedKeyBlob(scratchPad);
+  }
+
+  public static short getPubKey() {
+    return data[PUB_KEY];
+  }
+
+  public static short getPivateKey() {
+    return data[KEY_BLOB];
+  }
+
 }

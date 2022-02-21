@@ -42,29 +42,9 @@ public class KMPoolManager {
   // Hmac signer pool which is used to support TRUSTED_CONFIRMATION_REQUIRED tag.
   private Object[] hmacSignOperationPool;
 
-  final byte[] CIPHER_ALGS = {
-      Cipher.ALG_AES_BLOCK_128_CBC_NOPAD,
-      Cipher.ALG_AES_BLOCK_128_ECB_NOPAD,
-      Cipher.ALG_DES_CBC_NOPAD,
-      Cipher.ALG_DES_ECB_NOPAD,
-      Cipher.ALG_AES_CTR,
-      Cipher.ALG_RSA_PKCS1,
-      KMRsaOAEPEncoding.ALG_RSA_PKCS1_OAEP_SHA256_MGF1_SHA1,
-      KMRsaOAEPEncoding.ALG_RSA_PKCS1_OAEP_SHA256_MGF1_SHA256,
-      Cipher.ALG_RSA_NOPAD,
-      AEADCipher.ALG_AES_GCM};
-
-  final byte[] SIG_ALGS = {
-      Signature.ALG_RSA_SHA_256_PKCS1,
-      Signature.ALG_RSA_SHA_256_PKCS1_PSS,
-      Signature.ALG_ECDSA_SHA_256,
-      Signature.ALG_HMAC_SHA_256,
-      KMRsa2048NoDigestSignature.ALG_RSA_SIGN_NOPAD,
-      KMRsa2048NoDigestSignature.ALG_RSA_PKCS1_NODIGEST,
-      KMEcdsa256NoDigestSignature.ALG_ECDSA_NODIGEST};
-
-  final byte[] KEY_AGREE_ALGS = {KeyAgreement.ALG_EC_SVDP_DH_PLAIN};
-
+  private static byte[] CIPHER_ALGS;
+  private static byte[] SIG_ALGS;
+  private static byte[] KEY_AGREE_ALGS;
 
   private static KMPoolManager poolManager;
 
@@ -76,6 +56,7 @@ public class KMPoolManager {
   }
 
   private KMPoolManager() {
+	initStatics();  
     cipherPool = new Object[(short) (CIPHER_ALGS.length * 4)];
     // Extra 4 algorithms are used to support TRUSTED_CONFIRMATION_REQUIRED feature.
     signerPool = new Object[(short) ((SIG_ALGS.length * 4) + 4)];
@@ -90,6 +71,29 @@ public class KMPoolManager {
     initializeKeyAgreementPool();
   }
 
+  private void initStatics() {
+	CIPHER_ALGS = new byte[]{
+		      Cipher.ALG_AES_BLOCK_128_CBC_NOPAD,
+		      Cipher.ALG_AES_BLOCK_128_ECB_NOPAD,
+		      Cipher.ALG_DES_CBC_NOPAD,
+		      Cipher.ALG_DES_ECB_NOPAD,
+		      Cipher.ALG_AES_CTR,
+		      Cipher.ALG_RSA_PKCS1,
+		      KMRsaOAEPEncoding.ALG_RSA_PKCS1_OAEP_SHA256_MGF1_SHA1,
+		      KMRsaOAEPEncoding.ALG_RSA_PKCS1_OAEP_SHA256_MGF1_SHA256,
+		      Cipher.ALG_RSA_NOPAD,
+		      AEADCipher.ALG_AES_GCM};
+	SIG_ALGS = new byte[]{
+		      Signature.ALG_RSA_SHA_256_PKCS1,
+		      Signature.ALG_RSA_SHA_256_PKCS1_PSS,
+		      Signature.ALG_ECDSA_SHA_256,
+		      Signature.ALG_HMAC_SHA_256,
+		      KMRsa2048NoDigestSignature.ALG_RSA_SIGN_NOPAD,
+		      KMRsa2048NoDigestSignature.ALG_RSA_PKCS1_NODIGEST,
+		      KMEcdsa256NoDigestSignature.ALG_ECDSA_NODIGEST};
+	KEY_AGREE_ALGS = new byte[]{KeyAgreement.ALG_EC_SVDP_DH_PLAIN};
+  }
+  
   private void initializeOperationPool() {
     short index = 0;
     while (index < MAX_OPERATION_INSTANCES) {
