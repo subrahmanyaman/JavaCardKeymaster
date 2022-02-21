@@ -1,5 +1,6 @@
 package com.android.javacard.kmdevice;
 
+import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 public class KMPKCS8Decoder {
@@ -10,19 +11,22 @@ public class KMPKCS8Decoder {
   public static final byte ASN1_A0_TAG = (byte) 0xA0;
   public static final byte ASN1_A1_TAG = (byte) 0xA1;
   public static final byte ASN1_BIT_STRING = 0x03;
+  private static final short START_INDEX = 0;
+  private static final short LENGTH_INDEX = 1;
+  private static final short CURR_INDEX =2;
+  
   public static byte[] EC_CURVE;
   public static byte[] RSA_ALGORITHM;
   public static byte[] EC_ALGORITHM;
   private byte[] data;
-  private short start;
-  private short length;
-  private short cur;
+  private short[] dataIndex; 
   private static KMPKCS8Decoder inst;
 
   private KMPKCS8Decoder() {
-    start = 0;
-    length = 0;
-    cur = 0;
+	dataIndex = JCSystem.makeTransientShortArray((short)3, JCSystem.CLEAR_ON_RESET);
+	for(short i=0; i<3; i++) {
+      dataIndex[i] = 0;
+	}
   }
 
   public static void initStatics() {
@@ -205,15 +209,14 @@ public class KMPKCS8Decoder {
   }
 
   private void validateTag0IfPresent() {
-    if (data[cur] != ASN1_A0_TAG) {
+    if (data[dataIndex[CURR_INDEX]] != ASN1_A0_TAG) {
       return;
     }
-    ;
     short len = header(ASN1_A0_TAG);
     if (len != EC_CURVE.length) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
-    if (Util.arrayCompare(data, cur, EC_CURVE, (short) 0, len) != 0) {
+    if (Util.arrayCompare(data, dataIndex[CURR_INDEX], EC_CURVE, (short) 0, len) != 0) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
     incrementCursor(len);
@@ -228,26 +231,26 @@ public class KMPKCS8Decoder {
   }
 
   private byte getByte() {
-    byte d = data[cur];
+    byte d = data[dataIndex[CURR_INDEX]];
     incrementCursor((short) 1);
     return d;
   }
 
   private short getShort() {
-    short d = Util.getShort(data, cur);
+    short d = Util.getShort(data, dataIndex[CURR_INDEX]);
     incrementCursor((short) 2);
     return d;
   }
 
   private void getBytes(short blob) {
     short len = KMByteBlob.length(blob);
-    Util.arrayCopyNonAtomic(data, cur, KMByteBlob.getBuffer(blob),
+    Util.arrayCopyNonAtomic(data, dataIndex[CURR_INDEX], KMByteBlob.getBuffer(blob),
         KMByteBlob.getStartOff(blob), len);
     incrementCursor(len);
   }
   
   private void getBytes(byte[] buffer, short offset, short len) {
-    Util.arrayCopyNonAtomic(data, cur, buffer, offset, len);
+    Util.arrayCopyNonAtomic(data, dataIndex[CURR_INDEX], buffer, offset, len);
     incrementCursor(len);
   }
 
@@ -276,14 +279,14 @@ public class KMPKCS8Decoder {
 
   public void init(short blob) {
     data = KMByteBlob.getBuffer(blob);
-    start = KMByteBlob.getStartOff(blob);
-    length = KMByteBlob.length(blob);
-    cur = start;
+    dataIndex[START_INDEX] = KMByteBlob.getStartOff(blob);
+    dataIndex[LENGTH_INDEX] = KMByteBlob.length(blob);
+    dataIndex[CURR_INDEX] = dataIndex[START_INDEX];
   }
 
   public void incrementCursor(short n) {
-    cur += n;
-    if (cur > ((short) (start + length))) {
+	dataIndex[CURR_INDEX] = (short) (dataIndex[CURR_INDEX] + n);
+    if (dataIndex[CURR_INDEX] > ((short) (dataIndex[START_INDEX] + dataIndex[LENGTH_INDEX]))) {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
   }

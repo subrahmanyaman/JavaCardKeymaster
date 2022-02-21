@@ -21,8 +21,10 @@ import com.android.javacard.kmdevice.KMDeviceUniqueKey;
 import com.android.javacard.kmdevice.KMError;
 import com.android.javacard.kmdevice.KMException;
 import com.android.javacard.kmdevice.KMRkpDataStore;
+import com.android.javacard.kmdevice.KMRkpMacKey;
 import com.android.javacard.kmdevice.KMPreSharedKey;
 import com.android.javacard.kmdevice.KMSEProvider;
+import com.android.javacard.kmdevice.KMComputedHmacKey;
 import com.android.javacard.kmdevice.KMDataStoreConstants;
 import com.android.javacard.kmdevice.KMType;
 
@@ -36,6 +38,7 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
   private KMDeviceUniqueKey deviceUniqueKey;
   private KMDeviceUniqueKey testDeviceUniqueKey;
   private KMSEProvider seProvider;
+  private KMRkpMacKey rkpMacKey;
 
 
   public KMRkpDataStoreImpl(KMSEProvider provider) {
@@ -66,6 +69,9 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
         break;
       case KMDataStoreConstants.BOOT_CERT_CHAIN:
         persistBootCertificateChain(data, offset, length);
+        break;
+      case KMDataStoreConstants.RKP_MAC_KEY:
+    	persistRkpMacKey(data, offset, length);
         break;
     }
   }
@@ -100,6 +106,13 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
     Util.arrayCopy(buf, offset, bcc, (short) 2, len);
   }
 
+  private void persistRkpMacKey(byte[] keydata, short offset, short length) {
+    if (rkpMacKey == null) {
+    	rkpMacKey = seProvider.createRkpMacKey(rkpMacKey, keydata, offset, length);
+    } else {
+      seProvider.createRkpMacKey(rkpMacKey, keydata, offset, length);
+    }
+  }
 
   @Override
   public void createDeviceUniqueKey(boolean testMode, byte[] pubKey, short pubKeyOff,
@@ -154,6 +167,7 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
     ele.write(bcc);
     // Key Object
     seProvider.onSave(ele, KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY, deviceUniqueKey);
+    seProvider.onSave(ele, KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY, rkpMacKey);
   }
 
   @Override
@@ -161,12 +175,15 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
     additionalCertData = (byte[]) ele.readObject();
     bcc = (byte[]) ele.readObject();
     deviceUniqueKey = (KMDeviceUniqueKey) seProvider.onResore(ele);
+    rkpMacKey = (KMRkpMacKey) seProvider.onResore(ele);
   }
 
   @Override
   public short getBackupPrimitiveByteCount() {
-    return seProvider.getBackupPrimitiveByteCount(
-        KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY);
+    return (short)(seProvider.getBackupPrimitiveByteCount(
+        KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY) + 
+    		seProvider.getBackupPrimitiveByteCount(
+    		        KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY));
   }
 
   @Override
@@ -174,7 +191,9 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
     // AdditionalCertificateChain - 1
     // BCC - 1
     return (short) (2 + seProvider.getBackupObjectCount(
-        KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY));
+        KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY) +
+    		seProvider.getBackupObjectCount(
+    		        KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY));
   }
 
   @Override
@@ -188,6 +207,11 @@ public class KMRkpDataStoreImpl implements KMRkpDataStore {
         KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     return null;
+  }
+  
+  @Override
+  public KMRkpMacKey getRkpMacacKey() {
+    return rkpMacKey;
   }
 
 }

@@ -118,7 +118,7 @@ public class KMKeymasterDevice {
   private static final byte AUTH_DATA = 5;
   private static final byte AUTH_TAG = 6;
   private static final byte NONCE = 7;
-  private static final byte KEY_BLOB = 8;
+  protected static final byte KEY_BLOB = 8;
   private static final byte AUTH_DATA_LENGTH = 9;
   protected static final byte SECRET = 10;
   private static final byte ROT = 11;
@@ -126,9 +126,9 @@ public class KMKeymasterDevice {
   private static final byte RSA_PUB_EXPONENT = 13;
   private static final byte APP_ID = 14;
   private static final byte APP_DATA = 15;
-  private static final byte PUB_KEY = 16;
+  protected static final byte PUB_KEY = 16;
   private static final byte IMPORTED_KEY_BLOB = 17;
-  private static final byte ORIGIN = 18;
+  protected static final byte ORIGIN = 18;
   private static final byte NOT_USED = 19;
   private static final byte MASKING_KEY = 20;
   private static final byte HMAC_SHARING_PARAMS = 21;
@@ -170,6 +170,10 @@ public class KMKeymasterDevice {
   private static byte[] JAVACARD_KEYMASTER_DEVICE;
   private static byte[] GOOGLE;
   private static byte[] X509Subject;
+  
+  private static byte[] dec319999Ms ;
+  private static byte[] dec319999;
+  private static byte[] jan01970;
 
   private static short[] ATTEST_ID_TAGS;
   private static final byte SERIAL_NUM = (byte) 0x01;
@@ -295,6 +299,17 @@ public class KMKeymasterDevice {
         KMType.ATTESTATION_ID_PRODUCT,
         KMType.ATTESTATION_ID_SERIAL
     };
+    
+    dec319999Ms = new byte[]{(byte)0, (byte)0, (byte)0xE6, (byte)0x77,
+  	      (byte)0xD2, (byte)0x1F, (byte)0xD8, (byte)0x18};
+    
+    dec319999 = new byte[]{
+  	      0x39, 0x39, 0x39, 0x39, 0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35,
+  	      0x39, 0x35, 0x39, 0x5a,};
+    
+    jan01970 = new byte[]{
+  	      0x37, 0x30, 0x30, 0x31, 0x30, 0x31, 0x30, 0x30, 0x30,
+  	      0x30, 0x30, 0x30, 0x5a,};
   }
 
   private static void initKMDeviceStatics() {
@@ -314,6 +329,8 @@ public class KMKeymasterDevice {
     KMPKCS8Decoder.initStatics();
     KMEnumArrayTag.initStatics();
     KMIntegerArrayTag.initStatics();
+    KMCosePairByteBlobTag.initStatics();
+    KMCosePairTagType.initStatics();
   }
 
   public void clean() {
@@ -3880,7 +3897,7 @@ public class KMKeymasterDevice {
     }
   }
 
-  private void generateECKeys(byte[] scratchPad) {
+  protected void generateECKeys(byte[] scratchPad) {
     validateECKeys();
     short[] lengths = tmpVariables;
     seProvider.createAsymmetricKey(KMType.EC, scratchPad, (short) 0, (short) 128, scratchPad,
@@ -3915,7 +3932,7 @@ public class KMKeymasterDevice {
 
     // check whether digest sizes are greater then or equal to min mac length.
     // Only SHA256 digest must be supported.
-    if (KMEnumArrayTag.contains(KMType.DIGEST, KMType.DIGEST_NONE, data[KEY_PARAMETERS])) {
+    if (!KMEnumArrayTag.contains(KMType.DIGEST, KMType.SHA2_256, data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
     }
     // Read Minimum Mac length
@@ -3994,7 +4011,7 @@ public class KMKeymasterDevice {
     return KMInteger.uint_32(scratchPad, (short) 0);
   }
 
-  private void makeKeyCharacteristics(byte[] scratchPad) {
+  protected void makeKeyCharacteristics(byte[] scratchPad) {
     data[KEY_CHARACTERISTICS] =
         makeKeyCharacteristics(
             data[KEY_PARAMETERS],
@@ -4010,7 +4027,7 @@ public class KMKeymasterDevice {
     data[HW_PARAMETERS] = getHardwareParamters(data[SB_PARAMETERS], data[TEE_PARAMETERS]);
   }
 
-  private void createEncryptedKeyBlob(byte[] scratchPad) {
+  protected void createEncryptedKeyBlob(byte[] scratchPad) {
     // make root of trust blob
     data[ROT] = readROT(scratchPad);
     if (data[ROT] == KMType.INVALID_VALUE) {
@@ -4263,23 +4280,6 @@ public class KMKeymasterDevice {
   public void powerReset() {
     releaseAllOperations();
     resetWrappingKey();
-  }
-
-  public void generateRkpKey(byte[] scratchPad, short keyParams) {
-    data[KEY_PARAMETERS] = keyParams;
-    generateECKeys(scratchPad);
-    // create key blob
-    data[ORIGIN] = KMType.GENERATED;
-    makeKeyCharacteristics(scratchPad);
-    createEncryptedKeyBlob(scratchPad);
-  }
-
-  public static short getPubKey() {
-    return data[PUB_KEY];
-  }
-
-  public static short getPivateKey() {
-    return data[KEY_BLOB];
   }
 
   /**
