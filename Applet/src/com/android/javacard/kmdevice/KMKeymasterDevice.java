@@ -588,10 +588,11 @@ public class KMKeymasterDevice {
 
   private short deviceLockedCmd(APDU apdu) {
     short cmd = KMArray.instance((short) 2);
+    short ptr = getKMVerificationTokenExp();
     // passwordOnly
     KMArray.add(cmd, (short) 0, KMInteger.exp());
     // verification token
-    KMArray.add(cmd, (short) 1, getKMVerificationTokenExp());
+    KMArray.add(cmd, (short) 1, ptr);
     return receiveIncoming(apdu, cmd);
   }
 

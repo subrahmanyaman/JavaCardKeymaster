@@ -95,6 +95,8 @@ public class KMCose {
   public static byte[] MAC_CONTEXT; // MAC0
   public static byte[] SIGNATURE1_CONTEXT; // Signature1
   public static byte[] ENCRYPT_CONTEXT; // Encrypt
+  public static short[] coseKeyConst;
+  public static short[] coseHeaderConst;
   //Empty strings
   public static byte[] EMPTY_MAC_KEY; // "Empty MAC key"
 
@@ -147,7 +149,9 @@ public class KMCose {
         {0x4B, 0x65, 0x79, 0x20, 0x74, 0x6F, 0x20, 0x4D, 0x41, 0x43, 0x20, 0x70, 0x75, 0x62, 0x6C,
             0x69, 0x63,
             0x20, 0x6B, 0x65, 0x79, 0x73}; // "Key to MAC public keys"
-
+    coseKeyConst = new short[]{KMCose.COSE_KEY_KEY_TYPE, KMCose.COSE_KEY_KEY_ID, KMCose.COSE_KEY_ALGORITHM, KMCose.COSE_KEY_KEY_OPS,
+    		KMCose.COSE_KEY_CURVE, KMCose.COSE_KEY_PUBKEY_X, KMCose.COSE_KEY_PUBKEY_Y, KMCose.COSE_KEY_PRIV_KEY};
+    coseHeaderConst = new short[]{KMCose.COSE_LABEL_ALGORITHM, KMCose.COSE_LABEL_KEYID, KMCose.COSE_LABEL_IV, KMCose.COSE_LABEL_COSE_KEY};
   }
 
   public static KMCose getInstance() {
@@ -282,17 +286,17 @@ public class KMCose {
    * @param includeTestMode flag which indicates if TEST_COSE_KEY should be included or not.
    * @return instance of KMArray.
    */
-  private short handleCosePairTags(short[] tags, short tagLen, boolean includeTestMode) {
+  private short handleCosePairTags(short[] tag, short[] keyValues, short valueIndex, boolean includeTestMode) {
     short index = 0;
-    // var is used to calculate the length of the array.
     short var = 0;
+    short tagLen = (short) tag.length;
+    // var is used to calculate the length of the array.
     while (index < tagLen) {
-      if (tags[(short) (index + 1)] != KMType.INVALID_VALUE) {
-        tags[(short) (index + 2)] =
-            buildCosePairTag((byte) tags[index], tags[(short) (index + 1)]);
-        var++;
+      if (keyValues[index] != KMType.INVALID_VALUE) {
+    	  keyValues[(short)(index + valueIndex)] = buildCosePairTag((byte) tag[index], keyValues[index]);
+    	  var++;
       }
-      index += 3;
+      index++;
     }
     var += includeTestMode ? 1 : 0;
     short arrPtr = KMArray.instance(var);
@@ -300,10 +304,10 @@ public class KMCose {
     // var is used to index the array.
     var = 0;
     while (index < tagLen) {
-      if (tags[(short) (index + 2)] != KMType.INVALID_VALUE) {
-        KMArray.add(arrPtr, var++, tags[(short) (index + 2)]);
+      if (keyValues[(short)(index + valueIndex)] != KMType.INVALID_VALUE) {
+        KMArray.add(arrPtr, var++, keyValues[(short)(index + valueIndex)]);
       }
-      index += 3;
+      index++;
     }
     return arrPtr;
   }
@@ -341,19 +345,14 @@ public class KMCose {
    */
   public short constructHeaders(short []buff, short alg, short keyId, short iv, short ephemeralKey) {
     
-	buff[0]= KMCose.COSE_LABEL_ALGORITHM;
-	buff[1]= alg;
-	buff[2]= KMType.INVALID_VALUE;
-	buff[3]= KMCose.COSE_LABEL_KEYID;
-	buff[4]= keyId;
-	buff[5]= KMType.INVALID_VALUE;
-	buff[6]= KMCose.COSE_LABEL_IV;
-	buff[7]= iv;
-	buff[8]= KMType.INVALID_VALUE;
-	buff[9]= KMCose.COSE_LABEL_COSE_KEY;
-	buff[10]= ephemeralKey;
-	buff[11]= KMType.INVALID_VALUE;
-    short ptr = handleCosePairTags(buff, (short)12, false);
+	buff[0]= alg;
+	buff[1]= keyId;
+	buff[2]= iv;
+	buff[3]= ephemeralKey;
+	for(short i = 4; i < 8; i++) {
+      buff[i] = KMType.INVALID_VALUE;
+	}
+    short ptr = handleCosePairTags(coseHeaderConst, buff, (short)4, false);
     ptr = KMCoseHeaders.instance(ptr);
     KMCoseHeaders.cast(ptr).canonicalize();
     return ptr;
@@ -523,32 +522,19 @@ public class KMCose {
    */
   public short constructCoseKey(short []buff, short keyType, short keyId, short keyAlg, short keyOps, short curve,
       short pubX, short pubY, short priv, boolean includeTestKey) {
-    buff[0] = KMCose.COSE_KEY_KEY_TYPE;
-    buff[1] = keyType;
-    buff[2] = KMType.INVALID_VALUE;
-    buff[3] = KMCose.COSE_KEY_KEY_ID;
-    buff[4] = keyId;
-    buff[5] = KMType.INVALID_VALUE;
-    buff[6] = KMCose.COSE_KEY_ALGORITHM;
-    buff[7] = keyAlg;
-    buff[8] = KMType.INVALID_VALUE;
-    buff[9] = KMCose.COSE_KEY_KEY_OPS;
-    buff[10] = keyOps;
-    buff[11] = KMType.INVALID_VALUE;
-    buff[12] = KMCose.COSE_KEY_CURVE;
-    buff[13] = curve;
-    buff[14] = KMType.INVALID_VALUE;
-    buff[15] = KMCose.COSE_KEY_PUBKEY_X;
-    buff[16] = pubX;
-    buff[17] = KMType.INVALID_VALUE;
-    buff[18] = KMCose.COSE_KEY_PUBKEY_Y;
-    buff[19] = pubY;
-    buff[20] = KMType.INVALID_VALUE;
-    buff[21] = KMCose.COSE_KEY_PRIV_KEY;
-    buff[22] = priv;
-    buff[23] = KMType.INVALID_VALUE;
-    
-    short arrPtr = handleCosePairTags(buff, (short)24, includeTestKey);
+    short valueIndex = 8;  
+    buff[0] = keyType;
+    buff[1] = keyId;
+    buff[2] = keyAlg;
+    buff[3] = keyOps;
+    buff[4] = curve;
+    buff[5] = pubX;
+    buff[6] = pubY;
+    buff[7] = priv;
+    for (short i = valueIndex; i < 16; i++) {
+	  buff[i] = KMType.INVALID_VALUE;
+    } 
+    short arrPtr = handleCosePairTags(coseKeyConst, buff, valueIndex, includeTestKey);
     if (includeTestKey) {
       short testKey =
           KMCosePairSimpleValueTag.instance(KMNInteger.uint_32(KMCose.COSE_TEST_KEY, (short) 0),

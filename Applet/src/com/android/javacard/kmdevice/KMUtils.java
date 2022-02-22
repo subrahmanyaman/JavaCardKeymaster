@@ -25,12 +25,13 @@ public class KMUtils {
   public static byte[] oneHourMsec; // 3600000 msec
   public static byte[] oneDayMsec; // 86400000 msec
   public static byte[] oneMonthMsec; // 2629746000 msec
+  public static byte[] thirtyDaysMsec; //2592000000 msec
   public static byte[] leapYearMsec; //31622400000;
   public static byte[] yearMsec; //31536000000
   //Leap year(366) + 3 * 365
   public static byte[] fourYrsMsec;//126230400000
   public static byte[] firstJan2020; // 1577836800000 msec
-  public static byte[] firstJan2051; // 2556144000000
+  public static byte[] firstJan2050; // 2524608000
   // msec
   public static byte[] febMonthLeapMSec; //2505600000
   public static byte[] febMonthMsec; //2419200000
@@ -53,6 +54,8 @@ public class KMUtils {
         0, 0, 0, 0, 0x05, 0x26, 0x5C, 0x00}; // 86400000 msec
     oneMonthMsec = new byte[]{
         0, 0, 0, 0, (byte) 0x9C, (byte) 0xBE, (byte) 0xBD, 0x50}; // 2629746000 msec
+    thirtyDaysMsec = new byte[]{
+            0, 0, 0, 0, (byte) 0x9A, (byte) 0x7E, (byte) 0xC8, 0}; // 2592000000 msec
     leapYearMsec = new byte[]{
         0, 0, 0, 0x07, (byte) 0x5C, (byte) 0xD7, (byte) 0x88, 0x00}; //31622400000;
     yearMsec = new byte[]{
@@ -62,8 +65,8 @@ public class KMUtils {
         0, 0, 0, 0x1D, 0x63, (byte) 0xEB, 0x0C, 0x00};//126230400000
     firstJan2020 = new byte[]{
         0, 0, 0x01, 0x6F, 0x5E, 0x66, (byte) 0xE8, 0x00}; // 1577836800000 msec
-    firstJan2051 = new byte[]{
-        0, 0, 0x02, 0x53, 0x26, (byte) 0x0E, (byte) 0x1C, 0x00}; // 2556144000000
+    firstJan2050 = new byte[]{
+        0, 0, 0, 0, (byte) 0x96, 0x7A, (byte) 0x76, 0x00}; // 2524608000
     // msec
     febMonthLeapMSec = new byte[]{
         0, 0, 0, 0, (byte) 0x95, 0x58, 0x6C, 0x00}; //2505600000
@@ -99,12 +102,12 @@ public class KMUtils {
       KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     if (utcFlag
-        && KMInteger.unsignedByteArrayCompare(scratchPad, (short) 0, firstJan2051,
+        && KMInteger.unsignedByteArrayCompare(scratchPad, (short) 0, firstJan2050,
         (short) 0, (short) 8) >= 0) {
       KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
 
-    if (KMInteger.unsignedByteArrayCompare(scratchPad, (short) 0, firstJan2051, (short) 0,
+    if (KMInteger.unsignedByteArrayCompare(scratchPad, (short) 0, firstJan2050, (short) 0,
         (short) 8) < 0) {
       Util.arrayCopyNonAtomic(firstJan2020, (short) 0, scratchPad, (short) 8,
           (short) 8);
@@ -113,7 +116,7 @@ public class KMUtils {
           (short) 8);
     } else {
       from2020 = false;
-      Util.arrayCopyNonAtomic(firstJan2051, (short) 0, scratchPad, (short) 8,
+      Util.arrayCopyNonAtomic(firstJan2050, (short) 0, scratchPad, (short) 8,
           (short) 8);
       subtract(scratchPad, (short) 0, (short) 8, (short) 16, (byte) 8);
       Util.arrayCopyNonAtomic(scratchPad, (short) 16, scratchPad, (short) 0,
@@ -412,7 +415,7 @@ public class KMUtils {
         scratchPad,
         (short) (offset + 8 - timeLen),
         timeLen);
-    Util.arrayCopyNonAtomic(oneMonthMsec, (short) 0, scratchPad, (short) (offset + 8),
+    Util.arrayCopyNonAtomic(thirtyDaysMsec, (short) 0, scratchPad, (short) (offset + 8),
         (short) 8);
     return divide(scratchPad, (short) 0, (short) 8, (short) 16);
   }
