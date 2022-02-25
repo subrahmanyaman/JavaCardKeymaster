@@ -909,6 +909,9 @@ public class RemotelyProvisionedComponentDevice {
     updateItem(rkpTmpVariables, metaOffset, DEVICE_INFO_VERSION, KMInteger.uint_8(DI_SCHEMA_VERSION));
     updateItem(rkpTmpVariables, metaOffset, SECURITY_LEVEL,
         KMTextString.instance(DI_SECURITY_LEVEL, (short) 0, (short) DI_SECURITY_LEVEL.length));
+    byte[] attestIdState = isKMProvisionLocked() ? ATTEST_ID_LOCKED : ATTEST_ID_OPEN;
+    updateItem(rkpTmpVariables, metaOffset, ATTEST_ID_STATE,
+            KMTextString.instance(attestIdState, (short) 0, (short) attestIdState.length));
     //TODO Add attest_id_state
     // Create device info map.
     short map = KMMap.instance(rkpTmpVariables[1]);
@@ -1505,6 +1508,18 @@ public class RemotelyProvisionedComponentDevice {
       Util.arrayCopyNonAtomic(scratchPad, start, scratchPad, scratchPadOff, length);
     }
     return length;
+  }
+  
+  private boolean isKMProvisionLocked() {
+    short offset = repository.allocReclaimableMemory((short) 1);
+    short len = storeDataInst.getData(KMDataStoreConstants.PROVISIONED_LOCKED,
+    		repository.getHeap(), offset);
+    if (len == 0) {
+      return false;
+    }
+    boolean res =  ((byte[]) repository.getHeap())[offset] == 0x01;
+    repository.reclaimMemory((short)1);
+    return res;
   }
 
 }

@@ -31,7 +31,7 @@ public class KMUtils {
   //Leap year(366) + 3 * 365
   public static byte[] fourYrsMsec;//126230400000
   public static byte[] firstJan2020; // 1577836800000 msec
-  public static byte[] firstJan2050; // 2524608000
+  public static byte[] firstJan2050; // 2524608000000 msec
   // msec
   public static byte[] febMonthLeapMSec; //2505600000
   public static byte[] febMonthMsec; //2419200000
@@ -66,7 +66,7 @@ public class KMUtils {
     firstJan2020 = new byte[]{
         0, 0, 0x01, 0x6F, 0x5E, 0x66, (byte) 0xE8, 0x00}; // 1577836800000 msec
     firstJan2050 = new byte[]{
-        0, 0, 0, 0, (byte) 0x96, 0x7A, (byte) 0x76, 0x00}; // 2524608000
+	    0, 0, 0x02, 0x4b, (byte) 0xCE, 0x5C, (byte)0xF0, 0x00}; //2524608000000 
     // msec
     febMonthLeapMSec = new byte[]{
         0, 0, 0, 0, (byte) 0x95, 0x58, 0x6C, 0x00}; //2505600000

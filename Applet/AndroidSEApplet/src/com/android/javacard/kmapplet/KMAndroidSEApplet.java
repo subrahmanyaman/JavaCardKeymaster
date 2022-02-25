@@ -158,18 +158,7 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
     }
     new KMAndroidSEApplet(kmDevice).register(bArray, (short) (bOffset + 1), bArray[bOffset]);
   }
-
-  private boolean isProvisionLocked() {
-    short offset = repositoryInst.alloc((short) 1);
-    short len = kmDataStore.getData(KMDataStoreConstants.PROVISIONED_LOCKED,
-        repositoryInst.getHeap(), offset);
-    if (len == 0) {
-      return false;
-    }
-    return ((byte[]) repositoryInst.getHeap())[offset] == 0x01;
-  }
-
-
+  
   @Override
   public void process(APDU apdu) {
     try {
@@ -184,7 +173,7 @@ public class KMAndroidSEApplet extends Applet implements AppletEvent, OnUpgradeL
         kmDeviceInst.powerReset();
       }
 
-      if (isProvisionLocked()) {
+      if (seProvisionInst.isProvisionLocked()) {
         switch (apduIns) {
           case INS_SET_BOOT_PARAMS_CMD:
             processSetBootParamsCmd(apdu);

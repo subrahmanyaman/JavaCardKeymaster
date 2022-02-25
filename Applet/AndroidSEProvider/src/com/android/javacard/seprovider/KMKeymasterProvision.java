@@ -253,6 +253,18 @@ public class KMKeymasterProvision {
     kmDeviceInst.sendError(apdu, KMError.OK);
   }
 
+  public boolean isProvisionLocked() {
+    short offset = kmRepositroyInst.allocReclaimableMemory((short) 1);
+    short len = kmStoreDataInst.getData(KMDataStoreConstants.PROVISIONED_LOCKED,
+    		kmRepositroyInst.getHeap(), offset);
+    if (len == 0) {
+      return false;
+    }
+    boolean res =  ((byte[]) kmRepositroyInst.getHeap())[offset] == 0x01;
+    kmRepositroyInst.reclaimMemory((short)1);
+    return res;
+  }
+  
   public void processProvisionDeviceUniqueKey(APDU apdu) {
     kmDeviceInst.sendError(apdu, KMError.CMD_NOT_ALLOWED);
   }
