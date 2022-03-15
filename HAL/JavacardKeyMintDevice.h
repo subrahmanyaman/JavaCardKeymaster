@@ -33,6 +33,7 @@ using ndk::ScopedAStatus;
 using std::optional;
 using std::shared_ptr;
 using std::vector;
+using std::array;
 using JCKMAttestationKey = ::javacard_keymaster::AttestationKey;
 
 class JavacardKeyMintDevice : public BnKeyMintDevice {
@@ -91,6 +92,7 @@ class JavacardKeyMintDevice : public BnKeyMintDevice {
   private:
     keymaster_error_t attestKey(const vector<uint8_t>& keyblob, const AuthorizationSet& keyParams,
                                 const optional<JCKMAttestationKey>& attestationKey,
+                                const vector<uint8_t>& keyParamsMac,
                                 vector<Certificate>* certificateChain);
 
     ScopedAStatus defaultHwInfo(KeyMintHardwareInfo* info);

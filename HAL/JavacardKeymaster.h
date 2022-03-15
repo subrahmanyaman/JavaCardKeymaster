@@ -54,10 +54,11 @@ class JavacardKeymaster {
 
     keymaster_error_t generateKey(const AuthorizationSet& keyParams, vector<uint8_t>* retKeyblob,
                                   AuthorizationSet* swEnforced, AuthorizationSet* hwEnforced,
-                                  AuthorizationSet* teeEnforced);
+                                  AuthorizationSet* teeEnforced, vector<uint8_t>* keyParamsMac);
 
     keymaster_error_t attestKey(const vector<uint8_t>& keyblob, const AuthorizationSet& keyParams,
                                 const optional<AttestationKey>& attestationKey,
+                                const vector<uint8_t>& keyParamsMac,
                                 CertificateChain* certChain);
 
     keymaster_error_t attestKey(const vector<uint8_t>& keyblob, const AuthorizationSet& keyParams,
@@ -69,7 +70,8 @@ class JavacardKeymaster {
                                 const keymaster_key_format_t keyFormat,
                                 const vector<uint8_t>& keyData, vector<uint8_t>* retKeyblob,
                                 AuthorizationSet* swEnforced, AuthorizationSet* hwEnforced,
-                                AuthorizationSet* teeEnforced);
+                                AuthorizationSet* teeEnforced,
+                                vector<uint8_t>* keyParamsMac);
 
     keymaster_error_t importWrappedKey(const vector<uint8_t>& wrappedKeyData,
                                        const vector<uint8_t>& wrappingKeyBlob,

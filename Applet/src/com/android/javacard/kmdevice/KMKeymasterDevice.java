@@ -147,6 +147,7 @@ public class KMKeymasterDevice {
   private static final byte TEE_PARAMETERS = 34;
   private static final byte SB_PARAMETERS = 35;
   private static final byte CONFIRMATION_TOKEN = 36;
+  private static final byte KEY_PARAMETERS_MAC = 37;
 
   // AddRngEntropy
   private static final short MAX_SEED_SIZE = 2048;
@@ -1271,25 +1272,11 @@ public class KMKeymasterDevice {
     // create key blob array
     importKey(apdu, keyFmt, scratchPad);
   }
-
-  //TODO remove hwParameters when this is refactored.
-  private KMAttestationCert makeAttestationCert(short attKeyBlob, short attKeyParam,
-      short attChallenge, short issuer, short hwParameters, short swParameters, short keyParams,
-      byte[] scratchPad) {
-    KMAttestationCert cert = makeCommonCert(swParameters, hwParameters,
-        keyParams, scratchPad, seProvider);
-
-    short subject = KMKeyParameters.findTag(keyParams, KMType.BYTES_TAG,
-        KMType.CERTIFICATE_SUBJECT_NAME);
-
-    // If no subject name is specified then use the default subject name.
-    if (subject == KMType.INVALID_VALUE || KMByteTag.length(subject) == 0) {
-      subject = KMByteBlob.instance(defaultSubject, (short) 0, (short) defaultSubject.length);
-    } else {
-      subject = KMByteTag.getValue(subject);
-    }
-    cert.subjectName(subject);
-
+  
+  private void setAttestationParameters(KMAttestationCert cert, short attKeyBlob, 
+      short attKeyParam, short issuer, short attChallenge, byte[] scratchPad) {
+    // Take backup of the keyblob before parsing the attestation keyblob.
+    short origBlob = data[KEY_BLOB];
     // App Id and App Data,
     short appId = KMType.INVALID_VALUE;
     short appData = KMType.INVALID_VALUE;
@@ -1305,9 +1292,7 @@ public class KMKeymasterDevice {
         appData = KMByteTag.getValue(appData);
       }
     }
-    //TODO remove following line
-    short origBlob = data[KEY_BLOB];
-    short pubKey = data[PUB_KEY];
+
     short keyBlob = parseEncryptedKeyBlob(attKeyBlob, appId, appData, scratchPad);
     short attestationKeySecret = KMArray.get(keyBlob, KEY_BLOB_SECRET);
     short attestParam = KMArray.get(keyBlob, KEY_BLOB_PARAMS);
@@ -1332,8 +1317,40 @@ public class KMKeymasterDevice {
     }
     cert.attestationChallenge(attChallenge);
     cert.issuer(issuer);
-    //TODO remove following line
-    data[PUB_KEY] = pubKey;
+    
+    // Restore the keyblob parameters of the generated key.
+    data[KEY_BLOB] = origBlob;
+    data[SECRET] = KMArray.get(data[KEY_BLOB], KEY_BLOB_SECRET);
+    data[NONCE] = KMArray.get(data[KEY_BLOB], KEY_BLOB_NONCE);
+    data[AUTH_TAG] = KMArray.get(data[KEY_BLOB], KEY_BLOB_AUTH_TAG);
+    data[KEY_CHARACTERISTICS] = KMArray.get(data[KEY_BLOB], KEY_BLOB_PARAMS);
+    data[PUB_KEY] = KMType.INVALID_VALUE;
+    if (KMArray.length(data[KEY_BLOB]) == 5) {
+      data[PUB_KEY] = KMArray.get(data[KEY_BLOB], KEY_BLOB_PUB_KEY);
+    }
+
+    data[TEE_PARAMETERS] = KMKeyCharacteristics.getTeeEnforced(data[KEY_CHARACTERISTICS]);
+    data[SB_PARAMETERS] = KMKeyCharacteristics.getStrongboxEnforced(data[KEY_CHARACTERISTICS]);
+    data[SW_PARAMETERS] = KMKeyCharacteristics.getKeystoreEnforced(data[KEY_CHARACTERISTICS]);
+    data[HW_PARAMETERS] = getHardwareParamters(data[SB_PARAMETERS], data[TEE_PARAMETERS]);
+  }
+
+  private KMAttestationCert makeAttestationCert(short attKeyBlob, short attKeyParam,
+      short attChallenge, short issuer, short keyParams, byte[] scratchPad) {
+    KMAttestationCert cert = makeCommonCert(keyParams, scratchPad, seProvider);
+
+    short subject = KMKeyParameters.findTag(keyParams, KMType.BYTES_TAG,
+        KMType.CERTIFICATE_SUBJECT_NAME);
+
+    // If no subject name is specified then use the default subject name.
+    if (subject == KMType.INVALID_VALUE || KMByteTag.length(subject) == 0) {
+      subject = KMByteBlob.instance(defaultSubject, (short) 0, (short) defaultSubject.length);
+    } else {
+      subject = KMByteTag.getValue(subject);
+    }
+    cert.subjectName(subject);
+
+    setAttestationParameters(cert, attKeyBlob, attKeyParam, issuer, attChallenge, scratchPad);
     cert.publicKey(data[PUB_KEY]);
 
     // Save attestation application id - must be present.
@@ -1350,8 +1367,9 @@ public class KMKeymasterDevice {
     addAttestationIds(cert, scratchPad);
 
     // Add Tags
-    addTags(hwParameters, true, cert);
-    addTags(swParameters, false, cert);
+    addTags(data[HW_PARAMETERS], true, cert);
+    short swParams = KMKeyParameters.makeKeystoreEnforced(data[KEY_PARAMETERS], scratchPad); 
+    addTags(swParams, false, cert);
     // Add Device Boot locked status
     cert.deviceLocked(bootParamsProv.isDeviceBootLocked());
     // VB data
@@ -1359,16 +1377,12 @@ public class KMKeymasterDevice {
     cert.verifiedBootKey(getBootKey(scratchPad));
     cert.verifiedBootState((byte) bootParamsProv.getBootState());
 
-    //TODO remove the following line
-    makeKeyCharacteristics(scratchPad);
-    data[KEY_BLOB] = origBlob;
     return cert;
   }
 
   private KMAttestationCert makeCertWithFactoryProvisionedKey(short attChallenge,
       byte[] scratchPad) {
-    KMAttestationCert cert = makeCommonCert(data[SW_PARAMETERS], data[HW_PARAMETERS],
-        data[KEY_PARAMETERS], scratchPad, seProvider);
+    KMAttestationCert cert = makeCommonCert(data[KEY_PARAMETERS], scratchPad, seProvider);
     cert.attestationChallenge(attChallenge);
     cert.publicKey(data[PUB_KEY]);
     cert.factoryAttestKey(storeDataInst.getAttestationKey(),
@@ -1397,18 +1411,13 @@ public class KMKeymasterDevice {
     cert.verifiedBootKey(getBootKey(scratchPad));
     cert.verifiedBootState((byte) bootParamsProv.getBootState());
 
-    //TODO remove the following line
-    //makeKeyCharacteristics(scratchPad);
-    //data[KEY_BLOB] = origBlob;
     return cert;
   }
 
   private KMAttestationCert makeSelfSignedCert(short attPrivKey, short attPubKey,
       byte[] scratchPad) {
-    //KMAttestationCert cert = makeCommonCert(scratchPad);
     KMAttestationCert cert =
-        makeCommonCert(data[SW_PARAMETERS], data[HW_PARAMETERS],
-            data[KEY_PARAMETERS], scratchPad, seProvider);
+        makeCommonCert(data[KEY_PARAMETERS], scratchPad, seProvider);
     short alg = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM);
     byte mode = KMType.FAKE_CERT;
     if (attPrivKey != KMType.INVALID_VALUE) {
@@ -1513,7 +1522,7 @@ public class KMKeymasterDevice {
                 KMByteBlob.getBuffer(attIdTagValue),
                 KMByteBlob.getStartOff(attIdTagValue),
                 storedAttIdLen))) {
-          KMException.throwIt(KMError.INVALID_TAG);
+          KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
         }
         short blob = KMByteBlob.instance(scratchPad, (short) 0, storedAttIdLen);
         cert.extensionTag(KMByteTag.instance(ATTEST_ID_TAGS[index], blob), true);
@@ -1539,7 +1548,7 @@ public class KMKeymasterDevice {
       return;
     }
     // temporal count T
-    short time = KMKeyParameters.findTag(data[SW_PARAMETERS], KMType.DATE_TAG,
+    short time = KMKeyParameters.findTag(data[KEY_PARAMETERS], KMType.DATE_TAG,
         KMType.CREATION_DATETIME);
     if (time == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.INVALID_TAG);
@@ -1554,10 +1563,9 @@ public class KMKeymasterDevice {
     }
     appId = KMByteTag.getValue(appId);
 
-    // Reset After Rotation R - it will be part of HW Enforced key
-    // characteristics
+    // Reset After Rotation R 
     byte resetAfterRotation = 0;
-    if (KMTag.isPresent(data[HW_PARAMETERS], KMType.BOOL_TAG, KMType.RESET_SINCE_ID_ROTATION)) {
+    if (KMTag.isPresent(data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.RESET_SINCE_ID_ROTATION)) {
       resetAfterRotation = 0x01;
     }
 
@@ -3151,11 +3159,18 @@ public class KMKeymasterDevice {
     }
     makeKeyCharacteristics(scratchPad);
     createEncryptedKeyBlob(scratchPad);
+    // Remove custom tags from key characteristics
+    short teeParams = KMKeyCharacteristics.getTeeEnforced(data[KEY_CHARACTERISTICS]);
+    if (teeParams != KMType.INVALID_VALUE) {
+      KMKeyParameters.deleteCustomTags(teeParams);
+    }
+    short signedParams = signKeyparams(scratchPad);
     // prepare the response
-    short resp = KMArray.instance((short) 3);
+    short resp = KMArray.instance((short) 4);
     KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[KEY_BLOB]);
     KMArray.add(resp, (short) 2, data[KEY_CHARACTERISTICS]);
+    KMArray.add(resp, (short) 3, signedParams);
     sendOutgoing(apdu, resp);
   }
 
@@ -3595,11 +3610,18 @@ public class KMKeymasterDevice {
     data[ORIGIN] = KMType.GENERATED;
     makeKeyCharacteristics(scratchPad);
     createEncryptedKeyBlob(scratchPad);
+    // Remove custom tags from key characteristics
+    short teeParams = KMKeyCharacteristics.getTeeEnforced(data[KEY_CHARACTERISTICS]);
+    if (teeParams != KMType.INVALID_VALUE) {
+      KMKeyParameters.deleteCustomTags(teeParams);
+    }
+    short signedParams = signKeyparams(scratchPad);
     // prepare the response
-    short resp = KMArray.instance((short) 3);
+    short resp = KMArray.instance((short) 4);
     KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[KEY_BLOB]);
     KMArray.add(resp, (short) 2, data[KEY_CHARACTERISTICS]);
+    KMArray.add(resp, (short) 3, signedParams);
     sendOutgoing(apdu, resp);
   }
 
@@ -3684,7 +3706,7 @@ public class KMKeymasterDevice {
     short cmd = generateAttestKeyCmd(apdu);
     // Re-purpose the apdu buffer as scratch pad.
     byte[] scratchPad = apdu.getBuffer();
-    getAttestKeyInputParameters(cmd, data, KEY_BLOB, KEY_PARAMETERS, ATTEST_KEY_BLOB,
+    getAttestKeyInputParameters(cmd, data, KEY_BLOB, KEY_PARAMETERS, KEY_PARAMETERS_MAC, ATTEST_KEY_BLOB,
         ATTEST_KEY_PARAMS, ATTEST_KEY_ISSUER);
     data[CERTIFICATE] = KMArray.instance((short) 0); //by default the cert is empty.
 
@@ -3701,6 +3723,9 @@ public class KMKeymasterDevice {
     }
     // parse key blob
     parseEncryptedKeyBlob(data[KEY_BLOB], data[APP_ID], data[APP_DATA], scratchPad);
+    if (!validateKeyParamsMac(data[KEY_PARAMETERS_MAC], scratchPad)) {
+      KMException.throwIt(KMError.INVALID_KEY_BLOB);
+    }
     // The key which is being attested should be asymmetric i.e. RSA or EC
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]);
     if (alg != KMType.RSA && alg != KMType.EC) {
@@ -3708,7 +3733,7 @@ public class KMKeymasterDevice {
     }
     // Build certificate
     generateAttestation(data[ATTEST_KEY_BLOB], data[ATTEST_KEY_PARAMS], scratchPad);
-
+    
     short resp = KMArray.instance((short) 2);
     KMArray.add(resp, (short) 0, buildErrorStatus(KMError.OK));
     KMArray.add(resp, (short) 1, data[CERTIFICATE]);
@@ -3755,7 +3780,7 @@ public class KMKeymasterDevice {
     switch (mode) {
       case KMType.ATTESTATION_CERT:
         cert = makeAttestationCert(attKeyBlob, attKeyParam, attChallenge, data[ATTEST_KEY_ISSUER],
-            data[HW_PARAMETERS], data[SW_PARAMETERS], data[KEY_PARAMETERS], scratchPad);
+            data[KEY_PARAMETERS], scratchPad);
         break;
       case KMType.SELF_SIGNED_CERT:
         //cert = makeCert(attKeyBlob, attKeyParam, scratchPad);
@@ -4009,6 +4034,43 @@ public class KMKeymasterDevice {
     data[SB_PARAMETERS] = KMKeyCharacteristics.getStrongboxEnforced(data[KEY_CHARACTERISTICS]);
     data[HW_PARAMETERS] = getHardwareParamters(data[SB_PARAMETERS], data[TEE_PARAMETERS]);
   }
+  
+  private short signKeyparams(byte[] scratchPad) {
+    short offset = repository.alloc((short) 1024);
+    short len = encoder.encode(data[KEY_PARAMETERS], repository.getHeap(), offset);
+    
+    short derivedKeyLen = seProvider.hmacKDF(
+        storeDataInst.getMasterKey(),
+        KMByteBlob.getBuffer(data[AUTH_TAG]),
+        KMByteBlob.getStartOff(data[AUTH_TAG]),
+        KMByteBlob.length(data[AUTH_TAG]),
+        scratchPad,
+        (short) 0);
+    if (derivedKeyLen < 16) {
+      KMException.throwIt(KMError.UNKNOWN_ERROR);
+    }
+    derivedKeyLen = 16;
+    
+    short signLen = seProvider.hmacSign(scratchPad, (short) 0, derivedKeyLen,
+        repository.getHeap(), offset, len, scratchPad, derivedKeyLen);
+    return KMByteBlob.instance(scratchPad, derivedKeyLen, signLen);
+  }
+  
+  private boolean validateKeyParamsMac(short keyParamsMac, byte[] scratchPad) {
+    short ptr = signKeyparams(scratchPad);
+    if (KMByteBlob.length(ptr) != KMByteBlob.length(ptr)) {
+      return false;
+    }
+    if (0 != Util.arrayCompare(
+        KMByteBlob.getBuffer(ptr),
+        KMByteBlob.getStartOff(ptr),
+        KMByteBlob.getBuffer(keyParamsMac),
+        KMByteBlob.getStartOff(keyParamsMac),
+        KMByteBlob.length(keyParamsMac))) {
+      return false;
+    }
+    return true;
+  }
 
   private void createEncryptedKeyBlob(byte[] scratchPad) {
     // make root of trust blob
@@ -4028,16 +4090,9 @@ public class KMKeymasterDevice {
     KMArray.add(data[KEY_BLOB], KEY_BLOB_AUTH_TAG, data[AUTH_TAG]);
     KMArray.add(data[KEY_BLOB], KEY_BLOB_NONCE, data[NONCE]);
 
-    //TODO remove the following temporary creation of keyblob.
-   /* short tempChar = KMKeyCharacteristics.instance();
-    short emptyParam = KMArray.instance((short) 0);
-    emptyParam = KMKeyParameters.instance(emptyParam);
-    KMKeyCharacteristics.cast(tempChar).setStrongboxEnforced(data[SB_PARAMETERS]);
-    KMKeyCharacteristics.cast(tempChar).setKeystoreEnforced(emptyParam);
-    KMKeyCharacteristics.cast(tempChar).setTeeEnforced(data[TEE_PARAMETERS]);
-    KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PARAMS, tempChar);*/
+    
     short keyChars = makeKeyCharacteristicsForKeyblob(data[SW_PARAMETERS], data[SB_PARAMETERS],
-        data[TEE_PARAMETERS]);
+          data[TEE_PARAMETERS]);
     KMArray.add(data[KEY_BLOB], KEY_BLOB_PARAMS, keyChars);
 
     // allocate reclaimable memory.
@@ -4401,16 +4456,15 @@ public class KMKeymasterDevice {
     return KMType.FACTORY_PROVISIONED_ATTEST_CERT;
   }
 
-  public KMAttestationCert makeCommonCert(short swParams, short hwParams, short keyParams,
-      byte[] scratchPad, KMSEProvider seProvider) {
-    boolean rsaCert = (KMEnumTag.getValue(KMType.ALGORITHM, hwParams) == KMType.RSA);
+  public KMAttestationCert makeCommonCert(short keyParams, byte[] scratchPad, KMSEProvider seProvider) {
+    boolean rsaCert = (KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]) == KMType.RSA);
     KMAttestationCert cert = KMAttestationCertImpl.instance(rsaCert, seProvider);
     // notBefore
     short notBefore =
-        KMKeyParameters.findTag(swParams, KMType.DATE_TAG, KMType.ACTIVE_DATETIME);
+        KMKeyParameters.findTag(data[SW_PARAMETERS], KMType.DATE_TAG, KMType.ACTIVE_DATETIME);
     if (notBefore == KMType.INVALID_VALUE) {
       notBefore =
-          KMKeyParameters.findTag(swParams, KMType.DATE_TAG, KMType.CREATION_DATETIME);
+          KMKeyParameters.findTag(data[SW_PARAMETERS], KMType.DATE_TAG, KMType.CREATION_DATETIME);
       if (notBefore == KMType.INVALID_VALUE) {
         KMException.throwIt(KMError.INVALID_KEY_BLOB);
       }
@@ -4421,7 +4475,7 @@ public class KMKeymasterDevice {
     // expiry time - byte blob
     boolean derEncoded = false;
     short notAfter =
-        KMKeyParameters.findTag(swParams, KMType.DATE_TAG, KMType.USAGE_EXPIRE_DATETIME);
+        KMKeyParameters.findTag(data[SW_PARAMETERS], KMType.DATE_TAG, KMType.USAGE_EXPIRE_DATETIME);
     if (notAfter == KMType.INVALID_VALUE) {
       notAfter = getProvisionedCertificateData(seProvider, KMDataStoreConstants.CERTIFICATE_EXPIRY);
       derEncoded = true;
@@ -4503,10 +4557,11 @@ public class KMKeymasterDevice {
   }
 
   public void getAttestKeyInputParameters(short arrPtr, short[] data, byte keyBlobOff,
-      byte keyParametersOff,
+      byte keyParametersOff, byte keyParametersMacOff,
       byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
     data[keyBlobOff] = KMArray.get(arrPtr, (short) 0);
     data[keyParametersOff] = KMArray.get(arrPtr, (short) 1);
+    data[keyParametersMacOff] = KMType.INVALID_VALUE;
     data[attestKeyBlobOff] = KMType.INVALID_VALUE;
     data[attestKeyParamsOff] = KMType.INVALID_VALUE;
     data[attestKeyIssuerOff] = KMType.INVALID_VALUE;

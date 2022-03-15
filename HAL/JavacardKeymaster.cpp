@@ -134,7 +134,9 @@ keymaster_error_t JavacardKeymaster::generateKey(const AuthorizationSet& keyPara
                                                  vector<uint8_t>* retKeyblob,
                                                  AuthorizationSet* swEnforced,
                                                  AuthorizationSet* hwEnforced,
-                                                 AuthorizationSet* teeEnforced) {
+                                                 AuthorizationSet* teeEnforced,
+                                                 vector<uint8_t>* keyParamsMac) {
+    size_t size;
     cppbor::Array array;
     // add key params
     cbor_.addKeyparameters(array, keyParams);
@@ -151,6 +153,15 @@ keymaster_error_t JavacardKeymaster::generateKey(const AuthorizationSet& keyPara
         !cbor_.getKeyCharacteristics(item, 2, *swEnforced, *hwEnforced, *teeEnforced)) {
         LOG(ERROR) << "Error in decoding cbor response in generateKey.";
         return KM_ERROR_UNKNOWN_ERROR;
+    }
+    err = cbor_.getArraySize(item, size);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in getting cbor array size ";
+        return err;
+    }
+    if (size == 3 && !cbor_.getBinaryArray(item, 3, *keyParamsMac)) {
+        LOG(ERROR) << "Error in getting keyparams mac. ";
+        return err;
     }
     return err;
 }
@@ -193,10 +204,12 @@ keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
 keymaster_error_t JavacardKeymaster::attestKey(const vector<uint8_t>& keyblob,
                                                const AuthorizationSet& keyParams,
                                                const optional<AttestationKey>& attestationKey,
+                                               const std::vector<uint8_t>& keyParamsMac,
                                                CertificateChain* certChain) {
     cppbor::Array array;
     array.add(keyblob);
     cbor_.addKeyparameters(array, keyParams);
+    array.add(keyParamsMac);
     if (attestationKey.has_value()) {
         array.add(attestationKey->keyBlob);
         cbor_.addKeyparameters(array, attestationKey->params);
@@ -227,7 +240,9 @@ keymaster_error_t
 JavacardKeymaster::importKey(const AuthorizationSet& keyParams,
                              const keymaster_key_format_t keyFormat, const vector<uint8_t>& keyData,
                              vector<uint8_t>* retKeyblob, AuthorizationSet* swEnforced,
-                             AuthorizationSet* hwEnforced, AuthorizationSet* teeEnforced) {
+                             AuthorizationSet* hwEnforced, AuthorizationSet* teeEnforced,
+                             vector<uint8_t>* keyParamsMac) {
+    size_t size;
     cppbor::Array array;
     cbor_.addKeyparameters(array, keyParams);
     array.add(static_cast<uint32_t>(keyFormat));
@@ -241,10 +256,19 @@ JavacardKeymaster::importKey(const AuthorizationSet& keyParams,
         LOG(ERROR) << "Error in sending importKey.";
         return err;
     }
+    err = cbor_.getArraySize(item, size);
+    if (err != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in getting cbor array size ";
+        return err;
+    }
     if (!cbor_.getBinaryArray(item, 1, *retKeyblob) ||
         !cbor_.getKeyCharacteristics(item, 2, *swEnforced, *hwEnforced, *teeEnforced)) {
         LOG(ERROR) << "Error in decoding the response in importKey.";
         return KM_ERROR_UNKNOWN_ERROR;
+    }
+    if ((size == 3) && !cbor_.getBinaryArray(item, 3, *keyParamsMac)) {
+        LOG(ERROR) << "Error in getting keyparams mac. ";
+        return err;
     }
     return err;
 }

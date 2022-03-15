@@ -20,6 +20,7 @@
 #include <JavacardKeyMintUtils.h>
 #include <JavacardKeymaster.h>
 #include <KMUtils.h>
+#include <KeyMintUtils.h>
 #include <algorithm>
 #include <android-base/logging.h>
 #include <android-base/properties.h>
@@ -131,10 +132,11 @@ ScopedAStatus JavacardKeyMintDevice::generateKey(const vector<KeyParameter>& key
     AuthorizationSet swEnforced;
     AuthorizationSet sbEnforced;
     AuthorizationSet teeEnforced;
+    std::vector<uint8_t> keyParamsMac;
     paramSet.Reinitialize(KmParamSet(keyParams));
 
     auto err = jcImpl_->generateKey(paramSet, &creationResult->keyBlob, &swEnforced, &sbEnforced,
-                                    &teeEnforced);
+                                    &teeEnforced, &keyParamsMac);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Failed in generateKey err: " << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
@@ -144,7 +146,7 @@ ScopedAStatus JavacardKeyMintDevice::generateKey(const vector<KeyParameter>& key
     paramSet.GetTagValue(TAG_ALGORITHM, &algorithm);
     if (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC) {
         err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey),
-                        &creationResult->certificateChain);
+                        keyParamsMac, &creationResult->certificateChain);
         if (err != KM_ERROR_OK) {
             LOG(ERROR) << "Failed in attestKey err: " << (int32_t)err;
             return km_utils::kmError2ScopedAStatus(err);
@@ -163,9 +165,10 @@ ScopedAStatus JavacardKeyMintDevice::addRngEntropy(const vector<uint8_t>& data) 
 keymaster_error_t
 JavacardKeyMintDevice::attestKey(const vector<uint8_t>& keyblob, const AuthorizationSet& keyParams,
                                  const optional<JCKMAttestationKey>& attestationKey,
+                                 const std::vector<uint8_t>& keyParamsMac,
                                  vector<Certificate>* certificateChain) {
     ::keymaster::CertificateChain certChain;
-    auto err = jcImpl_->attestKey(keyblob, keyParams, attestationKey, &certChain);
+    auto err = jcImpl_->attestKey(keyblob, keyParams, attestationKey, keyParamsMac, &certChain);
     if (err != KM_ERROR_OK) {
         return err;
     }
@@ -182,11 +185,13 @@ ScopedAStatus JavacardKeyMintDevice::importKey(const vector<KeyParameter>& keyPa
     AuthorizationSet swEnforced;
     AuthorizationSet sbEnforced;
     AuthorizationSet teeEnforced;
+    std::vector<uint8_t> keyParamsMac;
     paramSet.Reinitialize(KmParamSet(keyParams));
     // Add CREATION_DATETIME if required, as secure element is not having clock.
     addCreationTime(paramSet);
     auto err = jcImpl_->importKey(paramSet, static_cast<keymaster_key_format_t>(keyFormat), keyData,
-                                  &creationResult->keyBlob, &swEnforced, &sbEnforced, &teeEnforced);
+                                  &creationResult->keyBlob, &swEnforced, &sbEnforced, &teeEnforced,
+                                  &keyParamsMac);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Failed in importKey" << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);
@@ -196,7 +201,7 @@ ScopedAStatus JavacardKeyMintDevice::importKey(const vector<KeyParameter>& keyPa
     paramSet.GetTagValue(TAG_ALGORITHM, &algorithm);
     if (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC) {
         err = attestKey(creationResult->keyBlob, paramSet, convertAttestationKey(attestationKey),
-                        &creationResult->certificateChain);
+                        keyParamsMac, &creationResult->certificateChain);
         if (err != KM_ERROR_OK) {
             LOG(ERROR) << "Failed in attestKey" << (int32_t)err;
             return km_utils::kmError2ScopedAStatus(err);
@@ -265,7 +270,7 @@ ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector
     paramSet.Reinitialize(KmParamSet(params));
     ::keymaster::HardwareAuthToken legacyToken;
     std::unique_ptr<JavacardKeymasterOperation> operation;
-    km_utils::legacyHardwareAuthToken(aToken, &legacyToken);
+    legacyHardwareAuthToken(aToken, &legacyToken);
     auto err = jcImpl_->begin(static_cast<keymaster_purpose_t>(purpose), keyBlob, paramSet,
                               legacyToken, &outParams, operation);
     if (err != KM_ERROR_OK) {
@@ -283,7 +288,7 @@ JavacardKeyMintDevice::deviceLocked(bool passwordOnly,
                                     const std::optional<TimeStampToken>& timestampToken) {
     TimeStampToken tToken = timestampToken.value_or(TimeStampToken());
     vector<uint8_t> encodedTimestampToken;
-    auto err = km_utils::encodeTimestampToken(tToken, &encodedTimestampToken);
+    auto err = encodeTimestampToken(tToken, &encodedTimestampToken);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "In deviceLocked failed to encode TimeStampToken" << (int32_t)err;
         return km_utils::kmError2ScopedAStatus(err);

@@ -181,8 +181,7 @@ public class KMKeymintDevice extends KMKeymasterDevice {
   }
 
   @Override
-  public KMAttestationCert makeCommonCert(short swParams, short hwParams, short keyParams,
-      byte[] scratchPad,
+  public KMAttestationCert makeCommonCert(short keyParams, byte[] scratchPad,
       KMSEProvider seProvider) {
     short alg = KMKeyParameters.findTag(keyParams, KMType.ENUM_TAG, KMType.ALGORITHM);
     boolean rsaCert = KMEnumTag.getValue(alg) == KMType.RSA;
@@ -323,24 +322,26 @@ public class KMKeymintDevice extends KMKeymasterDevice {
     short params = KMKeyParameters.expAny();
     short blob = KMByteBlob.exp();
     // Array of expected arguments
-    short cmd = KMArray.instance((short) 5);
+    short cmd = KMArray.instance((short) 6);
     KMArray.add(cmd, (short) 0, blob); // key blob
     KMArray.add(cmd, (short) 1, params); // keyparamters to be attested.
-    KMArray.add(cmd, (short) 2, blob); // attest key blob
-    KMArray.add(cmd, (short) 3, params); // attest key params
-    KMArray.add(cmd, (short) 4, blob); // attest issuer
+    KMArray.add(cmd, (short) 2, blob); // keyparameters mac.
+    KMArray.add(cmd, (short) 3, blob); // attest key blob
+    KMArray.add(cmd, (short) 4, params); // attest key params
+    KMArray.add(cmd, (short) 5, blob); // attest issuer
     return cmd;
   }
 
   @Override
   public void getAttestKeyInputParameters(short arrPtr, short[] data, byte keyBlobOff,
-      byte keyParametersOff,
+      byte keyParametersOff, byte keyParametersMacOff,
       byte attestKeyBlobOff, byte attestKeyParamsOff, byte attestKeyIssuerOff) {
     data[keyBlobOff] = KMArray.get(arrPtr, (short) 0);
     data[keyParametersOff] = KMArray.get(arrPtr, (short) 1);
-    data[attestKeyBlobOff] = KMArray.get(arrPtr, (short) 2);
-    data[attestKeyParamsOff] = KMArray.get(arrPtr, (short) 3);
-    data[attestKeyIssuerOff] = KMArray.get(arrPtr, (short) 4);
+    data[keyParametersMacOff] = KMArray.get(arrPtr, (short) 2);
+    data[attestKeyBlobOff] = KMArray.get(arrPtr, (short) 3);
+    data[attestKeyParamsOff] = KMArray.get(arrPtr, (short) 4);
+    data[attestKeyIssuerOff] = KMArray.get(arrPtr, (short) 5);
   }
 
   @Override
