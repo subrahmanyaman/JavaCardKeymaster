@@ -43,10 +43,12 @@ public class KMOperationImpl implements KMOperation {
   private short[] parameters;
   // Either one of Cipher/Signature instance is stored.
   private Object[] operationInst;
+  private Object[] keyObjectInst;
 
   public KMOperationImpl() {
     parameters = JCSystem.makeTransientShortArray(PARAMETERS_LENGTH, JCSystem.CLEAR_ON_RESET);
     operationInst = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
+    keyObjectInst = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
     reset();
   }
 
@@ -106,8 +108,21 @@ public class KMOperationImpl implements KMOperation {
     return operationInst[0] == object;
   }
 
+  public boolean isKeyObjectMatches(Object object) {
+    return keyObjectInst[0] == object;
+  }
+  
+  public void setKeyObject(KMKeyObject keyObject) {
+    keyObjectInst[0] = keyObject;
+  }
+  
+  public KMKeyObject getKeyObject() {
+    return (KMKeyObject)keyObjectInst[0];
+  }
+  
   private void reset() {
     operationInst[0] = null;
+    keyObjectInst[0] = null;
     parameters[MAC_LENGTH_OFFSET] = KMType.INVALID_VALUE;
     parameters[AES_GCM_UPDATE_LEN_OFFSET] = 0;
     parameters[BLOCK_MODE_OFFSET] = KMType.INVALID_VALUE;
