@@ -2368,6 +2368,25 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     sendOutgoing(apdu);
   }
 
+  private boolean isDigestSupported(byte alg, byte digest) {
+    switch (alg) {
+    case KMType.RSA:
+    case KMType.EC:
+      if (digest != KMType.DIGEST_NONE && digest != KMType.SHA2_256) {
+        return false;
+      }
+      break;
+    case KMType.HMAC:
+      if (digest != KMType.SHA2_256) {
+        return false;
+      }
+      break;
+    default:
+      break;
+    }
+    return true;
+  }
+
   private void authorizeAlgorithm(KMOperationState op) {
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]);
     if (alg == KMType.INVALID_VALUE) {
@@ -2431,7 +2450,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         break;
       case KMType.EC:
       case KMType.HMAC:
-        if (param == KMType.INVALID_VALUE) {
+        if (param == KMType.INVALID_VALUE || 
+            !isDigestSupported(op.getAlgorithm(), op.getDigest())) {
           KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
         }
         break;
@@ -2472,12 +2492,20 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
             && param != KMType.RSA_PKCS1_1_5_ENCRYPT) {
           KMException.throwIt(KMError.UNSUPPORTED_PADDING_MODE);
         }
-        if (param == KMType.PADDING_NONE && op.getDigest() != KMType.DIGEST_NONE) {
+        if ((param == KMType.PADDING_NONE || param == KMType.RSA_PKCS1_1_5_ENCRYPT)
+            && op.getDigest() != KMType.DIGEST_NONE) {
           KMException.throwIt(KMError.INCOMPATIBLE_DIGEST);
         }
         if ((param == KMType.RSA_OAEP || param == KMType.RSA_PSS)
             && op.getDigest() == KMType.DIGEST_NONE) {
           KMException.throwIt(KMError.INCOMPATIBLE_DIGEST);
+        }
+        if (op.getPurpose() == KMType.SIGN || op.getPurpose() == KMType.VERIFY
+            || param == KMType.RSA_OAEP) {
+          // Digest is mandatory in these cases.
+          if (!isDigestSupported(op.getAlgorithm(), op.getDigest())) {
+            KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
+          }
         }
         op.setPadding((byte) param);
         break;

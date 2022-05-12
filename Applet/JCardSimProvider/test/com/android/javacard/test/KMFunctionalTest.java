@@ -2469,7 +2469,7 @@ public class KMFunctionalTest {
   @Test
   public void testWithRsaSha1Oaep() {
     init();
-    testEncryptDecryptWithRsa(KMType.SHA1, KMType.RSA_OAEP);
+    testEncryptDecryptWithRsa(KMType.SHA2_256, KMType.RSA_OAEP);
     cleanUp();
   }
 
