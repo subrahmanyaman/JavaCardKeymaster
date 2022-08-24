@@ -63,6 +63,7 @@ static int ecRawKeyFromPKCS8(const std::vector<uint8_t>& pkcs8Blob, std::vector<
 static int processAttestationIds();
 static int processSharedSecret();
 static int processSetBootParameters();
+static int processAttestationCertificateData();
 static int readDataFromFile(const char *fileName, std::vector<uint8_t>& data);
 static int addApduHeader(const int ins, std::vector<uint8_t>& inputData);
 static int getIntValue(Json::Value& Obj, const char* key, uint32_t *value);
@@ -91,7 +92,57 @@ void usage() {
     printf("-i, --input  jsonFile \t Input json file \n");
     printf("-o, --output jsonFile \t Output json file \n");
 }
+X509* parseDerCertificate(std::vector<uint8_t>& certData) {
+    X509 *x509 = nullptr;
 
+    /* Create BIO instance from certificate data */
+    BIO *bio = BIO_new_mem_buf(certData.data(), certData.size());
+    if(bio == nullptr) {
+        printf("\n Failed to create BIO from buffer.\n");
+        return nullptr;
+    }
+    /* Create X509 instance from BIO */
+    x509 = d2i_X509_bio(bio, NULL);
+    if(x509 == nullptr) {
+        printf("\n Failed to get X509 instance from BIO.\n");
+        return nullptr;
+    }
+    BIO_free(bio);
+    return x509;
+}
+
+int getDerSubjectName(X509* x509, std::vector<uint8_t>& subject) {
+    uint8_t *subjectDer = NULL;
+    X509_NAME* asn1Subject = X509_get_subject_name(x509);
+    if(asn1Subject == NULL) {
+        printf("\n Failed to read the subject.\n");
+        return FAILURE;
+    }
+    /* Convert X509_NAME to der encoded subject */
+    int len = i2d_X509_NAME(asn1Subject, &subjectDer);
+    if (len < 0) {
+        printf("\n Failed to get readable name from X509_NAME.\n");
+        return FAILURE;
+    }
+    subject.insert(subject.begin(), subjectDer, subjectDer+len);
+    return SUCCESS;
+}
+
+int getNotAfter(X509* x509, std::vector<uint8_t>& notAfterDate) {
+    const ASN1_TIME* notAfter = X509_get0_notAfter(x509);
+    if(notAfter == NULL) {
+        printf("\n Failed to read expiry time.\n");
+        return FAILURE;
+    }
+    int strNotAfterLen = ASN1_STRING_length(notAfter);
+    const uint8_t *strNotAfter = ASN1_STRING_get0_data(notAfter);
+    if(strNotAfter == NULL) {
+        printf("\n Failed to read expiry time from ASN1 string.\n");
+        return FAILURE;
+    }
+    notAfterDate.insert(notAfterDate.begin(), strNotAfter, strNotAfter + strNotAfterLen);
+    return SUCCESS;
+}
 
 int ecRawKeyFromPKCS8(const std::vector<uint8_t>& pkcs8Blob, std::vector<uint8_t>& secret,
         std::vector<uint8_t>& pub_x, std::vector<uint8_t>& pub_y) {
@@ -296,6 +347,7 @@ int processInputFile() {
     }
     if (0 != processDeviceUniqueKey() ||
         0 != processAdditionalCertificateChain() ||
+        0 != processAttestationCertificateData() ||
         0 != processAttestationIds() ||
         0 != processSharedSecret() ||
         0 != processOEMRootPublicKey() ||
@@ -803,6 +855,74 @@ int readDataFromFile(const char *filename, std::vector<uint8_t>& data) {
 exit:    
     fclose(fp);
     return ret;
+}
+
+static int processAttestationCertificateData() {
+    Json::Value certChainFiles = root.get(kAttestCertChain, Json::Value::nullRef);
+    if (!certChainFiles.isNull()) {
+        std::vector<uint8_t> certData;
+        // std::vector<uint8_t> subject;
+        // std::vector<uint8_t> notAfter;
+        Array innerArray;
+
+        if(certChainFiles.isArray()) {
+            if (certChainFiles.size() == 0) {
+                printf("\n empty certificate.\n");
+                return FAILURE;
+            }
+            for (uint32_t i = 0; i < certChainFiles.size(); i++) {
+                if(certChainFiles[i].isString()) {
+                    /* Read the certificates. */
+                    if(SUCCESS != readDataFromFile(certChainFiles[i].asString().data(), certData)) {
+                        printf("\n Failed to read the Root certificate\n");
+                        return FAILURE;
+                    }
+                    if (i == 0) { // Leaf certificate
+                        /* Subject, AuthorityKeyIdentifier and Expirty time of the root certificate are required by javacard. */
+                        /* Get X509 certificate instance for the root certificate.*/
+                        X509_Ptr x509(parseDerCertificate(certData));
+                        if (!x509) {
+                          return FAILURE;
+                        }
+
+                        // /* Get subject in DER */
+                        // getDerSubjectName(x509.get(), subject);
+                        // /* Get Expirty Time */
+                        // getNotAfter(x509.get(), notAfter);
+                    }
+                    innerArray.add(certData);
+                    certData.clear();
+
+                } else {
+                    printf("\n Fail: Only proper certificate paths as a string is allowed inside the json file. \n");
+                    return FAILURE;
+                }
+            }
+        } else {
+            printf("\n Fail: cert chain value should be an array inside the json file. \n");
+            return FAILURE;
+        }
+        // Prepare cbor input
+        cppbor::Map map;
+        map.add("samsung", std::move(innerArray));
+
+        // Array array;
+        // array.add(innerArray.encode());
+        // array.add(subject);
+        // array.add(notAfter);
+        cppbor::Bstr bstr(map.encode());
+        std::vector<uint8_t> cborData = bstr.encode();
+        if (SUCCESS != addApduHeader(kAttestCertDataCmd, cborData)) {
+            return FAILURE;
+        }
+        // Write to json.
+        writerRoot[kAttestCertChain] = getHexString(cborData);
+    } else {
+        printf("\n Fail: Improper value found for attest_cert_chain key inside json file \n");
+        return FAILURE;
+    }
+    printf("\n Constructed attestation certificate chain APDU successfully. \n");
+    return SUCCESS;
 }
 
 int main(int argc, char* argv[]) {

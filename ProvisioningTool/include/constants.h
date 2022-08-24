@@ -102,6 +102,7 @@ constexpr char kUnLockProvision[] = "unlock_provision";
 constexpr char kSecureBootMode[] = "secure_boot_mode";
 
 // Instruction constatnts
+constexpr int kAttestCertDataCmd = INS_BEGIN_KM_CMD + 2;
 constexpr int kAttestationIdsCmd = INS_BEGIN_KM_CMD + 3;
 constexpr int kPresharedSecretCmd = INS_BEGIN_KM_CMD + 4;
 constexpr int kBootParamsCmd = INS_BEGIN_KM_CMD + 5;

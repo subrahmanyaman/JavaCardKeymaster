@@ -26,5 +26,10 @@
       ]
    },
    "oem_root_key": "test_resources/oem_root_key.der",
-   "secure_boot_mode": 0
+   "secure_boot_mode": 0,
+   "attest_cert_chain": [
+      "test_resources/ca_cert.der",
+      "test_resources/intermediate_cert.der",
+      "test_resources/batch_cert.der"
+   ]
 }

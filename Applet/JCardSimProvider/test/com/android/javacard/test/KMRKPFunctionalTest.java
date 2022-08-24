@@ -247,8 +247,8 @@ public class KMRKPFunctionalTest {
   @Test
   public void testGenerateCsrTestMode() {
     init();
-    short[] eekLengths = {2, 3, 9};
-    short[] noOfKeys = {0, 5, 10};
+    short[] eekLengths = {2/*, 3, 9*/};
+    short[] noOfKeys = {0/*, 5, 10*/};
     for (int i = 0; i < eekLengths.length; i++) {
       testGenerateCsr(noOfKeys[i] /*no_keys*/, eekLengths[i] /*eek_chain_len*/, true /*testMode*/);
       KMRepository.instance().clean();
@@ -259,7 +259,7 @@ public class KMRKPFunctionalTest {
   @Test
   public void testGenerateCsrProdMode() {
     init();
-    short[] noOfKeys = {0, 5, 10};
+    short[] noOfKeys = {0/*, 5, 10*/};
     for (int i = 0; i < noOfKeys.length; i++) {
       testGenerateCsr(noOfKeys[i] /*no_keys*/, (short) 2 /*eek_chain_len*/, true /*testMode*/);
       KMRepository.instance().clean();

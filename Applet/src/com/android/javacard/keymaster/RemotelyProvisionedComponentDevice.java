@@ -88,7 +88,7 @@ public class RemotelyProvisionedComponentDevice {
   public static final byte DI_SCHEMA_VERSION = 2;
   public static final byte[] DI_SECURITY_LEVEL = {0x73, 0x74, 0x72, 0x6F, 0x6E, 0x67, 0x62, 0x6F,
       0x78};
-  private static final short MAX_SEND_DATA = 1024;
+  private static final short MAX_SEND_DATA = 512;
   
   private static final byte[] google = {0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
 
@@ -1204,20 +1204,61 @@ public class RemotelyProvisionedComponentDevice {
     Util.setShort(data, dataEntryIndex, processedLen);
   }
 
+//  private short processAdditionalCertificateChain(byte[] scratchPad) {
+//    byte[] persistedData = storeDataInst.getAdditionalCertChain();
+//    short totalAccLen = Util.getShort(persistedData, (short) 0);
+//    if (totalAccLen == 0) {
+//      // No Additional certificate chain present.
+//      return 0;
+//    }
+//    short processedLen = getAdditionalCertChainProcessedLength();
+//    short lengthToSend = (short) (totalAccLen - processedLen);
+//    if (lengthToSend > MAX_SEND_DATA) {
+//      lengthToSend = MAX_SEND_DATA;
+//    }
+//    short cipherTextLen =
+//        ((KMOperation) operation[0]).update(persistedData, (short) (2 + processedLen), lengthToSend,
+//            scratchPad, (short) 0);
+//    processedLen += lengthToSend;
+//    updateAdditionalCertChainProcessedLength(processedLen);
+//    // Update the output processing state.
+//    updateOutputProcessingState(
+//        (processedLen == totalAccLen) ? PROCESSING_ACC_COMPLETE : PROCESSING_ACC_IN_PROGRESS);
+//    return cipherTextLen;
+//  }
+public static void print(byte[] buf, short start, short length) {
+  StringBuilder sb = new StringBuilder();
+  for (int i = start; i < (start + length); i++) {
+    sb.append(String.format(" 0x%02X", buf[i]));
+  }
+  System.out.println(sb.toString());
+}
   private short processAdditionalCertificateChain(byte[] scratchPad) {
-    byte[] persistedData = storeDataInst.getAdditionalCertChain();
-    short totalAccLen = Util.getShort(persistedData, (short) 0);
+    byte[] certChainBuf = seProvider.getProvisionedData();
+    // short certChainBufOffset = repository.allocReclaimableMemory((short) 2500);
+    // byte[] certChainBuf = repository.getHeap();
+    // short totalAccLen = seProvider.readProvisionedData(KMSEProvider.CERTIFICATE_CHAIN,
+    //     certChainBuf, certChainBufOffset);
+    short totalAccLen = Util.getShort(certChainBuf, (short) 0);
+    System.out.println("CertificateChain ::=>");
+    print(certChainBuf, (short) (2 ), totalAccLen);
+
+    //short totalAccLen = Util.getShort(persistedData, (short) 0);
     if (totalAccLen == 0) {
       // No Additional certificate chain present.
       return 0;
     }
+    // short byteHeaderLen =
+    //     decoder.readCertificateChainHeaderLen(certChainBuf, (short) 0, totalAccLen);
+    //totalAccLen -= byteHeaderLen;
     short processedLen = getAdditionalCertChainProcessedLength();
     short lengthToSend = (short) (totalAccLen - processedLen);
     if (lengthToSend > MAX_SEND_DATA) {
       lengthToSend = MAX_SEND_DATA;
     }
     short cipherTextLen =
-        ((KMOperation) operation[0]).update(persistedData, (short) (2 + processedLen), lengthToSend,
+        ((KMOperation) operation[0]).update(certChainBuf,
+            (short) (2 + processedLen), lengthToSend,
             scratchPad, (short) 0);
     processedLen += lengthToSend;
     updateAdditionalCertChainProcessedLength(processedLen);

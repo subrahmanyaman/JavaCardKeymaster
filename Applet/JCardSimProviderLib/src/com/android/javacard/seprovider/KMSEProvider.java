@@ -24,7 +24,10 @@ import org.globalplatform.upgrade.Element;
  * can be only one provider in the applet package.
  */
 public interface KMSEProvider {
-
+  // Provision related constants.
+  public static final byte CERTIFICATE_CHAIN = 0;
+  public static final byte CERTIFICATE_EXPIRY = 1;
+  public static final byte CERTIFICATE_ISSUER = 2;
   /**
    * This function tells if boot signal event is supported or not.
    *
@@ -792,5 +795,8 @@ public interface KMSEProvider {
    */
   KMRkpMacKey createRkpMacKey(KMRkpMacKey createComputedHmacKey, byte[] keyData,
       short offset, short length);
+
+  void persistProvisionData(byte[] buf, short certChainOff, short certChainLen);
+  byte[] getProvisionedData();
 
 }

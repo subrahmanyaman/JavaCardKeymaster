@@ -212,6 +212,30 @@ public class KMDecoder {
     short valuePtr = decode(KMCosePairNegIntegerTag.cast(exp).getValuePtr());
     return KMCosePairNegIntegerTag.instance(keyPtr, valuePtr);
   }
+  
+//Reads the offset and length values of the ByteBlobs from a CBOR array buffer.
+ public void decodeCertificateData(short expectedArrLen, byte[] buf, short bufOffset, short bufLen,
+     byte[] out, short outOff) {
+   bufferRef[0] = buf;
+   scratchBuf[START_OFFSET] = bufOffset;
+   scratchBuf[LEN_OFFSET] = (short) (bufOffset + bufLen);
+   short byteBlobLength = 0;
+   // Read Array length
+   short payloadLength = readMajorTypeWithPayloadLength(ARRAY_TYPE);
+   if (expectedArrLen != payloadLength) {
+     ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+   }
+   short index = 0;
+   while (index < payloadLength) {
+     incrementStartOff(byteBlobLength);
+     byteBlobLength = readMajorTypeWithPayloadLength(BYTES_TYPE);
+     Util.setShort(out, outOff, scratchBuf[START_OFFSET]); // offset
+     outOff += 2;
+     Util.setShort(out, outOff, byteBlobLength); // length
+     outOff += 2;
+     index++;
+   }    
+ }
 
   private short decodeCosePairTxtStringTag(short exp) {
     short keyPtr = decodeCosePairKey((KMCosePairTextStringTag.cast(exp).getKeyPtr()));
@@ -762,4 +786,13 @@ public class KMDecoder {
     totalLen += (short) (scratchBuf[START_OFFSET] - bufOffset);
     return totalLen;
   }
+  
+  public short readCertificateChainHeaderLen(byte[] buf, short bufOffset,
+      short bufLen) {
+bufferRef[0] = buf;
+scratchBuf[START_OFFSET] = bufOffset;
+scratchBuf[LEN_OFFSET] = (short) (bufOffset + bufLen);
+readMajorTypeWithPayloadLength(BYTES_TYPE);
+return  (short) (scratchBuf[START_OFFSET] - bufOffset);
+}
 }

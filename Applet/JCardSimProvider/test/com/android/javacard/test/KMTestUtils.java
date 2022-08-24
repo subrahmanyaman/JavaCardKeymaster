@@ -462,14 +462,15 @@ public class KMTestUtils {
     KMArray.cast(bccArr).add((short) 1, signedMacArr);
     //if (!testMode) {
     short headers = KMCoseHeaders.exp();
-    short arrInst = KMArray.instance((short) 4);
-    KMArray.cast(arrInst).add((short) 0, KMByteBlob.exp());
-    KMArray.cast(arrInst).add((short) 1, headers);
-    KMArray.cast(arrInst).add((short) 2, KMByteBlob.exp());
-    KMArray.cast(arrInst).add((short) 3, KMByteBlob.exp());
-    short coseSignArr = KMArray.exp(arrInst);
+    // short arrInst = KMArray.instance((short) 4);
+    // KMArray.cast(arrInst).add((short) 0, KMByteBlob.exp());
+    // KMArray.cast(arrInst).add((short) 1, headers);
+    // KMArray.cast(arrInst).add((short) 2, KMByteBlob.exp());
+    // KMArray.cast(arrInst).add((short) 3, KMByteBlob.exp());
+    //short coseSignArr = KMArray.exp(arrInst);
+    short x509Arr = KMArray.exp(KMByteBlob.exp());
     additionalCertChain = KMMap.instance((short) 1);
-    KMMap.cast(additionalCertChain).add((short) 0, KMTextString.exp(), coseSignArr);
+    KMMap.cast(additionalCertChain).add((short) 0, KMTextString.exp(), x509Arr);
     // protected payload exp
     short payload = KMArray.instance(payloadLength);
     KMArray.cast(payload).add((short) 0, signedMacArr);
@@ -494,12 +495,20 @@ public class KMTestUtils {
     //--------------------------------------------
     //  Validate Additional certificate chain.
     //--------------------------------------------
-    if (!testMode) {
+    //if (!testMode) {
+    {
       short addCertChain = KMArray.cast(payloadPtr).get((short) 2);
       addCertChain = KMMap.cast(addCertChain).getKeyValue((short) 0);
-      Assert.assertTrue(
-          validateCertChain(cryptoProvider, encoder, decoder, KMCose.COSE_ALG_ES256,
-              KMCose.COSE_ALG_ES256, addCertChain));
+      short len = KMArray.cast(addCertChain).length();
+      System.out.println("AdditionalCertificateChain RKP UNiTest Certs ::===>");
+      for(short i = 0; i < len; i++) {
+        short blob = KMArray.cast(addCertChain).get(i);
+        print(KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff(),
+            KMByteBlob.cast(blob).length());
+      }
+      // Assert.assertTrue(
+      //     validateCertChain(cryptoProvider, encoder, decoder, KMCose.COSE_ALG_ES256,
+      //         KMCose.COSE_ALG_ES256, addCertChain));
     }
   }
 

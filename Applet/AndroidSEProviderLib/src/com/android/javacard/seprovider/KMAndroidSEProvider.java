@@ -47,7 +47,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   public static final byte KEYSIZE_256_OFFSET = 0x01;
   public static final short TMP_ARRAY_SIZE = 300;
   private static final short RSA_KEY_SIZE = 256;
-  public static final short CERT_CHAIN_MAX_SIZE = 2500;//First 2 bytes for length.
+  //public static final short CERT_CHAIN_MAX_SIZE = 2500;//First 2 bytes for length.
   public static final short SHARED_SECRET_KEY_SIZE = 32;
   public static final byte POWER_RESET_FALSE = (byte) 0xAA;
   public static final byte POWER_RESET_TRUE = (byte) 0x00;
@@ -56,7 +56,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
   private static byte[] CMAC_KDF_CONSTANT_ZERO;
 
   private static KeyAgreement keyAgreement;
-
+  //For storing root certificate and intermediate certificates.
+  private byte[] provisionData;
   // AESKey
   private AESKey aesKeys[];
   // DES3Key
@@ -125,6 +126,10 @@ public class KMAndroidSEProvider implements KMSEProvider {
     resetFlag = JCSystem.makeTransientByteArray((short) 1,
         JCSystem.CLEAR_ON_RESET);
     resetFlag[0] = (byte) POWER_RESET_FALSE;
+ // First 2 bytes is reserved for length for all the 3 buffers.
+    short totalLen = (short) (6 +  CERT_CHAIN_MAX_SIZE +
+        CERT_ISSUER_MAX_SIZE + CERT_EXPIRY_MAX_SIZE);
+    provisionData = new byte[totalLen];
   }
   
   void initStatics() {
@@ -1236,6 +1241,84 @@ public class KMAndroidSEProvider implements KMSEProvider {
   @Override
   public void clearDeviceBooted(boolean resetBootFlag) {
     // To be filled
+  }
+//Maximum cert chain size
+ public static final short CERT_CHAIN_MAX_SIZE = 2500;
+ public static final short CERT_ISSUER_MAX_SIZE = 250;
+ public static final short CERT_EXPIRY_MAX_SIZE = 20;
+  private static final short CERT_CHAIN_OFFSET = 0;
+  private static final short CERT_ISSUER_OFFSET = 2500;
+  private static final short CERT_EXPIRY_OFFSET = 
+      (short) (CERT_ISSUER_OFFSET + CERT_ISSUER_MAX_SIZE);
+
+  private short getProvisionDataBufferOffset(byte dataType) {
+    switch(dataType) {
+    case CERTIFICATE_CHAIN:
+      return CERT_CHAIN_OFFSET;
+    case CERTIFICATE_ISSUER:
+      return CERT_ISSUER_OFFSET;
+    case CERTIFICATE_EXPIRY:
+      return CERT_EXPIRY_OFFSET;
+    default:
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    return 0;
+  }
+
+  private void persistProvisionData(byte[] buf, short off, short len, short maxSize, short copyToOff) {
+    if (len > maxSize) {
+      KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+    }
+    Util.arrayCopy(buf, off, provisionData, Util.setShort(provisionData, copyToOff, len), len);
+  }
+
+  private void persistCertificateChain(byte[] certChain, short certChainOff, short certChainLen) {
+    persistProvisionData(certChain, certChainOff, certChainLen,
+        CERT_CHAIN_MAX_SIZE, CERT_CHAIN_OFFSET);
+  }
+  
+  private void persistCertficateIssuer(byte[] certIssuer, short certIssuerOff, short certIssuerLen) {
+    persistProvisionData(certIssuer, certIssuerOff, certIssuerLen,
+        CERT_ISSUER_MAX_SIZE, CERT_ISSUER_OFFSET);
+  }
+  
+  private void persistCertificateExpiryTime(byte[] certExpiry, short certExpiryOff, short certExpiryLen) {
+    persistProvisionData(certExpiry, certExpiryOff, certExpiryLen,
+        CERT_EXPIRY_MAX_SIZE, CERT_EXPIRY_OFFSET);
+  }
+
+  @Override
+  public void persistProvisionData(byte[] buffer, short certChainOff, short certChainLen,
+      short certIssuerOff, short certIssuerLen, short certExpiryOff ,short certExpiryLen) {
+    // All the buffers uses first two bytes for length. The certificate chain
+    // is stored as shown below.
+    //  _____________________________________________________
+    // | 2 Bytes | 1 Byte | 3 Bytes | Cert1 |  Cert2 |...
+    // |_________|________|_________|_______|________|_______
+    // First two bytes holds the length of the total buffer.
+    // CBOR format:
+    // Next single byte holds the byte string header.
+    // Next 3 bytes holds the total length of the certificate chain.
+    // clear buffer.
+    Util.arrayFill(provisionData, (short) 0, (short) provisionData.length, (byte) 0);
+    // Persist data.
+    persistCertificateChain(buffer, certChainOff, certChainLen);
+    persistCertficateIssuer(buffer, certIssuerOff, certIssuerLen);
+    persistCertificateExpiryTime(buffer, certExpiryOff, certExpiryLen);
+  }
+
+  @Override
+  public short readProvisionedData(byte dataType, byte[] buf, short offset) {
+    short provisionBufOffset = getProvisionDataBufferOffset(dataType);
+    short len = Util.getShort(provisionData, provisionBufOffset);
+    Util.arrayCopyNonAtomic(provisionData, (short) (2 + provisionBufOffset), buf, offset, len);
+    return len;
+  }
+
+  @Override
+  public short getProvisionedDataLength(byte dataType) {
+    short provisionBufOffset = getProvisionDataBufferOffset(dataType);
+    return Util.getShort(provisionData, provisionBufOffset);
   }
   
 }

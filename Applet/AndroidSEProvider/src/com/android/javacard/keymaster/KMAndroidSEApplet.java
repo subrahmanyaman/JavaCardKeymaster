@@ -44,6 +44,7 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
 
   // Provider specific Commands
   private static final byte INS_KEYMINT_PROVIDER_APDU_START = 0x00;
+  private static final byte INS_PROVISION_ATTESTATION_CERT_DATA_CMD = INS_KEYMINT_PROVIDER_APDU_START + 2; //0x02
   private static final byte INS_PROVISION_ATTEST_IDS_CMD = INS_KEYMINT_PROVIDER_APDU_START + 3;
   private static final byte INS_PROVISION_PRESHARED_SECRET_CMD =
       INS_KEYMINT_PROVIDER_APDU_START + 4;
@@ -160,6 +161,10 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
           case INS_PROVISION_SECURE_BOOT_MODE_CMD:
             processSecureBootCmd(apdu);
             break;
+            
+          case INS_PROVISION_ATTESTATION_CERT_DATA_CMD:
+            processProvisionAttestationCertDataCmd(apdu);
+            break;
         
           default:
             super.process(apdu);
@@ -188,6 +193,7 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
       case INS_PROVISION_PRESHARED_SECRET_CMD:
       case INS_PROVISION_SECURE_BOOT_MODE_CMD:
       case INS_PROVISION_OEM_ROOT_PUBLIC_KEY_CMD:
+      case INS_PROVISION_ATTESTATION_CERT_DATA_CMD:
         if(kmDataStore.isProvisionLocked()) {
           result = false;  
         }
@@ -222,6 +228,7 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
         }
         break;
         
+      case INS_SET_BOOT_PARAMS_CMD:
       case INS_GET_PROVISION_STATUS_CMD:
     	break;
     	
@@ -383,6 +390,47 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
         MAX_COSE_BUF_SIZE);
     kmDataStore.persistBootCertificateChain(scratchPad, (short) 0, len);
     kmDataStore.setProvisionStatus(PROVISION_STATUS_DEVICE_UNIQUE_KEYPAIR);
+    sendResponse(apdu, KMError.OK);
+  }
+  
+  private void processProvisionAttestationCertDataCmd(APDU apdu) {
+    //receiveIncoming(apdu);
+    byte[] srcBuffer = apdu.getBuffer();
+    short recvLen = apdu.setIncomingAndReceive();
+    short srcOffset = apdu.getOffsetCdata();
+    // TODO add logic to handle the extended length buffer. In this case the memory can be reused
+    //  from extended buffer.
+    short bufferLength = apdu.getIncomingLength();
+    short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);
+    short index = bufferStartOffset;
+    byte[] buffer = repository.getHeap();
+    while (recvLen > 0 && ((short) (index - bufferStartOffset) < bufferLength)) {
+      Util.arrayCopyNonAtomic(srcBuffer, srcOffset, buffer, index, recvLen);
+      index += recvLen;
+      recvLen = apdu.receiveBytes(srcOffset);
+    }
+    // Buffer holds the corresponding offsets and lengths of the certChain, certIssuer and certExpiry
+    // in the bufferRef[0] buffer.
+    short var = KMByteBlob.instance((short) 12);
+    // These variables point to the appropriate positions in the var buffer.
+    short certChainPos = KMByteBlob.cast(var).getStartOff();
+    short certIssuerPos = (short) (KMByteBlob.cast(var).getStartOff() + 4);
+    short certExpiryPos = (short) (KMByteBlob.cast(var).getStartOff() + 8);
+    decoder.decodeCertificateData((short) 3,
+        buffer, bufferStartOffset, bufferLength,
+        KMByteBlob.cast(var).getBuffer(), KMByteBlob.cast(var).getStartOff());
+    // persist data
+    seProvider.persistProvisionData(
+        buffer,
+        Util.getShort(KMByteBlob.cast(var).getBuffer(), certChainPos), // offset
+        Util.getShort(KMByteBlob.cast(var).getBuffer(), (short) (certChainPos + 2)), // length
+        Util.getShort(KMByteBlob.cast(var).getBuffer(), certIssuerPos), // offset
+        Util.getShort(KMByteBlob.cast(var).getBuffer(), (short) (certIssuerPos + 2)), // length
+        Util.getShort(KMByteBlob.cast(var).getBuffer(), certExpiryPos), // offset
+        Util.getShort(KMByteBlob.cast(var).getBuffer(), (short) (certExpiryPos + 2))); // length
+        
+    // reclaim memory
+    repository.reclaimMemory(bufferLength);
     sendResponse(apdu, KMError.OK);
   }
 

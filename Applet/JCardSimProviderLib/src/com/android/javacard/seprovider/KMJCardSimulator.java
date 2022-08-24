@@ -74,6 +74,8 @@ public class KMJCardSimulator implements KMSEProvider {
   public static final byte POWER_RESET_TRUE = (byte)0x00;
   public static final byte AES_BLOCK_SIZE = 16;
   private static final short COMPUTED_HMAC_KEY_SIZE = 32;
+  //For storing root certificate and intermediate certificates.
+  private byte[] provisionData;
 
   public static byte[] resetFlag;
   private static Signature hmacSignature;
@@ -116,6 +118,10 @@ public class KMJCardSimulator implements KMSEProvider {
     jCardSimulator = this;
     resetFlag = new byte[1];
     resetFlag[0] = (byte) POWER_RESET_FALSE;
+    // First 2 bytes is reserved for length for all the 3 buffers.
+    short totalLen = (short) (6 +  CERT_CHAIN_MAX_SIZE +
+        CERT_ISSUER_MAX_SIZE + CERT_EXPIRY_MAX_SIZE);
+    provisionData = new byte[totalLen];
   }
 
 
@@ -1530,4 +1536,53 @@ public KMOperation getRkpOperation(byte purpose, byte alg,
   public void clearDeviceBooted(boolean resetBootFlag) {
     isDeviceRebooted = false;
   }
+  //Maximum cert chain size
+  public static final short CERT_CHAIN_MAX_SIZE = 2500;
+  public static final short CERT_ISSUER_MAX_SIZE = 250;
+  public static final short CERT_EXPIRY_MAX_SIZE = 20;
+  private static final short CERT_CHAIN_OFFSET = 0;
+  private static final short CERT_ISSUER_OFFSET = 2500;
+  private static final short CERT_EXPIRY_OFFSET =
+      (short) (CERT_ISSUER_OFFSET + CERT_ISSUER_MAX_SIZE);
+
+  private short getProvisionDataBufferOffset(byte dataType) {
+    switch(dataType) {
+      case CERTIFICATE_CHAIN:
+        return CERT_CHAIN_OFFSET;
+      case CERTIFICATE_ISSUER:
+        return CERT_ISSUER_OFFSET;
+      case CERTIFICATE_EXPIRY:
+        return CERT_EXPIRY_OFFSET;
+      default:
+        KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+    return 0;
+  }
+
+  @Override
+  public void persistProvisionData(byte[] buffer, short certChainOff, short certChainLen) {
+    // All the buffers uses first two bytes for length. The certificate chain
+    // is stored as shown below.
+    //  _____________________________________________________
+    // | 2 Bytes | 1 Byte | 3 Bytes | Cert1 |  Cert2 |...
+    // |_________|________|_________|_______|________|_______
+    // First two bytes holds the length of the total buffer.
+    // CBOR format:
+    // Next single byte holds the byte string header.
+    // Next 3 bytes holds the total length of the certificate chain.
+    // clear buffer.
+    Util.arrayFillNonAtomic(provisionData, (short) 0, (short) provisionData.length, (byte) 0);
+    // Persist data.
+    if (certChainLen > CERT_CHAIN_MAX_SIZE) {
+      KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+    }
+    short copyFrom = Util.setShort(provisionData, (short) 0, certChainLen);
+    Util.arrayCopy(buffer, certChainOff, provisionData, copyFrom, certChainLen);
+  }
+
+  @Override
+  public byte[] getProvisionedData() {
+    return provisionData;
+  }
+
 }
