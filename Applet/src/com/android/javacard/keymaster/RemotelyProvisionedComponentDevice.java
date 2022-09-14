@@ -105,22 +105,21 @@ public class RemotelyProvisionedComponentDevice {
   private static final byte PROCESSING_ACC_COMPLETE = 0x0A;
   // data table
   private static final short DATA_SIZE = 512;
-  private static final short DATA_INDEX_SIZE = 11;
+  private static final short DATA_INDEX_SIZE = 10;
   public static final short DATA_INDEX_ENTRY_SIZE = 4;
   public static final short DATA_INDEX_ENTRY_LENGTH = 0;
   public static final short DATA_INDEX_ENTRY_OFFSET = 2;
   // data offsets
-  private static final short EPHEMERAL_MAC_KEY = 0;
-  private static final short TOTAL_KEYS_TO_SIGN = 1;
-  private static final short KEYS_TO_SIGN_COUNT = 2;
-  private static final short TEST_MODE = 3;
-  private static final short EEK_KEY = 4;
-  private static final short EEK_KEY_ID = 5;
-  private static final short CHALLENGE = 6;
-  private static final short GENERATE_CSR_PHASE = 7;
-  private static final short EPHEMERAL_PUB_KEY = 8;
-  private static final short RESPONSE_PROCESSING_STATE = 9;
-  private static final short ACC_PROCESSED_LENGTH = 10;
+  private static final short TOTAL_KEYS_TO_SIGN = 0;
+  private static final short KEYS_TO_SIGN_COUNT = 1;
+  private static final short TEST_MODE = 2;
+  private static final short EEK_KEY = 3;
+  private static final short EEK_KEY_ID = 4;
+  private static final short CHALLENGE = 5;
+  private static final short GENERATE_CSR_PHASE = 6;
+  private static final short EPHEMERAL_PUB_KEY = 7;
+  private static final short RESPONSE_PROCESSING_STATE = 8;
+  private static final short ACC_PROCESSED_LENGTH = 9;
 
   // data item sizes
   private static final short MAC_KEY_SIZE = 32;
@@ -135,6 +134,9 @@ public class RemotelyProvisionedComponentDevice {
   
   //RKP mac key size
   private static final short RKP_MAC_KEY_SIZE = 32;
+  
+  private static final short TINY_PAYLOAD = 0x17;
+  private static final short SHORT_PAYLOAD = 0x100;
   
   // variables
   private byte[] data;
@@ -276,6 +278,81 @@ public class RemotelyProvisionedComponentDevice {
     KMArray.cast(arr).add((short) 2, KMKeymasterApplet.getPivateKey());
     KMKeymasterApplet.sendOutgoing(apdu, arr);
   }
+  
+  public short getHeaderLen(short length) {
+    if (length <= TINY_PAYLOAD) {
+      return (short) 1;
+    } else if (length < SHORT_PAYLOAD) {
+      return (short) 2;
+    } else {
+      return (short) 3;
+    }
+  }
+
+  public void constructPartialSignedData(byte[] scratchPad, short coseKeysCount,
+	      short totalCoseKeysLen, short challengeByteBlob, short deviceInfo) {	   
+	// Initialize ECDSA operation 
+	initECDSAOperation();
+	
+	// Calculate the challenge length
+	short challengeLen = (short) KMByteBlob.cast(challengeByteBlob).length();
+	
+	// Calculate the device info length
+	short deviceInfoLen = encoder.getEncodedLength(deviceInfo);
+	
+	// Calculate the keysToSign length
+	// keysToSignLen = coseKeysArrayHeaderLen + totalCoseKeysLen
+	// Calculate the coseKeysArrayHeaderLen below
+	short coseKeysArrHeaderLen = getHeaderLen(coseKeysCount);
+	short keysToSignLen = (short) (coseKeysArrHeaderLen + totalCoseKeysLen);
+
+	// Calcualte the payload array header len
+	short paylaodArrHeaderLen = 1; // Array of 3 elements occupies 1 byte.
+	short payloadLen = (short) (paylaodArrHeaderLen + deviceInfoLen + challengeLen + keysToSignLen);
+	
+	// Calculate payload header len
+	short payloadBstrHeaderLen = getHeaderLen(payloadLen);
+	// Empty aad
+	short aad = KMByteBlob.instance(scratchPad, (short) 0, (short) 0);
+
+	/* construct protected header */
+	short protectedHeaders = KMCose.constructHeaders(rkpTmpVariables,
+	        KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
+	        KMType.INVALID_VALUE,
+	        KMType.INVALID_VALUE,
+	        KMType.INVALID_VALUE);
+	protectedHeaders = KMKeymasterApplet.encodeToApduBuffer(protectedHeaders, scratchPad,
+	        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+	protectedHeaders = KMByteBlob.instance(scratchPad, (short) 0, protectedHeaders);
+
+	// Construct partial signature
+	short signStructure =
+	        KMCose.constructCoseSignStructure(protectedHeaders, aad, KMType.INVALID_VALUE);
+	short partialSignStructureLen = KMKeymasterApplet.encodeToApduBuffer(signStructure, scratchPad,
+	        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+
+	((KMOperation) operation[0]).update(scratchPad, (short) 0, partialSignStructureLen);
+
+	// Add payload Byte Header
+	byte[] heap = repository.getHeap();
+	short heapIndex = repository.allocReclaimableMemory((short) 1024);
+	short byteBlobHeaderLen =
+	        encoder.encodeByteBlobHeader(payloadBstrHeaderLen, heap, heapIndex, (short) 3);
+	((KMOperation) operation[0]).update(heap, heapIndex, byteBlobHeaderLen);
+
+	// Construct partial payload array
+	short arr = KMArray.instance((short) 3);
+	KMArray.cast(arr).add((short) 0, deviceInfo);
+	KMArray.cast(arr).add((short) 1, challengeByteBlob);
+	KMArray.cast(arr).add((short) 2, KMType.INVALID_VALUE);
+	short paritalPayloadArrayLen = encoder.encode(arr, heap, heapIndex, (short)  1024);
+	((KMOperation) operation[0]).update(heap, heapIndex, paritalPayloadArrayLen);
+
+	// Encode keysToSign Array Header length
+	short keysToSignArrayHeaderLen =
+	        encoder.encodeArrayHeader(coseKeysCount, heap, heapIndex, (short) 3);
+	((KMOperation) operation[0]).update(heap, heapIndex, keysToSignArrayHeaderLen);
+  }
 
   public void processBeginSendData(APDU apdu) throws Exception {
     try {
@@ -283,33 +360,34 @@ public class RemotelyProvisionedComponentDevice {
       short arr = KMArray.instance((short) 3);
       KMArray.cast(arr).add((short) 0, KMInteger.exp()); // Array length
       KMArray.cast(arr).add((short) 1, KMInteger.exp()); // Total length of the encoded CoseKeys.
-      KMArray.cast(arr).add((short) 2, KMSimpleValue.exp());
+      KMArray.cast(arr).add((short) 2, KMByteBlob.exp()); //challenge
       arr = KMKeymasterApplet.receiveIncoming(apdu, arr);
       // Re-purpose the apdu buffer as scratch pad.
       byte[] scratchPad = apdu.getBuffer();
-      // Generate ephemeral mac key.
-      short dataEntryIndex = createEntry(EPHEMERAL_MAC_KEY, MAC_KEY_SIZE);
-      seProvider.newRandomNumber(data, dataEntryIndex, MAC_KEY_SIZE);
-      // Initialize hmac operation.
-      initHmacOperation();
-      // Partially encode CoseMac structure with partial payload.
-      constructPartialPubKeysToSignMac(scratchPad,
-          KMInteger.cast(KMArray.cast(arr).get((short) 0)).getShort(),
-          KMInteger.cast(KMArray.cast(arr).get((short) 1)).getShort());
+      // Create DeviceInfo
+      short deviceInfo = createDeviceInfo(scratchPad);
+      
+      constructPartialSignedData(scratchPad, 
+    		  KMInteger.cast(KMArray.cast(arr).get((short) 0)).getShort(),
+              KMInteger.cast(KMArray.cast(arr).get((short) 1)).getShort(),
+              KMInteger.cast(KMArray.cast(arr).get((short) 2)).getShort(),
+              deviceInfo);
       // Store the total keys in data table.
-      dataEntryIndex = createEntry(TOTAL_KEYS_TO_SIGN, SHORT_SIZE);
+      short dataEntryIndex = createEntry(TOTAL_KEYS_TO_SIGN, SHORT_SIZE);
       Util.setShort(data, dataEntryIndex,
           KMInteger.cast(KMArray.cast(arr).get((short) 0)).getShort());
-      // Store the test mode value in data table.
-      dataEntryIndex = createEntry(TEST_MODE, TEST_MODE_SIZE);
-      data[dataEntryIndex] =
-          (KMSimpleValue.TRUE == KMSimpleValue.cast(KMArray.cast(arr).get((short) 2)).getValue()) ?
-              TRUE : FALSE;
       // Store the current csr status, which is BEGIN.
       createEntry(GENERATE_CSR_PHASE, BYTE_SIZE);
       updateState(BEGIN);
+      
+      short len = KMKeymasterApplet.encodeToApduBuffer(deviceInfo, scratchPad,
+              (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+      short encodedDeviceInfo = KMByteBlob.instance(scratchPad, (short) 0, len);
       // Send response.
-      KMKeymasterApplet.sendResponse(apdu, KMError.OK);
+      short array = KMArray.instance((short) 2);
+      KMArray.cast(array).add((short) 0, KMInteger.uint_16(KMError.OK));
+      KMArray.cast(array).add((short) 1, encodedDeviceInfo);
+      KMKeymasterApplet.sendResponse(apdu, array);
     } catch (Exception e) {
       clearDataTable();
       releaseOperation();
@@ -339,7 +417,7 @@ public class RemotelyProvisionedComponentDevice {
       // Encode CoseKey
       short length = KMKeymasterApplet.encodeToApduBuffer(coseKey, scratchPad, (short) 0,
           KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-      // Do Hmac update with input as encoded CoseKey.
+      // Do ecSign update with input as encoded CoseKey.
       ((KMOperation) operation[0]).update(scratchPad, (short) 0, length);
       // Increment the count each time this function gets executed.
       // Store the count in data table.
@@ -352,7 +430,10 @@ public class RemotelyProvisionedComponentDevice {
       // Update the csr state
       updateState(UPDATE);
       // Send response.
-      KMKeymasterApplet.sendResponse(apdu, KMError.OK);
+      short array = KMArray.instance((short) 2);
+      KMArray.cast(array).add((short) 0, KMInteger.uint_16(KMError.OK));
+      KMArray.cast(array).add((short) 1, coseKey); 
+      KMKeymasterApplet.sendResponse(apdu, array);
     } catch (Exception e) {
       clearDataTable();
       releaseOperation();
@@ -448,34 +529,14 @@ public class RemotelyProvisionedComponentDevice {
               (short) 0, scratchPad, (short) 0);
       // release operation
       releaseOperation();
-      short pubKeysToSignMac = KMByteBlob.instance(scratchPad, (short) 0, len);
-      // Create DeviceInfo
-      short deviceInfo = createDeviceInfo(scratchPad);
-      // Generate Nonce for AES-GCM
-      seProvider.newRandomNumber(scratchPad, (short) 0,
-          KMKeymasterApplet.AES_GCM_NONCE_LENGTH);
-      short nonce = KMByteBlob.instance(scratchPad, (short) 0,
-          KMKeymasterApplet.AES_GCM_NONCE_LENGTH);
-      // Initializes cipher instance.
-      initAesGcmOperation(scratchPad, nonce);
-      // Encode Enc_Structure as additional data for AES-GCM.
-      processAesGcmUpdateAad(scratchPad);
-      short partialPayloadLen = processSignedMac(scratchPad, pubKeysToSignMac, deviceInfo);
-      short partialCipherText = KMByteBlob.instance(scratchPad, (short) 0, partialPayloadLen);
-      short coseEncryptProtectedHeader = getCoseEncryptProtectedHeader(scratchPad);
-      short coseEncryptUnProtectedHeader = getCoseEncryptUnprotectedHeader(scratchPad, nonce);
-      len = KMKeymasterApplet.encodeToApduBuffer(deviceInfo, scratchPad,
-              (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-      short encodedDeviceInfo =  KMByteBlob.instance(scratchPad, (short) 0, len);
+      short signatureData = KMByteBlob.instance(scratchPad, (short) 0, len);
+     
       updateState(FINISH);
-      short arr = KMArray.instance((short) 7);
+      short arr = KMArray.instance((short) 3);
       KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
-      KMArray.cast(arr).add((short) 1, pubKeysToSignMac);
-      KMArray.cast(arr).add((short) 2, encodedDeviceInfo);
-      KMArray.cast(arr).add((short) 3, coseEncryptProtectedHeader);
-      KMArray.cast(arr).add((short) 4, coseEncryptUnProtectedHeader);
-      KMArray.cast(arr).add((short) 5, partialCipherText);
-      KMArray.cast(arr).add((short) 6, KMInteger.uint_8(MORE_DATA));
+      KMArray.cast(arr).add((short) 1, signatureData);
+      KMArray.cast(arr).add((short) 1, KMInteger.uint_8((byte)3)); // check how to get the version
+      KMArray.cast(arr).add((short) 2, KMInteger.uint_8(MORE_DATA));
       KMKeymasterApplet.sendOutgoing(apdu, arr);
     } catch (Exception e) {
       clearDataTable();
@@ -561,10 +622,6 @@ public class RemotelyProvisionedComponentDevice {
   }
 
   private boolean isAdditionalCertificateChainPresent() {
-    if ((TRUE == data[getEntry(TEST_MODE)])) {
-      // In test mode, don't include AdditionalCertificateChain in ProtectedData.
-      return false;
-    }
     return (storeDataInst.getAdditionalCertChainLength() == 0 ? false : true);
   }
 
@@ -709,7 +766,46 @@ public class RemotelyProvisionedComponentDevice {
     data[dataEntryIndex] = state;
   }
 
+  
+  private void constructPartialDataToSign(byte[] scratchPad, short arrayLength,
+      short encodedCoseKeysLen) {
+    short ptr;
+    short len;
+    short headerPtr = KMCose.constructHeaders(rkpTmpVariables, 
+        KMInteger.uint_8(KMCose.COSE_ALG_HMAC_256),
+        KMType.INVALID_VALUE,
+        KMType.INVALID_VALUE,
+        KMType.INVALID_VALUE);
+    // Encode the protected header as byte blob.
+    len = KMKeymasterApplet.encodeToApduBuffer(headerPtr, scratchPad, (short) 0,
+        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+    short protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, len);
+    // create MAC_Structure
+    ptr =
+        KMCose.constructCoseMacStructure(protectedHeader,
+            KMByteBlob.instance((short) 0), KMType.INVALID_VALUE);
+    // Encode the Mac_structure and do HMAC_Sign to produce the tag for COSE_MAC0
+    len = KMKeymasterApplet.encodeToApduBuffer(ptr, scratchPad, (short) 0,
+        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+    // Construct partial payload - Bstr Header + Array Header
+    // The maximum combined length of bstr header and array header length is 6 bytes.
+    // The lengths will never exceed Max SHORT value.
+    short arrPtr = KMArray.instance(arrayLength);
+    for (short i = 0; i < arrayLength; i++) {
+      KMArray.cast(arrPtr).add(i, KMType.INVALID_VALUE);
+    }
+    short bufIndex = repository.alloc((short) 6);
+    short partialPayloadLen =
+        encoder.encodeByteBlobHeader((short) (arrayLength + encodedCoseKeysLen),
+            repository.getHeap(),
+            bufIndex, (short) 3);
 
+    partialPayloadLen +=
+        encoder.encode(arrPtr, repository.getHeap(), (short) (bufIndex + partialPayloadLen), repository.getHeapReclaimIndex());
+    Util.arrayCopyNonAtomic(repository.getHeap(), bufIndex, scratchPad, len, partialPayloadLen);
+    ((KMOperation) operation[0]).update(scratchPad, (short) 0, (short) (len + partialPayloadLen));
+  }
+  
   /**
    * This function constructs a Mac Structure, encode it and signs the encoded buffer with the
    * ephemeral mac key.
@@ -759,10 +855,6 @@ public class RemotelyProvisionedComponentDevice {
     // Challenge
     short dataEntryIndex = getEntry(CHALLENGE);
     short challengePtr = KMByteBlob.instance(data, dataEntryIndex, getEntryLength(CHALLENGE));
-    // Ephemeral mac key
-    dataEntryIndex = getEntry(EPHEMERAL_MAC_KEY);
-    short ephmeralMacKey =
-        KMByteBlob.instance(data, dataEntryIndex, getEntryLength(EPHEMERAL_MAC_KEY));
 
     /* Prepare AAD */
     short aad = KMArray.instance((short) 3);
@@ -1091,63 +1183,20 @@ public class RemotelyProvisionedComponentDevice {
     return ptr;
   }
 
-  private void initHmacOperation() {
-    short dataEntryIndex = getEntry(EPHEMERAL_MAC_KEY);
+  private void initECDSAOperation() {
+    KMDeviceUniqueKeyPair deviceUniqueKeyPair = storeDataInst.getRkpDeviceUniqueKeyPair(false);
     operation[0] =
         seProvider.getRkpOperation(
             KMType.SIGN,
-            KMType.HMAC,
+            KMType.EC,
             KMType.SHA2_256,
             KMType.PADDING_NONE,
             (byte) 0,
-            data,
-            dataEntryIndex,
-            getEntryLength(EPHEMERAL_MAC_KEY),
+            deviceUniqueKeyPair,
             null,
             (short) 0,
             (short) 0,
             (short) 0
-        );
-    if (operation[0] == null) {
-      KMException.throwIt(KMError.STATUS_FAILED);
-    }
-  }
-
-  private void initAesGcmOperation(byte[] scratchPad, short nonce) {
-    // Generate Ephemeral mac key
-    short privKey = generateEphemeralEcKey(scratchPad);
-    short pubKeyIndex = getEntry(EPHEMERAL_PUB_KEY);
-    // Generate session key
-    short eekIndex = getEntry(EEK_KEY);
-    // Generate session key
-    short sessionKeyLen =
-        ecdhHkdfDeriveKey(
-            KMByteBlob.cast(privKey).getBuffer(), /* Ephemeral Private Key */
-            KMByteBlob.cast(privKey).getStartOff(),
-            KMByteBlob.cast(privKey).length(),
-            data,                /* Ephemeral Public key */
-            pubKeyIndex,
-            getEntryLength(EPHEMERAL_PUB_KEY),
-            data,               /* EEK Public key */
-            eekIndex,
-            getEntryLength(EEK_KEY),
-            scratchPad         /* scratchpad */
-        );
-    // Initialize the Cipher object.
-    operation[0] =
-        seProvider.getRkpOperation(
-            KMType.ENCRYPT,
-            KMType.AES,
-            (byte) 0,
-            KMType.PADDING_NONE,
-            KMType.GCM,
-            scratchPad, /* key */
-            (short) 0,
-            sessionKeyLen,
-            KMByteBlob.cast(nonce).getBuffer(), /* nonce */
-            KMByteBlob.cast(nonce).getStartOff(),
-            KMByteBlob.cast(nonce).length(),
-            (short) (KMKeymasterApplet.AES_GCM_AUTH_TAG_LENGTH * 8)
         );
     if (operation[0] == null) {
       KMException.throwIt(KMError.STATUS_FAILED);

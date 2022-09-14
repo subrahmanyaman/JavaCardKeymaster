@@ -131,13 +131,13 @@ JavacardRemotelyProvisionedComponentDevice::generateEcdsaP256KeyPair(bool testMo
 }
 
 ScopedAStatus
-JavacardRemotelyProvisionedComponentDevice::beginSendData(
-    bool testMode, const std::vector<MacedPublicKey>& keysToSign) {
+JavacardRemotelyProvisionedComponentDevice::beginSendData(const std::vector<MacedPublicKey>& keysToSign, 
+    const std::vector<uint8_t>& challenge) {
     uint32_t totalEncodedSize = coseKeyEncodedSize(keysToSign);
     cppbor::Array array;
     array.add(keysToSign.size());
     array.add(totalEncodedSize);
-    array.add(testMode);
+    array.add(challenge);
     auto [_, err] = card_->sendRequest(Instruction::INS_BEGIN_SEND_DATA_CMD, array);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in beginSendData.";
@@ -262,6 +262,38 @@ JavacardRemotelyProvisionedComponentDevice::generateCertificateRequest(bool test
     if (!ret.isOk()) return ret;
 
     ret = updateEEK(endpointEncCertChain);
+    if (!ret.isOk()) return ret;
+
+    ret = finishSendData(keysToSignMac, deviceInfo, coseEncryptProtectedHeader,
+                         coseEncryptUnProtectedHeader, cipheredData,
+                         respFlag);
+    if (!ret.isOk()) return ret;
+
+    while (respFlag != 0) { // more data is pending to receive
+        ret = getResponse(cipheredData, recipients, respFlag);
+        if (!ret.isOk()) return ret;
+    }
+    // Create ConseEncrypt structure.
+    protectedData->protectedData =
+        cppbor::Array()
+            .add(coseEncryptProtectedHeader)    // Protected
+            .add(std::move(coseEncryptUnProtectedHeader))  // Unprotected
+            .add(cipheredData)           // Payload
+            .add(std::move(recipients))
+            .encode();
+    return ScopedAStatus::ok();
+}
+
+ScopedAStatus
+JavacardRemotelyProvisionedComponentDevice::generateCertificateRequestV2(
+                                        const std::vector<MacedPublicKey>& keysToSign,
+                                        const std::vector<uint8_t>& challenge,
+                                        std::vector<uint8_t>* keysToSignMac) {
+    uint32_t respFlag;
+    auto ret = beginSendData(keysToSign, challenge);
+    if (!ret.isOk()) return ret;
+
+    ret = updateMacedKey(keysToSign);
     if (!ret.isOk()) return ret;
 
     ret = finishSendData(keysToSignMac, deviceInfo, coseEncryptProtectedHeader,

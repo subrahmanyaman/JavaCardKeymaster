@@ -54,9 +54,14 @@ class JavacardRemotelyProvisionedComponentDevice
       ProtectedData* protectedData,
       std::vector<uint8_t>* keysToSignMac) override;
 
+  ScopedAStatus generateCertificateRequestV2(
+      const std::vector<MacedPublicKey>& keysToSign,
+      const std::vector<uint8_t>& challenge,
+      std::vector<uint8_t>* keysToSignMac)
+
  private:
-  ScopedAStatus beginSendData(bool testMode,
-                              const std::vector<MacedPublicKey>& keysToSign);
+  ScopedAStatus beginSendData(const std::vector<MacedPublicKey>& keysToSign, 
+    const std::vector<uint8_t>& challenge);
 
   ScopedAStatus updateMacedKey(const std::vector<MacedPublicKey>& keysToSign);
 
