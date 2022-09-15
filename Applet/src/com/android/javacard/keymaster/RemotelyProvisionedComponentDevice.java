@@ -138,6 +138,9 @@ public class RemotelyProvisionedComponentDevice {
   private static final short TINY_PAYLOAD = 0x17;
   private static final short SHORT_PAYLOAD = 0x100;
   
+  //RKP CDDL Schema version
+  private static final byte RKP_SCHEMA_VERSION = 03;
+  
   // variables
   private byte[] data;
   private KMEncoder encoder;
@@ -441,76 +444,6 @@ public class RemotelyProvisionedComponentDevice {
     }
   }
 
-  public void processUpdateEekChain(APDU apdu) throws Exception {
-    try {
-      // The prior state can be BEGIN or UPDATE
-      validateState((byte) (BEGIN | UPDATE));
-      short headers = KMCoseHeaders.exp();
-      short arrInst = KMArray.instance((short) 4);
-      KMArray.cast(arrInst).add((short) 0, KMByteBlob.exp());
-      KMArray.cast(arrInst).add((short) 1, headers);
-      KMArray.cast(arrInst).add((short) 2, KMByteBlob.exp());
-      KMArray.cast(arrInst).add((short) 3, KMByteBlob.exp());
-      short arrSignPtr = KMArray.exp(arrInst);
-      arrInst = KMKeymasterApplet.receiveIncoming(apdu, arrSignPtr);
-      if (KMArray.cast(arrInst).length() == 0) {
-        KMException.throwIt(KMError.STATUS_INVALID_EEK);
-      }
-      // Re-purpose the apdu buffer as scratch pad.
-      byte[] scratchPad = apdu.getBuffer();
-      // Validate eek chain.
-      short eekKey = validateAndExtractEekPub(arrInst, scratchPad);
-      // Store eek public key and eek id in the data table.
-      short eekKeyId = KMCoseKey.cast(eekKey).getKeyIdentifier();
-      short dataEntryIndex = createEntry(EEK_KEY_ID, KMByteBlob.cast(eekKeyId).length());
-      Util.arrayCopyNonAtomic(
-          KMByteBlob.cast(eekKeyId).getBuffer(),
-          KMByteBlob.cast(eekKeyId).getStartOff(),
-          data,
-          dataEntryIndex,
-          KMByteBlob.cast(eekKeyId).length()
-      );
-      // Convert the coseKey to a public key.
-      short len = KMCoseKey.cast(eekKey).getEcdsa256PublicKey(scratchPad, (short) 0);
-      dataEntryIndex = createEntry(EEK_KEY, len);
-      Util.arrayCopyNonAtomic(scratchPad, (short) 0, data, dataEntryIndex, len);
-      // Update the state
-      updateState(UPDATE);
-      KMKeymasterApplet.sendResponse(apdu, KMError.OK);
-    } catch (Exception e) {
-      clearDataTable();
-      releaseOperation();
-      throw e;
-    }
-  }
-
-  public void processUpdateChallenge(APDU apdu) throws Exception {
-    try {
-      // The prior state can be BEGIN or UPDATE
-      validateState((byte) (BEGIN | UPDATE));
-      short arr = KMArray.instance((short) 1);
-      KMArray.cast(arr).add((short) 0, KMByteBlob.exp());
-      arr = KMKeymasterApplet.receiveIncoming(apdu, arr);
-      // Store the challenge in the data table.
-      short challenge = KMArray.cast(arr).get((short) 0);
-      short dataEntryIndex = createEntry(CHALLENGE, KMByteBlob.cast(challenge).length());
-      Util.arrayCopyNonAtomic(
-          KMByteBlob.cast(challenge).getBuffer(),
-          KMByteBlob.cast(challenge).getStartOff(),
-          data,
-          dataEntryIndex,
-          KMByteBlob.cast(challenge).length()
-      );
-      // Update the state
-      updateState(UPDATE);
-      KMKeymasterApplet.sendResponse(apdu, KMError.OK);
-    } catch (Exception e) {
-      clearDataTable();
-      releaseOperation();
-      throw e;
-    }
-  }
-
   // This function returns pubKeysToSignMac, deviceInfo and partially constructed protected data
   // wrapped inside byte blob. The partial protected data contains Headers and encrypted signedMac.
   public void processFinishSendData(APDU apdu) throws Exception {
@@ -530,13 +463,24 @@ public class RemotelyProvisionedComponentDevice {
       // release operation
       releaseOperation();
       short signatureData = KMByteBlob.instance(scratchPad, (short) 0, len);
+      
+      /* construct protected header */
+      short protectedHeaders = KMCose.constructHeaders(rkpTmpVariables,
+          KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
+          KMType.INVALID_VALUE,
+          KMType.INVALID_VALUE,
+          KMType.INVALID_VALUE);
+      protectedHeaders = KMKeymasterApplet.encodeToApduBuffer(protectedHeaders, scratchPad,
+          (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+      protectedHeaders = KMByteBlob.instance(scratchPad, (short) 0, protectedHeaders);
      
       updateState(FINISH);
-      short arr = KMArray.instance((short) 3);
+      short arr = KMArray.instance((short) 5);
       KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
-      KMArray.cast(arr).add((short) 1, signatureData);
-      KMArray.cast(arr).add((short) 1, KMInteger.uint_8((byte)3)); // check how to get the version
-      KMArray.cast(arr).add((short) 2, KMInteger.uint_8(MORE_DATA));
+      KMArray.cast(arr).add((short) 1, protectedHeaders);
+      KMArray.cast(arr).add((short) 2, signatureData);
+      KMArray.cast(arr).add((short) 3, KMInteger.uint_8(RKP_SCHEMA_VERSION)); 
+      KMArray.cast(arr).add((short) 4, KMInteger.uint_8(MORE_DATA));
       KMKeymasterApplet.sendOutgoing(apdu, arr);
     } catch (Exception e) {
       clearDataTable();
@@ -551,7 +495,6 @@ public class RemotelyProvisionedComponentDevice {
       validateState((byte) (FINISH | GET_RESPONSE));
       byte[] scratchPad = apdu.getBuffer();
       short len = 0;
-      short recipientStructure = KMArray.instance((short) 0);
       byte moreData = MORE_DATA;
       byte state = getCurrentOutputProcessingState();
       switch (state) {
@@ -566,22 +509,18 @@ public class RemotelyProvisionedComponentDevice {
           updateState(GET_RESPONSE);
           break;
         case PROCESSING_ACC_COMPLETE:
-          recipientStructure = processRecipientStructure(scratchPad);
-          len = processFinalData(scratchPad);
           moreData = NO_DATA;
-          releaseOperation();
           clearDataTable();
           break;
         default:
           KMException.throwIt(KMError.INVALID_STATE);
       }
       short data = KMByteBlob.instance(scratchPad, (short) 0, len);
-      short arr = KMArray.instance((short) 4);
+      short arr = KMArray.instance((short) 3);
       KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
       KMArray.cast(arr).add((short) 1, data);
-      KMArray.cast(arr).add((short) 2, recipientStructure);
       // represents there is more output to retrieve
-      KMArray.cast(arr).add((short) 3, KMInteger.uint_8(moreData));
+      KMArray.cast(arr).add((short) 2, KMInteger.uint_8(moreData));
       KMKeymasterApplet.sendOutgoing(apdu, arr);
     } catch (Exception e) {
       clearDataTable();
@@ -604,12 +543,6 @@ public class RemotelyProvisionedComponentDevice {
       case KMKeymasterApplet.INS_UPDATE_KEY_CMD:
         processUpdateKey(apdu);
         break;
-      case KMKeymasterApplet.INS_UPDATE_EEK_CHAIN_CMD:
-        processUpdateEekChain(apdu);
-        break;
-      case KMKeymasterApplet.INS_UPDATE_CHALLENGE_CMD:
-        processUpdateChallenge(apdu);
-        break;
       case KMKeymasterApplet.INS_FINISH_SEND_DATA_CMD:
         processFinishSendData(apdu);
         break;
@@ -623,14 +556,6 @@ public class RemotelyProvisionedComponentDevice {
 
   private boolean isAdditionalCertificateChainPresent() {
     return (storeDataInst.getAdditionalCertChainLength() == 0 ? false : true);
-  }
-
-  private short processFinalData(byte[] scratchPad) {
-    // Call finish on AES GCM Cipher
-    short empty = repository.alloc((short)0) ;
-    short len =
-        ((KMOperation) operation[0]).finish(repository.getHeap(), (short) empty, (short) 0, scratchPad, (short) 0);
-    return len;
   }
 
   private byte getCurrentOutputProcessingState() {
@@ -765,143 +690,6 @@ public class RemotelyProvisionedComponentDevice {
     }
     data[dataEntryIndex] = state;
   }
-
-  
-  private void constructPartialDataToSign(byte[] scratchPad, short arrayLength,
-      short encodedCoseKeysLen) {
-    short ptr;
-    short len;
-    short headerPtr = KMCose.constructHeaders(rkpTmpVariables, 
-        KMInteger.uint_8(KMCose.COSE_ALG_HMAC_256),
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE);
-    // Encode the protected header as byte blob.
-    len = KMKeymasterApplet.encodeToApduBuffer(headerPtr, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    short protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, len);
-    // create MAC_Structure
-    ptr =
-        KMCose.constructCoseMacStructure(protectedHeader,
-            KMByteBlob.instance((short) 0), KMType.INVALID_VALUE);
-    // Encode the Mac_structure and do HMAC_Sign to produce the tag for COSE_MAC0
-    len = KMKeymasterApplet.encodeToApduBuffer(ptr, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    // Construct partial payload - Bstr Header + Array Header
-    // The maximum combined length of bstr header and array header length is 6 bytes.
-    // The lengths will never exceed Max SHORT value.
-    short arrPtr = KMArray.instance(arrayLength);
-    for (short i = 0; i < arrayLength; i++) {
-      KMArray.cast(arrPtr).add(i, KMType.INVALID_VALUE);
-    }
-    short bufIndex = repository.alloc((short) 6);
-    short partialPayloadLen =
-        encoder.encodeByteBlobHeader((short) (arrayLength + encodedCoseKeysLen),
-            repository.getHeap(),
-            bufIndex, (short) 3);
-
-    partialPayloadLen +=
-        encoder.encode(arrPtr, repository.getHeap(), (short) (bufIndex + partialPayloadLen), repository.getHeapReclaimIndex());
-    Util.arrayCopyNonAtomic(repository.getHeap(), bufIndex, scratchPad, len, partialPayloadLen);
-    ((KMOperation) operation[0]).update(scratchPad, (short) 0, (short) (len + partialPayloadLen));
-  }
-  
-  /**
-   * This function constructs a Mac Structure, encode it and signs the encoded buffer with the
-   * ephemeral mac key.
-   */
-  private void constructPartialPubKeysToSignMac(byte[] scratchPad, short arrayLength,
-      short encodedCoseKeysLen) {
-    short ptr;
-    short len;
-    short headerPtr = KMCose.constructHeaders(rkpTmpVariables, 
-        KMInteger.uint_8(KMCose.COSE_ALG_HMAC_256),
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE);
-    // Encode the protected header as byte blob.
-    len = KMKeymasterApplet.encodeToApduBuffer(headerPtr, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    short protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, len);
-    // create MAC_Structure
-    ptr =
-        KMCose.constructCoseMacStructure(protectedHeader,
-            KMByteBlob.instance((short) 0), KMType.INVALID_VALUE);
-    // Encode the Mac_structure and do HMAC_Sign to produce the tag for COSE_MAC0
-    len = KMKeymasterApplet.encodeToApduBuffer(ptr, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    // Construct partial payload - Bstr Header + Array Header
-    // The maximum combined length of bstr header and array header length is 6 bytes.
-    // The lengths will never exceed Max SHORT value.
-    short arrPtr = KMArray.instance(arrayLength);
-    for (short i = 0; i < arrayLength; i++) {
-      KMArray.cast(arrPtr).add(i, KMType.INVALID_VALUE);
-    }
-    arrayLength = encoder.getEncodedLength(arrPtr);
-    short bufIndex = repository.alloc((short) 6);
-    short partialPayloadLen =
-        encoder.encodeByteBlobHeader((short) (arrayLength + encodedCoseKeysLen),
-            repository.getHeap(),
-            bufIndex, (short) 3);
-
-    partialPayloadLen +=
-        encoder.encode(arrPtr, repository.getHeap(), (short) (bufIndex + partialPayloadLen), repository.getHeapReclaimIndex());
-    Util.arrayCopyNonAtomic(repository.getHeap(), bufIndex, scratchPad, len, partialPayloadLen);
-    ((KMOperation) operation[0]).update(scratchPad, (short) 0, (short) (len + partialPayloadLen));
-  }
-
-  private short createSignedMac(KMDeviceUniqueKeyPair deviceUniqueKeyPair, byte[] scratchPad,
-      short deviceMapPtr, short pubKeysToSign) {
-    // Challenge
-    short dataEntryIndex = getEntry(CHALLENGE);
-    short challengePtr = KMByteBlob.instance(data, dataEntryIndex, getEntryLength(CHALLENGE));
-
-    /* Prepare AAD */
-    short aad = KMArray.instance((short) 3);
-    KMArray.cast(aad).add((short) 0, challengePtr);
-    KMArray.cast(aad).add((short) 1, deviceMapPtr);
-    KMArray.cast(aad).add((short) 2, pubKeysToSign);
-    aad = KMKeymasterApplet.encodeToApduBuffer(aad, scratchPad,
-        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    aad = KMByteBlob.instance(scratchPad, (short) 0, aad);
-
-    /* construct protected header */
-    short protectedHeaders = KMCose.constructHeaders(rkpTmpVariables,
-        KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE);
-    protectedHeaders = KMKeymasterApplet.encodeToApduBuffer(protectedHeaders, scratchPad,
-        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    protectedHeaders = KMByteBlob.instance(scratchPad, (short) 0, protectedHeaders);
-
-    /* construct cose sign structure */
-    short signStructure =
-        KMCose.constructCoseSignStructure(protectedHeaders, aad, ephmeralMacKey);
-    signStructure = KMKeymasterApplet.encodeToApduBuffer(signStructure, scratchPad,
-        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    short len =
-        seProvider.ecSign256(
-            deviceUniqueKeyPair,
-            scratchPad,
-            (short) 0,
-            signStructure,
-            scratchPad,
-            signStructure
-        );
-    len = KMAsn1Parser.instance().
-            decodeEcdsa256Signature(KMByteBlob.instance(scratchPad, signStructure, len), scratchPad, signStructure);
-    signStructure = KMByteBlob.instance(scratchPad, signStructure, len);
-
-    /* Construct unprotected headers */
-    short unprotectedHeader = KMArray.instance((short) 0);
-    unprotectedHeader = KMCoseHeaders.instance(unprotectedHeader);
-
-    /* construct Cose_Sign1 */
-    return KMCose.constructCoseSign1(protectedHeaders, unprotectedHeader,
-        ephmeralMacKey, signStructure);
-  }
-
 
   private KMDeviceUniqueKeyPair createDeviceUniqueKeyPair(boolean testMode, byte[] scratchPad) {
     KMDeviceUniqueKeyPair deviceUniqueKeyPair;
@@ -1154,35 +942,6 @@ public class RemotelyProvisionedComponentDevice {
   }
 
   //----------------------------------------------------------------------------
-  // This function returns the instance of private key and It stores the public key in the
-  // data table for later usage.
-  private short generateEphemeralEcKey(byte[] scratchPad) {
-    // Generate ephemeral ec key.
-    rkpTmpVariables[0] = 0;
-    rkpTmpVariables[1] = 0;
-    seProvider.createAsymmetricKey(
-        KMType.EC,
-        scratchPad,
-        (short) 0,
-        (short) 128,
-        scratchPad,
-        (short) 128,
-        (short) 128,
-        rkpTmpVariables);
-    // Copy the ephemeral private key from scratch pad
-    short ptr = KMByteBlob.instance(rkpTmpVariables[0]);
-    Util.arrayCopyNonAtomic(
-        scratchPad,
-        (short) 0,
-        KMByteBlob.cast(ptr).getBuffer(),
-        KMByteBlob.cast(ptr).getStartOff(),
-        rkpTmpVariables[0]);
-    //Store  ephemeral public key in data table for later usage.
-    short dataEntryIndex = createEntry(EPHEMERAL_PUB_KEY, rkpTmpVariables[1]);
-    Util.arrayCopyNonAtomic(scratchPad, (short) 128, data, dataEntryIndex, rkpTmpVariables[1]);
-    return ptr;
-  }
-
   private void initECDSAOperation() {
     KMDeviceUniqueKeyPair deviceUniqueKeyPair = storeDataInst.getRkpDeviceUniqueKeyPair(false);
     operation[0] =
@@ -1201,45 +960,6 @@ public class RemotelyProvisionedComponentDevice {
     if (operation[0] == null) {
       KMException.throwIt(KMError.STATUS_FAILED);
     }
-  }
-
-  private short processRecipientStructure(byte[] scratchPad) {
-    short protectedHeaderRecipient = KMCose.constructHeaders(rkpTmpVariables,
-        KMNInteger.uint_8(KMCose.COSE_ALG_ECDH_ES_HKDF_256),
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE);
-    // Encode the protected header as byte blob.
-    protectedHeaderRecipient = KMKeymasterApplet
-        .encodeToApduBuffer(protectedHeaderRecipient, scratchPad, (short) 0,
-            KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    protectedHeaderRecipient = KMByteBlob.instance(scratchPad, (short) 0, protectedHeaderRecipient);
-
-    /* Construct unprotected headers */
-    short pubKeyIndex = getEntry(EPHEMERAL_PUB_KEY);
-    // prepare cosekey
-    short coseKey =
-        KMCose.constructCoseKey(rkpTmpVariables,
-            KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
-            KMType.INVALID_VALUE,
-            KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-            KMType.INVALID_VALUE,
-            KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
-            data,
-            pubKeyIndex,
-            getEntryLength(EPHEMERAL_PUB_KEY),
-            KMType.INVALID_VALUE,
-            false
-        );
-    short keyIdentifierPtr = KMByteBlob
-        .instance(data, getEntry(EEK_KEY_ID), getEntryLength(EEK_KEY_ID));
-    short unprotectedHeaderRecipient =
-        KMCose.constructHeaders(rkpTmpVariables, KMType.INVALID_VALUE, keyIdentifierPtr, KMType.INVALID_VALUE,
-            coseKey);
-
-    // Construct recipients structure.
-    return KMCose.constructRecipientsStructure(protectedHeaderRecipient, unprotectedHeaderRecipient,
-        KMSimpleValue.instance(KMSimpleValue.NULL));
   }
 
   private short getAdditionalCertChainProcessedLength() {
@@ -1268,107 +988,30 @@ public class RemotelyProvisionedComponentDevice {
     short lengthToSend = (short) (totalAccLen - processedLen);
     if (lengthToSend > MAX_SEND_DATA) {
       lengthToSend = MAX_SEND_DATA;
-    }
-    short cipherTextLen =
-        ((KMOperation) operation[0]).update(persistedData, (short) (2 + processedLen), lengthToSend,
-            scratchPad, (short) 0);
+    } 
+    Util.arrayCopyNonAtomic(persistedData, (short) (2 + processedLen), scratchPad, (short) 0, lengthToSend);
+   
     processedLen += lengthToSend;
     updateAdditionalCertChainProcessedLength(processedLen);
     // Update the output processing state.
     updateOutputProcessingState(
         (processedLen == totalAccLen) ? PROCESSING_ACC_COMPLETE : PROCESSING_ACC_IN_PROGRESS);
-    return cipherTextLen;
+    return lengthToSend;
   }
 
   // BCC for STRONGBOX has chain length of 2. So it can be returned in a single go.
   private short processBcc(byte[] scratchPad) {
-    // Construct BCC
-    boolean testMode = (TRUE == data[getEntry(TEST_MODE)]) ? true : false;
     short len;
-    if (testMode) {
-      short bcc = KMKeymasterApplet.generateBcc(true, scratchPad);
-      len = KMKeymasterApplet
-          .encodeToApduBuffer(bcc, scratchPad, (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    } else {
-      byte[] bcc = storeDataInst.getBootCertificateChain();
-      len = Util.getShort(bcc, (short) 0);
-      Util.arrayCopyNonAtomic(bcc, (short) 2, scratchPad, (short) 0, len);
-    }
-    short cipherTextLen = ((KMOperation) operation[0])
-        .update(scratchPad, (short) 0, len, scratchPad, len);
-    // move cipher text on scratch pad from starting position.
-    Util.arrayCopyNonAtomic(scratchPad, len, scratchPad, (short) 0, cipherTextLen);
+    byte[] bcc = storeDataInst.getBootCertificateChain();
+    len = Util.getShort(bcc, (short) 0);
+    Util.arrayCopyNonAtomic(bcc, (short) 2, scratchPad, (short) 0, len);
+    
     createEntry(RESPONSE_PROCESSING_STATE, BYTE_SIZE);
     // If there is no additional certificate chain present then put the state to
     // PROCESSING_ACC_COMPLETE.
     updateOutputProcessingState(
         isAdditionalCertificateChainPresent() ? PROCESSING_BCC_COMPLETE : PROCESSING_ACC_COMPLETE);
-    return cipherTextLen;
-  }
-
-  // AAD is the CoseEncrypt structure
-  private void processAesGcmUpdateAad(byte[] scratchPad) {
-    short protectedHeader = KMCose.constructHeaders(rkpTmpVariables,
-        KMInteger.uint_8(KMCose.COSE_ALG_AES_GCM_256),
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE);
-    // Encode the protected header as byte blob.
-    protectedHeader = KMKeymasterApplet.encodeToApduBuffer(protectedHeader, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    protectedHeader = KMByteBlob.instance(scratchPad, (short) 0, protectedHeader);
-    short coseEncryptStr =
-        KMCose.constructCoseEncryptStructure(protectedHeader, KMByteBlob.instance((short) 0));
-    coseEncryptStr = KMKeymasterApplet.encodeToApduBuffer(coseEncryptStr, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    ((KMOperation) operation[0]).updateAAD(scratchPad, (short) 0, coseEncryptStr);
-  }
-
-  private short processSignedMac(byte[] scratchPad, short pubKeysToSignMac, short deviceInfo) {
-    // Construct SignedMac
-    KMDeviceUniqueKeyPair deviceUniqueKeyPair =
-        createDeviceUniqueKeyPair((TRUE == data[getEntry(TEST_MODE)]) ? true : false, scratchPad);
-    // Create signedMac
-    short signedMac = createSignedMac(deviceUniqueKeyPair, scratchPad, deviceInfo, pubKeysToSignMac);
-    //Prepare partial data for encryption.
-    short arrLength = (short) (isAdditionalCertificateChainPresent() ? 3 : 2);
-    short arr = KMArray.instance(arrLength);
-    KMArray.cast(arr).add((short) 0, signedMac);
-    KMArray.cast(arr).add((short) 1, KMType.INVALID_VALUE);
-    if (arrLength == 3) {
-      KMArray.cast(arr).add((short) 2, KMType.INVALID_VALUE);
-    }
-    short len = KMKeymasterApplet
-        .encodeToApduBuffer(arr, scratchPad, (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    short cipherTextLen = ((KMOperation) operation[0])
-        .update(scratchPad, (short) 0, len, scratchPad, len);
-    Util.arrayCopyNonAtomic(
-        scratchPad,
-        len,
-        scratchPad,
-        (short) 0,
-        cipherTextLen
-    );
-    return cipherTextLen;
-  }
-
-  private short getCoseEncryptProtectedHeader(byte[] scratchPad) {
-    // CoseEncrypt protected headers.
-    short protectedHeader = KMCose.constructHeaders(rkpTmpVariables,
-        KMInteger.uint_8(KMCose.COSE_ALG_AES_GCM_256),
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE,
-        KMType.INVALID_VALUE);
-    // Encode the protected header as byte blob.
-    protectedHeader = KMKeymasterApplet.encodeToApduBuffer(protectedHeader, scratchPad, (short) 0,
-        KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    return KMByteBlob.instance(scratchPad, (short) 0, protectedHeader);
-  }
-
-  private short getCoseEncryptUnprotectedHeader(byte[] scratchPad, short nonce) {
-    /* CoseEncrypt unprotected headers */
-    return KMCose
-        .constructHeaders(rkpTmpVariables, KMType.INVALID_VALUE, KMType.INVALID_VALUE, nonce, KMType.INVALID_VALUE);
+    return len;
   }
 
   private short constructCoseMacForRkpKey(boolean testMode, byte[] scratchPad, short pubKey) {

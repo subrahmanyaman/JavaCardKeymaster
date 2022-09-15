@@ -598,7 +598,7 @@ public interface KMSEProvider {
       short ivLength,
       short macLength,
       boolean oneShot);
-  
+
   /**
    *  This function creates an Operation instance only for RKP module.
    *
