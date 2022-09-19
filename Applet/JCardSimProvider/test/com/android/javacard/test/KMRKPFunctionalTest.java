@@ -30,6 +30,7 @@ import com.android.javacard.keymaster.KMNInteger;
 import com.android.javacard.keymaster.KMRepository;
 import com.android.javacard.keymaster.KMSimpleValue;
 import com.android.javacard.keymaster.KMJCardSimApplet;
+import com.android.javacard.keymaster.KMKeymasterApplet;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import com.android.javacard.seprovider.KMSEProvider;
 import com.android.javacard.keymaster.KMDecoder;
@@ -250,9 +251,9 @@ public class KMRKPFunctionalTest {
   public void testGenerateCsrTestMode() {
     init();
     short[] eekLengths = {2, 3, 9};
-    short[] noOfKeys = {5, 10};
+    short[] noOfKeys = {1, 5, 10};
     for (int i = 0; i < eekLengths.length; i++) {
-      testGenerateCsr(noOfKeys[i] /*no_keys*/, eekLengths[i] /*eek_chain_len*/, true /*testMode*/);
+      testGenerateCsr(noOfKeys[i]);
       KMRepository.instance().clean();
     }
     cleanUp();
@@ -263,7 +264,7 @@ public class KMRKPFunctionalTest {
     init();
     short[] noOfKeys = {0, 5, 10};
     for (int i = 0; i < noOfKeys.length; i++) {
-      testGenerateCsr(noOfKeys[i] /*no_keys*/, (short) 2 /*eek_chain_len*/, false /*testMode*/);
+      testGenerateCsr(noOfKeys[i]);
       KMRepository.instance().clean();
     }
     cleanUp();
@@ -290,13 +291,13 @@ public class KMRKPFunctionalTest {
     return ret;
   }
 
-  public void testGenerateCsr(short no_keys, short no_eek, boolean testMode) {
+  public void testGenerateCsr(short no_keys) {
     byte[][] mackedKeys = new byte[no_keys][];
     short ret;
     short totalEncodedCoseKeysLen = 0;
     for (short i = 0; i < no_keys; i++) {
       // Generate RKP Key
-      ret = generateRkpEcdsaKeyPair(testMode);
+      ret = generateRkpEcdsaKeyPair(false);
       // Store CoseMac0 in buffer.
       short byteBlobCoseMac0 = KMArray.cast(ret).get((short) 1);
       mackedKeys[i] = new byte[KMByteBlob.cast(byteBlobCoseMac0).length()];
@@ -337,9 +338,20 @@ public class KMRKPFunctionalTest {
     ret = decoder.decode(arr, resp, (short) 0, (short) resp.length);
     Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
     short deviceInfo = KMArray.cast(ret).get((short) 1);
+    byte[] deviceInfoBytes = new byte[512];
+    Util.arrayCopyNonAtomic(KMByteBlob.cast(deviceInfo).getBuffer(),
+        KMByteBlob.cast(deviceInfo).getStartOff(),
+        deviceInfoBytes,
+        (short) 0,
+        KMByteBlob.cast(deviceInfo).length());
+    short deviceInfoBytesLen = KMByteBlob.cast(deviceInfo).length();
 
     // update data.
-    short[] coseKeys = new short[no_keys];
+    short cKey;
+    byte[]cosyKeyArrayBytes = new byte[2048];
+    short coseKeyBytesLen = 0;
+    coseKeyBytesLen +=
+  	        encoder.encodeArrayHeader(no_keys, cosyKeyArrayBytes, coseKeyBytesLen, (short) 3);  
     for (short i = 0; i < no_keys; i++) {
       coseMacPtr = KMTestUtils.decodeCoseMac(decoder, mackedKeys[i], (short) 0,
           (short) mackedKeys[i].length);
@@ -353,12 +365,19 @@ public class KMRKPFunctionalTest {
       KMArray.cast(arr).add((short) 1, KMByteBlob.exp()); // cosekey
       ret = decoder.decode(arr, resp, (short) 0, (short) resp.length);
       Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
-      coseKeys[i] = KMArray.cast(ret).get((short) 1);   
+      cKey = KMArray.cast(ret).get((short) 1);
+      //coseKeyLen += KMJCardSimApplet.encodeToApduBuffer(cKey, cosyKeyArrayBytes, coseKeyLen,
+      //            (short)256);
+      Util.arrayCopyNonAtomic(KMByteBlob.cast(cKey).getBuffer(),
+    	        KMByteBlob.cast(cKey).getStartOff(),
+    	        cosyKeyArrayBytes,
+    	        coseKeyBytesLen,
+    	        KMByteBlob.cast(cKey).length());
+      coseKeyBytesLen += KMByteBlob.cast(cKey).length();
     }
 
     //Clean the heap.
-    /*
-    KMRepository.instance().clean();
+    /*KMRepository.instance().clean();
     response = simulator.transmitCommand(apdu);
     resp = response.getBytes();
     ret = decoder.decode(KMTestUtils.receiveErrorCodeExp(), resp, (short) 0, (short) resp.length);
@@ -372,7 +391,7 @@ public class KMRKPFunctionalTest {
     arr = KMArray.instance((short) 5);
     KMArray.cast(arr).add((short) 0, KMInteger.exp()); // OK
     KMArray.cast(arr).add((short) 1, KMByteBlob.exp()); // protectedHeaders
-    KMArray.cast(arr).add((short) 2, KMByteBlob.exp()); // signatureDtat
+    KMArray.cast(arr).add((short) 2, KMByteBlob.exp()); // signature
     KMArray.cast(arr).add((short) 3, KMInteger.exp()); // version
     KMArray.cast(arr).add((short) 4, KMInteger.exp()); // more data
     resp = response.getBytes();
@@ -382,6 +401,56 @@ public class KMRKPFunctionalTest {
     short protectedHeaders = KMArray.cast(ret).get((short) 1);
     short signatureData = KMArray.cast(ret).get((short) 2);
     short version = KMArray.cast(ret).get((short) 3);
+    
+    byte[] signature = new byte[512];
+    Util.arrayCopyNonAtomic(KMByteBlob.cast(signatureData).getBuffer(),
+            KMByteBlob.cast(signatureData).getStartOff(),
+            signature,
+	        (short)0,
+	        KMByteBlob.cast(signatureData).length());
+    short signatureLen = KMByteBlob.cast(signatureData).length();
+    
+    byte[] tmp = new byte[10];
+    
+    byte[] payload = new byte[2048];
+    short payloadLen = 0;
+    
+	short aad = KMByteBlob.instance(tmp, (short) 0, (short) 0);
+    short signStructure =
+	        KMCose.constructCoseSignStructure(protectedHeaders, aad, KMType.INVALID_VALUE);
+	payloadLen = KMKeymasterApplet.encodeToApduBuffer(signStructure, payload,
+	        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+    
+    short payloadByteLen = (short)((short)1/*check this encoded array header len*/ +
+    		               deviceInfoBytesLen + 
+    		               encoder.getEncodedBytesLength((short)CSR_CHALLENGE.length) +
+    		               (short)CSR_CHALLENGE.length +
+    		               coseKeyBytesLen);
+    payloadLen += encoder.encodeByteBlobHeader(payloadByteLen, payload, payloadLen, (short) 3);
+    payloadLen += encoder.encodeArrayHeader((short)3, payload, payloadLen, (short) 3);
+    Util.arrayCopyNonAtomic(deviceInfoBytes,
+	        (short)0,
+	        payload,
+	        payloadLen,
+	        deviceInfoBytesLen);
+    payloadLen += deviceInfoBytesLen;
+    
+    payloadLen += encoder.encodeByteBlobHeader((short)CSR_CHALLENGE.length, payload, payloadLen, (short) 3);
+    
+    Util.arrayCopyNonAtomic(CSR_CHALLENGE,
+	        (short)0,
+	        payload,
+	        payloadLen,
+	        (short)CSR_CHALLENGE.length);
+    payloadLen += (short)CSR_CHALLENGE.length;
+    
+    Util.arrayCopyNonAtomic(cosyKeyArrayBytes,
+	        (short)0,
+	        payload,
+	        payloadLen,
+	        coseKeyBytesLen);
+    payloadLen += coseKeyBytesLen;
+    
     
     /*
     deviceInfo = KMArray.cast(ret).get((short) 2);
@@ -415,7 +484,7 @@ public class KMRKPFunctionalTest {
     */
     //byte moreData = KMInteger.cast(KMArray.cast(ret).get((short) 4)).getByte();
     
-    apdu = new CommandAPDU(0x80, INS_GET_UDS_CERTS_CMD, 0x50, 0x00, (byte[]) null, 65536);
+    apdu = new CommandAPDU(0x80, INS_GET_DICE_CERT_CHAIN_CMD, 0x50, 0x00, (byte[]) null, 65536);// BCC
     response = simulator.transmitCommand(apdu);
     arr = KMArray.instance((short) 2);
     KMArray.cast(arr).add((short) 0, KMInteger.exp()); // OK
@@ -423,10 +492,43 @@ public class KMRKPFunctionalTest {
     resp = response.getBytes();
     ret = decoder.decode(arr, resp, (short) 0, (short) resp.length);
     Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
-    short udsCersts = KMArray.cast(ret).get((short) 1);
+    short diceCersts = KMArray.cast(ret).get((short) 1);
+    
+    short bccArr = KMArray.instance((short) 2);
+    short coseKeyExp = KMCoseKey.exp();
+    short signedMacArr = KMArray.instance((short) 4);
+    short headersExp = KMCoseHeaders.exp();
+    KMArray.cast(signedMacArr).add((short) 0, KMByteBlob.exp());
+    KMArray.cast(signedMacArr).add((short) 1, headersExp);
+    KMArray.cast(signedMacArr).add((short) 2, KMByteBlob.exp());
+    KMArray.cast(signedMacArr).add((short) 3, KMByteBlob.exp());
+    KMArray.cast(bccArr).add((short) 0, coseKeyExp);
+    KMArray.cast(bccArr).add((short) 1, signedMacArr);
+    
+    short bccPtr = decoder.decode(bccArr, KMByteBlob.cast(diceCersts).getBuffer(), KMByteBlob.cast(diceCersts).getStartOff(), KMByteBlob.cast(diceCersts).length());
+    
+    byte[] pubKey = new byte[100];
+    short pubLen = KMTestUtils.getBccPublicKey(cryptoProvider, encoder, decoder,
+    		bccPtr, pubKey, (short) 0);
+    
+    byte[] encodedSignBuf = new byte[512];
+    short encodedSignLen =
+    		KMTestUtils.encodeES256CoseSignSignature(
+    			signature,
+                (short)0,
+                signatureLen,
+                encodedSignBuf,
+                (short) 0);
+        // Verify the signature of cose sign1.
+    System.out.println("applet rkp input  msg in functionl test");
+    KMTestUtils.print(payload, (short) 0, payloadLen);
+        Assert.assertTrue(
+            cryptoProvider.ecVerify256(pubKey, (short)0, pubLen, payload, (short) 0, payloadLen,
+            		encodedSignBuf, (short) 0, encodedSignLen));
+        
     byte moreData;
     do {
-      apdu = new CommandAPDU(0x80, INS_GET_DICE_CERT_CHAIN_CMD, 0x50, 0x00, (byte[]) null, 65536);
+      apdu = new CommandAPDU(0x80, INS_GET_UDS_CERTS_CMD, 0x50, 0x00, (byte[]) null, 65536); //Acc
       response = simulator.transmitCommand(apdu);
       arr = KMArray.instance((short) 3);
       KMArray.cast(arr).add((short) 0, KMInteger.exp()); // OK
@@ -449,11 +551,11 @@ public class KMRKPFunctionalTest {
 //        (short) pubKeysToSignMacBytes.length);
     // In Production mode we cannot validate the protected data since we don't have the
     // EEK Private key.
-    if (testMode) {
+//    if (testMode) {
    //   KMTestUtils.validateProtectedData(cryptoProvider, encoder, decoder, eekId, eekKey,
    //       CSR_CHALLENGE, encodedCoseKeysArray,
    //       testMode, protectedDataArrPtr, deviceInfo, pubKeysToSignMac);
-    }
+//    }
   }
 
 }
