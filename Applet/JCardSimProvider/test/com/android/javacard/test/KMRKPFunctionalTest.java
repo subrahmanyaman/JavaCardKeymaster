@@ -250,9 +250,8 @@ public class KMRKPFunctionalTest {
   @Test
   public void testGenerateCsrTestMode() {
     init();
-    short[] eekLengths = {2, 3, 9};
-    short[] noOfKeys = {1, 5, 10};
-    for (int i = 0; i < eekLengths.length; i++) {
+    short[] noOfKeys = {0, 5, 10};
+    for (int i = 0; i < noOfKeys.length; i++) {
       testGenerateCsr(noOfKeys[i]);
       KMRepository.instance().clean();
     }
@@ -321,6 +320,7 @@ public class KMRKPFunctionalTest {
     byte[] encodedCoseKeysArray = new byte[coseKeyArrBufLen];
     Util.arrayCopy(coseKeyArrBuf, (short) 0, encodedCoseKeysArray, (short) 0, coseKeyArrBufLen);
 
+    // challenge
     short challenge = KMByteBlob.instance(CSR_CHALLENGE, (short) 0, (short) CSR_CHALLENGE.length);
     
     // begin send data
@@ -337,7 +337,9 @@ public class KMRKPFunctionalTest {
     KMArray.cast(arr).add((short) 1, KMByteBlob.exp()); // deviceInfo
     ret = decoder.decode(arr, resp, (short) 0, (short) resp.length);
     Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
-    short deviceInfo = KMArray.cast(ret).get((short) 1);
+    
+    // get device info
+    short deviceInfo = KMArray.cast(ret).get((short) 1);    
     byte[] deviceInfoBytes = new byte[512];
     Util.arrayCopyNonAtomic(KMByteBlob.cast(deviceInfo).getBuffer(),
         KMByteBlob.cast(deviceInfo).getStartOff(),
@@ -365,9 +367,9 @@ public class KMRKPFunctionalTest {
       KMArray.cast(arr).add((short) 1, KMByteBlob.exp()); // cosekey
       ret = decoder.decode(arr, resp, (short) 0, (short) resp.length);
       Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
+      
+      // get cose keys in cosyKeyArrayBytes byte array
       cKey = KMArray.cast(ret).get((short) 1);
-      //coseKeyLen += KMJCardSimApplet.encodeToApduBuffer(cKey, cosyKeyArrayBytes, coseKeyLen,
-      //            (short)256);
       Util.arrayCopyNonAtomic(KMByteBlob.cast(cKey).getBuffer(),
     	        KMByteBlob.cast(cKey).getStartOff(),
     	        cosyKeyArrayBytes,
@@ -377,16 +379,13 @@ public class KMRKPFunctionalTest {
     }
 
     //Clean the heap.
-    /*KMRepository.instance().clean();
-    response = simulator.transmitCommand(apdu);
-    resp = response.getBytes();
-    ret = decoder.decode(KMTestUtils.receiveErrorCodeExp(), resp, (short) 0, (short) resp.length);
-    Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
-*/
+    KMRepository.instance().clean();
+    
     // finish
     // Extended length.
     apdu = new CommandAPDU(0x80, INS_FINISH_SEND_DATA_CMD, 0x50, 0x00, (byte[]) null, 65536);
     response = simulator.transmitCommand(apdu);
+    
     short coseHeadersExp = KMCoseHeaders.exp();
     arr = KMArray.instance((short) 5);
     KMArray.cast(arr).add((short) 0, KMInteger.exp()); // OK
@@ -410,22 +409,30 @@ public class KMRKPFunctionalTest {
 	        KMByteBlob.cast(signatureData).length());
     short signatureLen = KMByteBlob.cast(signatureData).length();
     
-    byte[] tmp = new byte[10];
-    
+    byte[] tmp = new byte[10];    
     byte[] payload = new byte[2048];
     short payloadLen = 0;
     
 	short aad = KMByteBlob.instance(tmp, (short) 0, (short) 0);
+	// construct cose sign structure
     short signStructure =
 	        KMCose.constructCoseSignStructure(protectedHeaders, aad, KMType.INVALID_VALUE);
+    //encode sign structure to paload byte array
 	payloadLen = KMKeymasterApplet.encodeToApduBuffer(signStructure, payload,
 	        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-    
-    short payloadByteLen = (short)((short)1/*check this encoded array header len*/ +
+    /*
+     * payloadByteLen = payload array header length + 
+     *                  deviceinfo length + 
+     *                  byteheader length of challenge +
+     *                  challenge length +
+     *                  total cosekey bytes length
+     */
+    short payloadByteLen = (short)((short)1 /*Array of 3 elements occupies 1 byte */+
     		               deviceInfoBytesLen + 
     		               encoder.getEncodedBytesLength((short)CSR_CHALLENGE.length) +
     		               (short)CSR_CHALLENGE.length +
     		               coseKeyBytesLen);
+    
     payloadLen += encoder.encodeByteBlobHeader(payloadByteLen, payload, payloadLen, (short) 3);
     payloadLen += encoder.encodeArrayHeader((short)3, payload, payloadLen, (short) 3);
     Util.arrayCopyNonAtomic(deviceInfoBytes,
@@ -451,39 +458,6 @@ public class KMRKPFunctionalTest {
 	        coseKeyBytesLen);
     payloadLen += coseKeyBytesLen;
     
-    
-    /*
-    deviceInfo = KMArray.cast(ret).get((short) 2);
-    byte[] deviceInfoBytes = new byte[512];
-    Util.arrayCopyNonAtomic(KMByteBlob.cast(deviceInfo).getBuffer(),
-        KMByteBlob.cast(deviceInfo).getStartOff(),
-        deviceInfoBytes,
-        (short) 0,
-        KMByteBlob.cast(deviceInfo).length());
-    short deviceInfoBytesLen = KMByteBlob.cast(deviceInfo).length();
-    short protectedHeader = KMArray.cast(ret).get((short) 3);
-    byte[] protectedHeaderBytes = new byte[KMByteBlob.cast(protectedHeader).length()];
-    Util.arrayCopyNonAtomic(
-        KMByteBlob.cast(protectedHeader).getBuffer(),
-        KMByteBlob.cast(protectedHeader).getStartOff(),
-        protectedHeaderBytes,
-        (short) 0,
-        KMByteBlob.cast(protectedHeader).length()
-    );
-    short UnProtectedHeader = KMArray.cast(ret).get((short) 4);
-    byte[] unProtectedHeaderBytes = new byte[256];
-    short unProtectedHeaderBytesLen = encoder.encode(UnProtectedHeader, unProtectedHeaderBytes,
-        (short) 0, (short) 256);
-    short cipherObj = KMArray.cast(ret).get((short) 5);
-    byte[] cipher = new byte[5000];
-    short startOffset = 0;
-    Util.arrayCopyNonAtomic(KMByteBlob.cast(cipherObj).getBuffer(),
-        KMByteBlob.cast(cipherObj).getStartOff(), cipher,
-        (short) 0, KMByteBlob.cast(cipherObj).length());
-    startOffset = KMByteBlob.cast(cipherObj).length();
-    */
-    //byte moreData = KMInteger.cast(KMArray.cast(ret).get((short) 4)).getByte();
-    
     apdu = new CommandAPDU(0x80, INS_GET_DICE_CERT_CHAIN_CMD, 0x50, 0x00, (byte[]) null, 65536);// BCC
     response = simulator.transmitCommand(apdu);
     arr = KMArray.instance((short) 2);
@@ -494,7 +468,6 @@ public class KMRKPFunctionalTest {
     Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
     short diceCersts = KMArray.cast(ret).get((short) 1);
     
-    short bccArr = KMArray.instance((short) 2);
     short coseKeyExp = KMCoseKey.exp();
     short signedMacArr = KMArray.instance((short) 4);
     short headersExp = KMCoseHeaders.exp();
@@ -502,6 +475,7 @@ public class KMRKPFunctionalTest {
     KMArray.cast(signedMacArr).add((short) 1, headersExp);
     KMArray.cast(signedMacArr).add((short) 2, KMByteBlob.exp());
     KMArray.cast(signedMacArr).add((short) 3, KMByteBlob.exp());
+    short bccArr = KMArray.instance((short) 2);
     KMArray.cast(bccArr).add((short) 0, coseKeyExp);
     KMArray.cast(bccArr).add((short) 1, signedMacArr);
     
@@ -519,7 +493,7 @@ public class KMRKPFunctionalTest {
                 signatureLen,
                 encodedSignBuf,
                 (short) 0);
-        // Verify the signature of cose sign1.
+    // Verify the signature of cose sign1.
     System.out.println("applet rkp input  msg in functionl test");
     KMTestUtils.print(payload, (short) 0, payloadLen);
         Assert.assertTrue(
@@ -542,20 +516,6 @@ public class KMRKPFunctionalTest {
       
       moreData = KMInteger.cast(KMArray.cast(ret).get((short) 2)).getByte();
     }while (moreData != 0);
-    
-    //Verify code
-//    KMTestUtils.print(deviceInfoBytes, (short) 0, deviceInfoBytesLen);
-//    deviceInfo = decoder.decode(KMTestUtils.getDeviceInfoExp(), deviceInfoBytes, (short) 0,
-//        deviceInfoBytesLen);
-//    pubKeysToSignMac = KMByteBlob.instance(pubKeysToSignMacBytes, (short) 0,
-//        (short) pubKeysToSignMacBytes.length);
-    // In Production mode we cannot validate the protected data since we don't have the
-    // EEK Private key.
-//    if (testMode) {
-   //   KMTestUtils.validateProtectedData(cryptoProvider, encoder, decoder, eekId, eekKey,
-   //       CSR_CHALLENGE, encodedCoseKeysArray,
-   //       testMode, protectedDataArrPtr, deviceInfo, pubKeysToSignMac);
-//    }
   }
 
 }

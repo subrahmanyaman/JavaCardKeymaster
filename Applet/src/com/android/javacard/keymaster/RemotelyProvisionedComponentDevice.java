@@ -106,23 +106,21 @@ public class RemotelyProvisionedComponentDevice {
   private static final byte PROCESSING_ACC_COMPLETE = 0x0A;
   // data table
   private static final short DATA_SIZE = 512;
-  private static final short DATA_INDEX_SIZE = 6;
+  private static final short DATA_INDEX_SIZE = 5;
   public static final short DATA_INDEX_ENTRY_SIZE = 4;
   public static final short DATA_INDEX_ENTRY_LENGTH = 0;
   public static final short DATA_INDEX_ENTRY_OFFSET = 2;
   // data offsets
   private static final short TOTAL_KEYS_TO_SIGN = 0;
   private static final short KEYS_TO_SIGN_COUNT = 1;
-  private static final short CHALLENGE = 2;
-  private static final short GENERATE_CSR_PHASE = 3;
-  private static final short RESPONSE_PROCESSING_STATE = 4;
-  private static final short ACC_PROCESSED_LENGTH = 5;
+  private static final short GENERATE_CSR_PHASE = 2;
+  private static final short RESPONSE_PROCESSING_STATE = 3;
+  private static final short ACC_PROCESSED_LENGTH = 4;
 
   // data item sizes
-  private static final short MAC_KEY_SIZE = 32;
   private static final short SHORT_SIZE = 2;
   private static final short BYTE_SIZE = 1;
-  private static final short TEST_MODE_SIZE = 1;
+  
   // generate csr states
   private static final byte BEGIN = 0x01;
   private static final byte UPDATE = 0x02;
@@ -170,31 +168,6 @@ public class RemotelyProvisionedComponentDevice {
       repository.reclaimMemory(RKP_MAC_KEY_SIZE);
     }
     operation[0] = null;
-    createAuthorizedEEKRoot();
-  }
-
-  private void createAuthorizedEEKRoot() {
-    if (authorizedEekRoots == null) {
-      authorizedEekRoots =
-          new Object[]
-              {
-                  new byte[]{
-                      0x04,
-                      (byte)0xf7, (byte)0x14, (byte)0x8a, (byte)0xdb, (byte)0x97, (byte)0xf4,
-                      (byte)0xcc, (byte)0x53, (byte)0xef, (byte)0xd2, (byte)0x64, (byte)0x11,
-                      (byte)0xc4, (byte)0xe3, (byte)0x75, (byte)0x1f, (byte)0x66, (byte)0x1f,
-                      (byte)0xa4, (byte)0x71, (byte)0x0c, (byte)0x6c, (byte)0xcf, (byte)0xfa,
-                      (byte)0x09, (byte)0x46, (byte)0x80, (byte)0x74, (byte)0x87, (byte)0x54,
-                      (byte)0xf2, (byte)0xad,
-                      (byte)0x5e, (byte)0x7f, (byte)0x5b, (byte)0xf6, (byte)0xec, (byte)0xe4,
-                      (byte)0xf6, (byte)0x19, (byte)0xcc, (byte)0xff, (byte)0x13, (byte)0x37,
-                      (byte)0xfd, (byte)0x0f, (byte)0xa1, (byte)0xc8, (byte)0x93, (byte)0xdb,
-                      (byte)0x18, (byte)0x06, (byte)0x76, (byte)0xc4, (byte)0x5d, (byte)0xe6,
-                      (byte)0xd7, (byte)0x6a, (byte)0x77, (byte)0x86, (byte)0xc3, (byte)0x2d,
-                      (byte)0xaf, (byte)0x8f
-                  },
-              };
-    }
   }
 
   private void initializeDataTable() {
@@ -458,7 +431,7 @@ public class RemotelyProvisionedComponentDevice {
   public void processFinishSendData(APDU apdu) throws Exception {
     try {
       // The prior state should be UPDATE.
-      validateState(UPDATE);
+      //validateState(UPDATE);  // check what should be the state in case of zero keys and update key is not called
       byte[] scratchPad = apdu.getBuffer();
       if (data[getEntry(TOTAL_KEYS_TO_SIGN)] != data[getEntry(KEYS_TO_SIGN_COUNT)]) {
         // Mismatch in the number of keys sent.
@@ -497,46 +470,6 @@ public class RemotelyProvisionedComponentDevice {
       KMArray.cast(arr).add((short) 2, signatureData);
       KMArray.cast(arr).add((short) 3, KMInteger.uint_8(RKP_SCHEMA_VERSION)); 
       KMArray.cast(arr).add((short) 4, KMInteger.uint_8(MORE_DATA));
-      KMKeymasterApplet.sendOutgoing(apdu, arr);
-    } catch (Exception e) {
-      clearDataTable();
-      releaseOperation();
-      throw e;
-    }
-  }
-
-  public void processGetResponse(APDU apdu) throws Exception {
-    try {
-      // The prior state should be FINISH.
-      validateState((byte) (FINISH | GET_RESPONSE));
-      byte[] scratchPad = apdu.getBuffer();
-      short len = 0;
-      byte moreData = MORE_DATA;
-      byte state = getCurrentOutputProcessingState();
-      switch (state) {
-        case START_PROCESSING:
-        case PROCESSING_BCC_IN_PROGRESS:
-          len = processBcc(scratchPad);
-          updateState(GET_RESPONSE);
-          break;
-        case PROCESSING_BCC_COMPLETE:
-        case PROCESSING_ACC_IN_PROGRESS:
-          len = processAdditionalCertificateChain(scratchPad);
-          updateState(GET_RESPONSE);
-          break;
-        case PROCESSING_ACC_COMPLETE:
-          moreData = NO_DATA;
-          clearDataTable();
-          break;
-        default:
-          KMException.throwIt(KMError.INVALID_STATE);
-      }
-      short data = KMByteBlob.instance(scratchPad, (short) 0, len);
-      short arr = KMArray.instance((short) 3);
-      KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
-      KMArray.cast(arr).add((short) 1, data);
-      // represents there is more output to retrieve
-      KMArray.cast(arr).add((short) 2, KMInteger.uint_8(moreData));
       KMKeymasterApplet.sendOutgoing(apdu, arr);
     } catch (Exception e) {
       clearDataTable();
