@@ -501,6 +501,8 @@ public class KMRKPFunctionalTest {
             		encodedSignBuf, (short) 0, encodedSignLen));
         
     byte moreData;
+    byte[] udsCerts = new byte[2500];
+    short offset = 0;
     do {
       apdu = new CommandAPDU(0x80, INS_GET_UDS_CERTS_CMD, 0x50, 0x00, (byte[]) null, 65536); //Acc
       response = simulator.transmitCommand(apdu);
@@ -513,9 +515,15 @@ public class KMRKPFunctionalTest {
       ret = decoder.decode(arr, resp, (short) 0, (short) resp.length);
       //TODO accumlate acc data
       Assert.assertEquals(KMTestUtils.getErrorCode(ret), KMError.OK);
+      short partialData = KMArray.cast(ret).get((short) 1);
+      Util.arrayCopyNonAtomic(KMByteBlob.cast(partialData).getBuffer(), KMByteBlob.cast(partialData).getStartOff(),
+          udsCerts, offset, KMByteBlob.cast(partialData).length());
+      offset += KMByteBlob.cast(partialData).length();
       
       moreData = KMInteger.cast(KMArray.cast(ret).get((short) 2)).getByte();
     }while (moreData != 0);
+    System.out.println("Certificate Chain===============>");
+    KMTestUtils.print(udsCerts, (short) 0, offset);
   }
 
 }
