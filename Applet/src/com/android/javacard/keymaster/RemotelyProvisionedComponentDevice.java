@@ -19,7 +19,6 @@ import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMOperation;
 import com.android.javacard.seprovider.KMSEProvider;
-import com.android.javacard.test.KMTestUtils;
 
 import javacard.framework.APDU;
 import javacard.framework.ISO7816;
@@ -77,6 +76,8 @@ public class RemotelyProvisionedComponentDevice {
       {0x73, 0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x5F, 0x6C, 0x65, 0x76, 0x65, 0x6C};
   public static final byte[] FUSED =
       {0x66, 0x75, 0x73, 0x65, 0x64};
+  public static final byte[] CERT_TYPE =
+      {0x63, 0x65, 0x72, 0x74, 0x5F, 0x74, 0x79, 0x70, 0x65};
   // Verified boot state values
   public static final byte[] VB_STATE_GREEN = {0x67, 0x72, 0x65, 0x65, 0x6E};
   public static final byte[] VB_STATE_YELLOW = {0x79, 0x65, 0x6C, 0x6C, 0x6F, 0x77};
@@ -89,6 +90,8 @@ public class RemotelyProvisionedComponentDevice {
   public static final byte DI_SCHEMA_VERSION = 2;
   public static final byte[] DI_SECURITY_LEVEL = {0x73, 0x74, 0x72, 0x6F, 0x6E, 0x67, 0x62, 0x6F,
       0x78};
+  public static final byte[] DI_CERT_TYPE = {0x6B, 0x65, 0x79, 0x6D, 0x69, 0x6E, 0x74};
+  
   private static final short MAX_SEND_DATA = 1024;
   
   private static final byte[] google = {0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
@@ -302,8 +305,6 @@ public class RemotelyProvisionedComponentDevice {
 	        KMCose.constructCoseSignStructure(protectedHeaders, aad, KMType.INVALID_VALUE);
 	short partialSignStructureLen = KMKeymasterApplet.encodeToApduBuffer(signStructure, scratchPad,
 	        (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-	
-	 KMTestUtils.print(scratchPad, (short) 0, partialSignStructureLen);
 	((KMOperation) operation[0]).update(scratchPad, (short) 0, partialSignStructureLen);
 
 	// Add payload Byte Header
@@ -312,8 +313,6 @@ public class RemotelyProvisionedComponentDevice {
 	short heapIndex = repository.allocReclaimableMemory((short) 1024);
 	short byteBlobHeaderLen =
 	        encoder.encodeByteBlobHeader(payloadLen, heap, heapIndex, (short) 3);
-	System.out.println("applet rkp input  msg 1");
-	KMTestUtils.print(heap, heapIndex, byteBlobHeaderLen);
 	((KMOperation) operation[0]).update(heap, heapIndex, byteBlobHeaderLen);
 
 	// Construct partial payload array
@@ -322,15 +321,11 @@ public class RemotelyProvisionedComponentDevice {
 	KMArray.cast(arr).add((short) 1, challengeByteBlob);
 	KMArray.cast(arr).add((short) 2, KMType.INVALID_VALUE);
 	short paritalPayloadArrayLen = encoder.encode(arr, heap, heapIndex, prevReclaimIndex);
-	System.out.println("applet rkp input  msg 1");
-	KMTestUtils.print(heap, heapIndex, paritalPayloadArrayLen);
 	((KMOperation) operation[0]).update(heap, heapIndex, paritalPayloadArrayLen);
 
 	// Encode keysToSign Array Header length
 	short keysToSignArrayHeaderLen =
 	        encoder.encodeArrayHeader(coseKeysCount, heap, heapIndex, (short) 3);
-	System.out.println("applet rkp input  msg 1");
-	KMTestUtils.print(heap, heapIndex, keysToSignArrayHeaderLen);
 	((KMOperation) operation[0]).update(heap, heapIndex, keysToSignArrayHeaderLen);
 	repository.reclaimMemory((short)1024);
   }
@@ -359,8 +354,11 @@ public class RemotelyProvisionedComponentDevice {
           KMInteger.cast(KMArray.cast(arr).get((short) 0)).getShort());
       // Store the current csr status, which is BEGIN.
       createEntry(GENERATE_CSR_PHASE, BYTE_SIZE);
-      updateState(BEGIN);
-      
+      if(0 == KMInteger.cast(KMArray.cast(arr).get((short) 0)).getShort()) {
+        updateState(UPDATE);
+      } else {
+        updateState(BEGIN);
+      }      
       short len = KMKeymasterApplet.encodeToApduBuffer(deviceInfo, scratchPad,
               (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
       short encodedDeviceInfo = KMByteBlob.instance(scratchPad, (short) 0, len);
@@ -400,8 +398,6 @@ public class RemotelyProvisionedComponentDevice {
           KMKeymasterApplet.MAX_COSE_BUF_SIZE);
      
       // Do ecSign update with input as encoded CoseKey.
-      System.out.println("applet rkp input  msg 1 update");
-      KMTestUtils.print(scratchPad, (short) 0, length);
       ((KMOperation) operation[0]).update(scratchPad, (short) 0, length);
       short encodedCoseKey = KMByteBlob.instance(scratchPad, (short) 0, length);
       // Increment the count each time this function gets executed.
@@ -431,7 +427,7 @@ public class RemotelyProvisionedComponentDevice {
   public void processFinishSendData(APDU apdu) throws Exception {
     try {
       // The prior state should be UPDATE.
-      //validateState(UPDATE);  // check what should be the state in case of zero keys and update key is not called
+      validateState(UPDATE);
       byte[] scratchPad = apdu.getBuffer();
       if (data[getEntry(TOTAL_KEYS_TO_SIGN)] != data[getEntry(KEYS_TO_SIGN_COUNT)]) {
         // Mismatch in the number of keys sent.
@@ -442,12 +438,9 @@ public class RemotelyProvisionedComponentDevice {
       short len =
           ((KMOperation) operation[0]).sign(repository.getHeap(), (short) empty,
               (short) 0, scratchPad, (short) 0);
-      System.out.println("applet rkp input  msg finish");
       // release operation
       releaseOperation();
       short signatureData = KMByteBlob.instance(scratchPad, (short) 0, len);
-      System.out.println("applet rkp input  msg");
-      KMTestUtils.print(scratchPad, (short) 0, len);
       len = KMAsn1Parser.instance().
               decodeEcdsa256Signature(signatureData, scratchPad, (short)0);
 
@@ -477,7 +470,7 @@ public class RemotelyProvisionedComponentDevice {
       throw e;
     }
   }
-  
+
   public void processGetDiceCertChain(APDU apdu) throws Exception {
     try {
       // The prior state should be FINISH.
@@ -517,7 +510,7 @@ public class RemotelyProvisionedComponentDevice {
           break;
         default:
           KMException.throwIt(KMError.INVALID_STATE);
-      } 
+      }
       short data = KMByteBlob.instance(scratchPad, (short) 0, len);
       short arr = KMArray.instance((short) 3);
       KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
@@ -531,7 +524,7 @@ public class RemotelyProvisionedComponentDevice {
       throw e;
     }
   }
-  
+
   public void process(short ins, APDU apdu) throws Exception  {
     switch (ins) {
       case KMKeymasterApplet.INS_GET_RKP_HARDWARE_INFO:
@@ -550,10 +543,10 @@ public class RemotelyProvisionedComponentDevice {
         processFinishSendData(apdu);
         break;
       case KMKeymasterApplet.INS_GET_UDS_CERTS_CMD:
-    	processGetUdsCerts(apdu); //Acc
-    	break;
+        processGetUdsCerts(apdu); //Acc
+        break;
       case KMKeymasterApplet.INS_GET_DICE_CERT_CHAIN_CMD:
-    	processGetDiceCertChain(apdu); //Bcc
+        processGetDiceCertChain(apdu); //Bcc
         break;
       default:
         ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -705,9 +698,9 @@ public class RemotelyProvisionedComponentDevice {
    * ? "system_patch_level" : uint,                   // YYYYMMDD
    * ? "boot_patch_level" : uint,                     //YYYYMMDD
    * ? "vendor_patch_level" : uint,                   // YYYYMMDD
-   * "version" : 1, // TheCDDL schema version
    * "security_level" : "tee" / "strongbox"
    * "att_id_state": "locked" / "open"
+   * "cert_type": "widevine" / "keymint"
    * }
    */
   private short createDeviceInfo(byte[] scratchpad) {
@@ -735,10 +728,11 @@ public class RemotelyProvisionedComponentDevice {
     updateItem(rkpTmpVariables, metaOffset, BOOT_PATCH_LEVEL, getBootParams(BOOT_PATCH_LEVEL_ID, scratchpad));
     updateItem(rkpTmpVariables, metaOffset, VENDOR_PATCH_LEVEL,
         getBootParams(VENDOR_PATCH_LEVEL_ID, scratchpad));
-    updateItem(rkpTmpVariables, metaOffset, DEVICE_INFO_VERSION, KMInteger.uint_8(DI_SCHEMA_VERSION));
     updateItem(rkpTmpVariables, metaOffset, SECURITY_LEVEL,
         KMTextString.instance(DI_SECURITY_LEVEL, (short) 0, (short) DI_SECURITY_LEVEL.length));
     updateItem(rkpTmpVariables, metaOffset, FUSED, KMInteger.uint_8((byte) storeDataInst.secureBootMode));
+    updateItem(rkpTmpVariables, metaOffset, CERT_TYPE,
+            KMTextString.instance(DI_CERT_TYPE, (short) 0, (short) DI_CERT_TYPE.length));
     // Create device info map.
     short map = KMMap.instance(rkpTmpVariables[1]);
     short mapIndex = 0;
@@ -964,9 +958,9 @@ public class RemotelyProvisionedComponentDevice {
     short lengthToSend = (short) (totalAccLen - processedLen);
     if (lengthToSend > MAX_SEND_DATA) {
       lengthToSend = MAX_SEND_DATA;
-    } 
+    }
     Util.arrayCopyNonAtomic(persistedData, (short) (2 + processedLen), scratchPad, (short) 0, lengthToSend);
-   
+
     processedLen += lengthToSend;
     updateAdditionalCertChainProcessedLength(processedLen);
     // Update the output processing state.
