@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include <KeyMintUtils.h>
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <hardware/hw_auth_token.h>
@@ -34,13 +35,24 @@
 #include <keymaster/wrapped_key.h>
 
 #include "JavacardKeyMintOperation.h"
-#include "JavacardKeyMintUtils.h"
 #include "JavacardSharedSecret.h"
 
+constexpr int minGcmMinMacLength = 96;
+constexpr int maxGcmMinMacLength = 128;
+constexpr int minHmacLengthBits = 64;
+constexpr int sha256DigestLengthBits = 256;
+constexpr int rsaPublicExponent = 65537;
+
 namespace aidl::android::hardware::security::keymint {
-using km_utils::KmParamSet;
-using namespace ::keymaster;
-using namespace ::keymint::javacard;
+using cppbor::Bstr;
+using cppbor::EncodedItem;
+using cppbor::Uint;
+using ::keymaster::AuthorizationSet;
+using ::keymaster::dup_buffer;
+using ::keymaster::KeymasterBlob;
+using ::keymaster::KeymasterKeyBlob;
+using ::keymint::javacard::Instruction;
+using std::string;
 
 ScopedAStatus JavacardKeyMintDevice::defaultHwInfo(KeyMintHardwareInfo* info) {
     info->versionNumber = 2;
@@ -51,20 +63,18 @@ ScopedAStatus JavacardKeyMintDevice::defaultHwInfo(KeyMintHardwareInfo* info) {
     return ScopedAStatus::ok();
 }
 
-
 ScopedAStatus JavacardKeyMintDevice::getHardwareInfo(KeyMintHardwareInfo* info) {
     auto [item, err] = card_->sendRequest(Instruction::INS_GET_HW_INFO_CMD);
     std::optional<string> optKeyMintName;
     std::optional<string> optKeyMintAuthorName;
-    std::optional<uint32_t> optSecLevel;
-    std::optional<uint32_t> optVersion;
+    std::optional<uint64_t> optSecLevel;
+    std::optional<uint64_t> optVersion;
     std::optional<uint64_t> optTsRequired;
-    if (err != KM_ERROR_OK || !(optVersion = cbor_.getUint64<uint32_t>(item, 1)) ||
-        !(optSecLevel = cbor_.getUint64<uint32_t>(item, 2)) ||
+    if (err != KM_ERROR_OK || !(optVersion = cbor_.getUint64(item, 1)) ||
+        !(optSecLevel = cbor_.getUint64(item, 2)) ||
         !(optKeyMintName = cbor_.getByteArrayStr(item, 3)) ||
         !(optKeyMintAuthorName = cbor_.getByteArrayStr(item, 4)) ||
-        !(optTsRequired = cbor_.getUint64<uint64_t>(item, 5))) {
-        // TODO should we return HARDWARE_NOT_YET_AVAILABLE instead of default Hardware Info.
+        !(optTsRequired = cbor_.getUint64(item, 5))) {
         LOG(ERROR) << "Error in response of getHardwareInfo.";
         LOG(INFO) << "Returning defaultHwInfo in getHardwareInfo.";
         return defaultHwInfo(info);
@@ -78,9 +88,186 @@ ScopedAStatus JavacardKeyMintDevice::getHardwareInfo(KeyMintHardwareInfo* info) 
     return ScopedAStatus::ok();
 }
 
+keymaster_error_t validateKeySize(keymaster_algorithm_t& algo, uint32_t& key_size) {
+    switch (algo) {
+        case KM_ALGORITHM_RSA:
+            if (key_size != 2048) {
+                LOG(ERROR) << "Invalid key size specified for RSA key generation";
+                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+            }
+            break;
+
+        case KM_ALGORITHM_EC:
+            if (key_size != 256) {
+                LOG(ERROR) << "Invalid key size specified for EC key generation";
+                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+            }
+            break;
+
+        case KM_ALGORITHM_AES:
+            if (!(key_size == 128 || key_size == 256)) {
+                LOG(ERROR) << "Invalid key size specified for AES key generation";
+                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+            }
+            break;
+
+        case KM_ALGORITHM_TRIPLE_DES:
+            if (key_size != 168) {
+                LOG(ERROR) << "Invalid key size specified for TDES key generation";
+                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+            }
+            break;
+
+        case KM_ALGORITHM_HMAC:
+            if (!((key_size % 8 == 0)
+                && key_size >= 64
+                && key_size <= 512)) {
+                 LOG(ERROR) << "Invalid key size specified for HMAC key generation";
+                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+            }
+            break;
+
+        default :
+            return KM_ERROR_UNSUPPORTED_ALGORITHM;
+    }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t validateRSAKeyParam(AuthorizationSet& keyParams){
+    uint64_t public_exponent;
+    if (!keyParams.GetTagValue(keymaster::TAG_RSA_PUBLIC_EXPONENT, &public_exponent)) {
+        LOG(ERROR) << "No public exponent specified for RSA key generation";
+        return KM_ERROR_INVALID_ARGUMENT;
+    }
+    if (public_exponent != rsaPublicExponent) {
+        LOG(ERROR) << "Invalid public exponent specified for RSA key generation";
+        return KM_ERROR_INVALID_ARGUMENT;
+    }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t validateECKeyParam(AuthorizationSet& keyParams){
+    keymaster_ec_curve_t curve;
+    if (!keyParams.GetTagValue(keymaster::TAG_EC_CURVE, &curve)) {
+        LOG(ERROR) << "Invalid EC curve";
+        return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+    }
+    if(curve !=  KM_EC_CURVE_P_256) {
+        LOG(ERROR) << "Invalid EC curve";
+        return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+    }
+    return KM_ERROR_OK; 
+}
+
+keymaster_error_t validateAESKeyParam(AuthorizationSet& keyParams){
+    if (keyParams.Contains(keymaster::TAG_BLOCK_MODE, KM_MODE_GCM)) {
+        uint32_t min_tag_length;
+        if (!keyParams.GetTagValue(keymaster::TAG_MIN_MAC_LENGTH, &min_tag_length))
+            return KM_ERROR_MISSING_MIN_MAC_LENGTH;
+
+        if ((min_tag_length % 8 != 0)
+            || min_tag_length < minGcmMinMacLength
+            || min_tag_length > maxGcmMinMacLength) {
+                return KM_ERROR_UNSUPPORTED_MIN_MAC_LENGTH;
+        }
+    } else {
+        // Not GCM
+        if (keyParams.find(keymaster::TAG_MIN_MAC_LENGTH) != -1) {
+            LOG(ERROR) << "KM_TAG_MIN_MAC_LENGTH found for non AES-GCM key";
+            return KM_ERROR_INVALID_TAG;
+        }
+    }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t validateTDESKeyParam(AuthorizationSet& keyParams){
+    // Read Minimum Mac length - it must not be present
+    if (keyParams.Contains(keymaster::TAG_MIN_MAC_LENGTH)) {
+        return KM_ERROR_INVALID_TAG;
+    }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t validateHMACKeyParam(AuthorizationSet& keyParams) {
+    // If params does not contain any digest throw unsupported digest error.
+    keymaster_digest_t digest;
+    if (!keyParams.GetTagValue(keymaster::TAG_DIGEST, &digest)) {
+        return KM_ERROR_UNSUPPORTED_DIGEST;
+    }
+    if(digest != KM_DIGEST_SHA_2_256) {
+        return KM_ERROR_UNSUPPORTED_DIGEST;
+    }
+    uint32_t min_mac_length_bits;
+    if (!keyParams.GetTagValue(keymaster::TAG_MIN_MAC_LENGTH, &min_mac_length_bits)) {
+        return KM_ERROR_MISSING_MIN_MAC_LENGTH;
+    }
+    if ((min_mac_length_bits % 8 != 0)
+        || min_mac_length_bits < minHmacLengthBits
+        || min_mac_length_bits > sha256DigestLengthBits) {
+        return KM_ERROR_UNSUPPORTED_MIN_MAC_LENGTH;
+    }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t validateGenerateKeyParams(AuthorizationSet& keyParams) {
+    keymaster_algorithm_t algo;
+    // Check for unsupported tags.
+    if (keyParams.Contains(KM_TAG_TRUSTED_USER_PRESENCE_REQUIRED) ||
+            keyParams.Contains(KM_TAG_MIN_SECONDS_BETWEEN_OPS)) {
+        return KM_ERROR_UNSUPPORTED_TAG;
+    }
+    if (keyParams.Contains(keymaster::TAG_PURPOSE, KM_PURPOSE_ATTEST_KEY) &&
+        keyParams.GetTagCount(keymaster::TAG_PURPOSE) > 1) {
+        // ATTEST_KEY cannot be combined with any other purpose.
+        return KM_ERROR_INCOMPATIBLE_PURPOSE;
+    }
+    // Algorithm must be present
+    if (!keyParams.GetTagValue(keymaster::TAG_ALGORITHM, &algo)) {
+        return KM_ERROR_INVALID_ARGUMENT;
+    }
+    uint32_t key_size;
+    if (keyParams.GetTagValue(keymaster::TAG_KEY_SIZE, &key_size)) {
+        auto error =  validateKeySize(algo, key_size);
+        if (error != KM_ERROR_OK) {
+            return error;
+        }
+    } else {
+        if(algo != KM_ALGORITHM_EC) {
+            return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+        }
+    }
+    switch (algo) {
+        case KM_ALGORITHM_RSA:
+            return validateRSAKeyParam(keyParams);
+
+        case KM_ALGORITHM_EC:
+            return validateECKeyParam(keyParams);
+
+        case KM_ALGORITHM_AES:
+            return validateAESKeyParam(keyParams);
+
+        case KM_ALGORITHM_TRIPLE_DES:
+            return validateTDESKeyParam(keyParams);
+
+        case KM_ALGORITHM_HMAC:
+            return validateHMACKeyParam(keyParams);
+
+        default :
+            return KM_ERROR_UNSUPPORTED_ALGORITHM;
+    }
+    return KM_ERROR_OK;
+}
+
 ScopedAStatus JavacardKeyMintDevice::generateKey(const vector<KeyParameter>& keyParams,
                                                  const optional<AttestationKey>& attestationKey,
                                                  KeyCreationResult* creationResult) {
+    AuthorizationSet key_parameters;
+    key_parameters.Reinitialize(km_utils::KmParamSet(keyParams));
+    auto error = validateGenerateKeyParams(key_parameters);
+    if (error != KM_ERROR_OK) {
+        LOG(ERROR) << "Error while validating generatekey key parameters.";
+        return km_utils::kmError2ScopedAStatus(error);
+    }
     cppbor::Array array;
     // add key params
     cbor_.addKeyparameters(array, keyParams);
@@ -116,11 +303,65 @@ ScopedAStatus JavacardKeyMintDevice::addRngEntropy(const vector<uint8_t>& data) 
     return ScopedAStatus::ok();
 }
 
+keymaster_error_t validateImportKeyParams(AuthorizationSet& keyParams, KeyFormat& keyFormat) {
+    if (keyParams.Contains(keymaster::TAG_PURPOSE, KM_PURPOSE_ATTEST_KEY) &&
+        keyParams.GetTagCount(keymaster::TAG_PURPOSE) > 1) {
+        // ATTEST_KEY cannot be combined with any other purpose.
+        return KM_ERROR_INCOMPATIBLE_PURPOSE;
+    }
+    // Check for unsupported tags.
+    if (keyParams.Contains(KM_TAG_TRUSTED_USER_PRESENCE_REQUIRED) ||
+            keyParams.Contains(KM_TAG_MIN_SECONDS_BETWEEN_OPS)) {
+        return KM_ERROR_UNSUPPORTED_TAG;
+    }
+    keymaster_algorithm_t algo;
+    // Algorithm must be present
+    if (!keyParams.GetTagValue(keymaster::TAG_ALGORITHM, &algo)) {
+        return KM_ERROR_INVALID_ARGUMENT;
+    }
+    // key format must be raw if aes, des or hmac and pkcs8 for rsa and ec.
+    if ((algo == KM_ALGORITHM_AES || algo == KM_ALGORITHM_TRIPLE_DES || algo == KM_ALGORITHM_HMAC) && keyFormat != KeyFormat::RAW) {
+        return KM_ERROR_UNIMPLEMENTED;
+    }
+    if ((algo == KM_ALGORITHM_RSA || algo == KM_ALGORITHM_EC) && keyFormat != KeyFormat::PKCS8) {
+        return KM_ERROR_UNIMPLEMENTED;
+    }
+    uint32_t key_size;
+    if (keyParams.GetTagValue(keymaster::TAG_KEY_SIZE, &key_size)) {
+        auto error = validateKeySize(algo, key_size);
+        if(error != KM_ERROR_OK) {
+            return error;
+        }
+    }
+    switch (algo) {
+        case KM_ALGORITHM_RSA:
+        case KM_ALGORITHM_EC:
+        case KM_ALGORITHM_TRIPLE_DES:
+            break;
+
+        case KM_ALGORITHM_AES:
+            return validateAESKeyParam(keyParams);
+
+        case KM_ALGORITHM_HMAC:
+            return validateHMACKeyParam(keyParams);
+
+        default :
+            return KM_ERROR_UNSUPPORTED_ALGORITHM;
+    }
+    return KM_ERROR_OK;
+}
+
 ScopedAStatus JavacardKeyMintDevice::importKey(const vector<KeyParameter>& keyParams,
                                                KeyFormat keyFormat, const vector<uint8_t>& keyData,
                                                const optional<AttestationKey>& attestationKey,
                                                KeyCreationResult* creationResult) {
-
+    AuthorizationSet key_parameters;
+    key_parameters.Reinitialize(km_utils::KmParamSet(keyParams));
+    auto error = validateImportKeyParams(key_parameters, keyFormat);
+    if (error != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in Importkey";
+        return km_utils::kmError2ScopedAStatus(error);
+    }
     cppbor::Array request;
     // add key params
     cbor_.addKeyparameters(request, keyParams);
@@ -181,6 +422,13 @@ ScopedAStatus JavacardKeyMintDevice::importWrappedKey(const vector<uint8_t>& wra
     if (errorCode != KM_ERROR_OK) {
         LOG(ERROR) << "Error in send begin import wrapped key in importWrappedKey.";
         return km_utils::kmError2ScopedAStatus(errorCode);
+    }
+    AuthorizationSet key_parameters;
+    key_parameters.Reinitialize(km_utils::KmParamSet(authList));
+    auto error = validateImportKeyParams(key_parameters, keyFormat);
+    if (error != KM_ERROR_OK) {
+        LOG(ERROR) << "Error in importWrappedKey.";
+        return km_utils::kmError2ScopedAStatus(error);
     }
     // Finish the import
     std::tie(item, errorCode) = sendFinishImportWrappedKeyCmd(
@@ -301,7 +549,8 @@ ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector
     // Send earlyBootEnded if there is any pending earlybootEnded event.
     auto retErr = card_->sendEarlyBootEndedEvent(false);
     if (retErr != KM_ERROR_OK) {
-        return km_utils::kmError2ScopedAStatus(retErr);;
+        return km_utils::kmError2ScopedAStatus(retErr);
+        ;
     }
 
     auto [item, err] = card_->sendRequest(Instruction::INS_BEGIN_OPERATION_CMD, array);
@@ -311,10 +560,10 @@ ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector
     }
     // return the result
     auto keyParams = cbor_.getKeyParameters(item, 1);
-    auto optOpHandle = cbor_.getUint64<uint64_t>(item, 2);
-    auto optBufMode = cbor_.getUint64<uint8_t>(item, 3);
-    auto optMacLength = cbor_.getUint64<uint16_t>(item, 4);
-    
+    auto optOpHandle = cbor_.getUint64(item, 2);
+    auto optBufMode = cbor_.getUint64(item, 3);
+    auto optMacLength = cbor_.getUint64(item, 4);
+
     if (!keyParams || !optOpHandle || !optBufMode || !optMacLength) {
         LOG(ERROR) << "Error in decoding the response in begin.";
         return km_utils::kmError2ScopedAStatus(KM_ERROR_UNKNOWN_ERROR);
@@ -322,12 +571,11 @@ ScopedAStatus JavacardKeyMintDevice::begin(KeyPurpose purpose, const std::vector
     result->params = std::move(keyParams.value());
     result->challenge = optOpHandle.value();
     result->operation = ndk::SharedRefBase::make<JavacardKeyMintOperation>(
-        static_cast<keymaster_operation_handle_t>(optOpHandle.value()), static_cast<BufferingMode>(optBufMode.value()),
-        optMacLength.value(), card_);
+        static_cast<keymaster_operation_handle_t>(optOpHandle.value()),
+        static_cast<BufferingMode>(optBufMode.value()), optMacLength.value(), card_);
     return ScopedAStatus::ok();
 }
 
-// TODO
 ScopedAStatus
 JavacardKeyMintDevice::deviceLocked(bool passwordOnly,
                                     const std::optional<TimeStampToken>& timestampToken) {
@@ -415,8 +663,7 @@ ScopedAStatus JavacardKeyMintDevice::convertStorageKeyToEphemeral(
     return km_utils::kmError2ScopedAStatus(KM_ERROR_UNIMPLEMENTED);
 }
 
-ScopedAStatus JavacardKeyMintDevice::getRootOfTrustChallenge(
-    array<uint8_t, 16>* challenge) {
+ScopedAStatus JavacardKeyMintDevice::getRootOfTrustChallenge(array<uint8_t, 16>* challenge) {
     auto [item, err] = card_->sendRequest(Instruction::INS_GET_ROT_CHALLENGE_CMD);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending in getRootOfTrustChallenge.";
@@ -427,26 +674,24 @@ ScopedAStatus JavacardKeyMintDevice::getRootOfTrustChallenge(
         LOG(ERROR) << "Error in sending in upgradeKey.";
         return km_utils::kmError2ScopedAStatus(KM_ERROR_UNKNOWN_ERROR);
     }
-    LOG(ERROR) << "JavacardKeyMintDevice::getRootOfTrustChallenge success";
     std::move(optChallenge->begin(), optChallenge->begin() + 16, challenge->begin());
     return ScopedAStatus::ok();
 }
 
 ScopedAStatus JavacardKeyMintDevice::getRootOfTrust(const array<uint8_t, 16>& /*challenge*/,
-                                 vector<uint8_t>* /*rootOfTrust*/) {
+                                                    vector<uint8_t>* /*rootOfTrust*/) {
     return km_utils::kmError2ScopedAStatus(KM_ERROR_UNIMPLEMENTED);
 }
 
 ScopedAStatus JavacardKeyMintDevice::sendRootOfTrust(const vector<uint8_t>& rootOfTrust) {
     cppbor::Array request;
-    request.add(EncodedItem(rootOfTrust)); // taggedItem.
-    LOG(ERROR) << "JavacardKeyMintDevice::sendRootOfTrust";
+    request.add(EncodedItem(rootOfTrust));  // taggedItem.
     auto [item, err] = card_->sendRequest(Instruction::INS_SEND_ROT_DATA_CMD, request);
     if (err != KM_ERROR_OK) {
         LOG(ERROR) << "Error in sending in sendRootOfTrust.";
         return km_utils::kmError2ScopedAStatus(err);
     }
-    LOG(ERROR) << "JavacardKeyMintDevice::sendRootOfTrust success";
+    LOG(INFO) << "JavacardKeyMintDevice::sendRootOfTrust success";
     return ScopedAStatus::ok();
 }
 

@@ -15,9 +15,8 @@
  */
 package com.android.javacard.seprovider;
 
-import org.globalplatform.upgrade.Element;
-
 import javacard.security.AESKey;
+import org.globalplatform.upgrade.Element;
 
 public class KMAESKey implements KMMasterKey {
 
@@ -45,5 +44,4 @@ public class KMAESKey implements KMMasterKey {
   public static short getBackupObjectCount() {
     return (short) 1;
   }
-
 }

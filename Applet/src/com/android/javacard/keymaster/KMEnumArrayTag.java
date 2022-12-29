@@ -34,8 +34,7 @@ public class KMEnumArrayTag extends KMTag {
   // Tag Values.
   private static Object[] enums = null;
 
-  private KMEnumArrayTag() {
-  }
+  private KMEnumArrayTag() {}
 
   private static KMEnumArrayTag proto(short ptr) {
     if (prototype == null) {
@@ -105,36 +104,18 @@ public class KMEnumArrayTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getTagType() {
-    return KMType.ENUM_ARRAY_TAG;
-  }
-
-  public short getValues() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
-  public short length() {
-    short blobPtr = Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-    return KMByteBlob.cast(blobPtr).length();
-  }
-
   public static void create() {
     if (enums == null) {
       // allowed tag values.
       enums =
-          new Object[]{
-              new byte[]{ENCRYPT, DECRYPT, SIGN, VERIFY, WRAP_KEY, ATTEST_KEY, AGREE_KEY},
-              new byte[]{ECB, CBC, CTR, GCM},
-              new byte[]{DIGEST_NONE, MD5, SHA1, SHA2_224, SHA2_256, SHA2_384, SHA2_512},
-              new byte[]{
-                  PADDING_NONE, RSA_OAEP, RSA_PSS, RSA_PKCS1_1_5_ENCRYPT, RSA_PKCS1_1_5_SIGN, PKCS7
-              },
-              new byte[]{DIGEST_NONE, MD5, SHA1, SHA2_224, SHA2_256, SHA2_384, SHA2_512},
-
+          new Object[] {
+            new byte[] {ENCRYPT, DECRYPT, SIGN, VERIFY, WRAP_KEY, ATTEST_KEY, AGREE_KEY},
+            new byte[] {ECB, CBC, CTR, GCM},
+            new byte[] {DIGEST_NONE, MD5, SHA1, SHA2_224, SHA2_256, SHA2_384, SHA2_512},
+            new byte[] {
+              PADDING_NONE, RSA_OAEP, RSA_PSS, RSA_PKCS1_1_5_ENCRYPT, RSA_PKCS1_1_5_SIGN, PKCS7
+            },
+            new byte[] {DIGEST_NONE, MD5, SHA1, SHA2_224, SHA2_256, SHA2_384, SHA2_512},
           };
     }
   }
@@ -159,10 +140,6 @@ public class KMEnumArrayTag extends KMTag {
     return KMByteBlob.cast(tag).getValues(buf, start);
   }
 
-  public short get(short index) {
-    return KMByteBlob.cast(getValues()).get(index);
-  }
-
   public static boolean contains(short tagId, short tagValue, short params) {
     short tag = KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG, tagId, params);
     if (tag != KMType.INVALID_VALUE) {
@@ -183,6 +160,31 @@ public class KMEnumArrayTag extends KMTag {
       return KMEnumArrayTag.cast(tag).length();
     }
     return KMType.INVALID_VALUE;
+  }
+
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getTagType() {
+    return KMType.ENUM_ARRAY_TAG;
+  }
+
+  public short getValues() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+  }
+
+  public short length() {
+    short blobPtr =
+        Util.getShort(
+            heap, (short) (KMType.instanceTable[KM_ENUM_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return KMByteBlob.cast(blobPtr).length();
+  }
+
+  public short get(short index) {
+    return KMByteBlob.cast(getValues()).get(index);
   }
 
   public boolean contains(short tagValue) {

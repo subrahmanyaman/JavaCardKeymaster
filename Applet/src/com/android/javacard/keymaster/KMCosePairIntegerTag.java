@@ -21,16 +21,15 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCosePairIntegerTag represents a key-value type, where key can be KMInteger or KMNInteger and value is
- * KMInteger type. struct{byte TAG_TYPE; short length; struct{short INT_VALUE_TYPE; short key; short value}}.
+ * KMCosePairIntegerTag represents a key-value type, where key can be KMInteger or KMNInteger and
+ * value is KMInteger type. struct{byte TAG_TYPE; short length; struct{short INT_VALUE_TYPE; short
+ * key; short value}}.
  */
 public class KMCosePairIntegerTag extends KMCosePairTagType {
 
   private static KMCosePairIntegerTag prototype;
 
-
-  private KMCosePairIntegerTag() {
-  }
+  private KMCosePairIntegerTag() {}
 
   private static KMCosePairIntegerTag proto(short ptr) {
     if (prototype == null) {
@@ -51,8 +50,8 @@ public class KMCosePairIntegerTag extends KMCosePairTagType {
 
   public static short instance(short keyPtr, short valuePtr) {
     short offset = KMCosePairTagType.getKeyStartOffset(keyPtr);
-    if (!KMCosePairTagType.isKeyPairValid(heap, offset, KMCose.COSE_KEY_MAX_SIZE,
-        KMInteger.cast(valuePtr).getShort())) {
+    if (!KMCosePairTagType.isKeyPairValid(
+        heap, offset, KMCose.COSE_KEY_MAX_SIZE, KMInteger.cast(valuePtr).getShort())) {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }
     short ptr = KMType.instance(COSE_PAIR_TAG_TYPE, (short) 6);
@@ -81,13 +80,13 @@ public class KMCosePairIntegerTag extends KMCosePairTagType {
 
   @Override
   public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   @Override
   public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_KEY_INT_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
   }
-
-
 }

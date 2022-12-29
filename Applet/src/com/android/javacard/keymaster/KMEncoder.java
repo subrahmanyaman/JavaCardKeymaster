@@ -44,11 +44,11 @@ public class KMEncoder {
   private static final byte UINT64_LENGTH = (byte) 0x1B;
   private static final short TINY_PAYLOAD = 0x17;
   private static final short SHORT_PAYLOAD = 0x100;
-  private static final short STACK_SIZE = (short) 50;
-  private static final short SCRATCH_BUF_SIZE = (short) 6;
-  private static final short START_OFFSET = (short) 0;
-  private static final short LEN_OFFSET = (short) 2;
-  private static final short STACK_PTR_OFFSET = (short) 4;
+  private static final byte STACK_SIZE = 50;
+  private static final byte SCRATCH_BUF_SIZE = 6;
+  private static final byte START_OFFSET = 0;
+  private static final byte LEN_OFFSET = 2;
+  private static final byte STACK_PTR_OFFSET = 4;
 
   private Object[] bufferRef;
   private short[] scratchBuf;
@@ -79,8 +79,7 @@ public class KMEncoder {
   }
 
   /**
-   * This functions encodes the given object into the provider buffer space
-   * in cbor format.
+   * This functions encodes the given object into the provider buffer space in cbor format.
    *
    * @param object Object to be encoded into cbor data.
    * @param buffer Output where cbor data is copied.
@@ -89,8 +88,8 @@ public class KMEncoder {
    * @param encoderOutLimitLen excepted encoded output length.
    * @return length of the encoded buffer.
    */
-  public short encode(short object, byte[] buffer, short startOff, short bufLen,
-      short encoderOutLimitLen) {
+  public short encode(
+      short object, byte[] buffer, short startOff, short bufLen, short encoderOutLimitLen) {
     scratchBuf[STACK_PTR_OFFSET] = 0;
     bufferRef[0] = buffer;
     scratchBuf[START_OFFSET] = startOff;
@@ -107,7 +106,7 @@ public class KMEncoder {
     return encode(object, buffer, startOff, bufLen, (short) (bufLen - startOff));
   }
 
-  //array{KMError.OK,Array{KMByteBlobs}}
+  // array{KMError.OK,Array{KMByteBlobs}}
   public short encodeCert(byte[] certBuffer, short bufferStart, short certStart, short certLength) {
     if (bufferStart > certStart) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
@@ -117,7 +116,7 @@ public class KMEncoder {
     scratchBuf[LEN_OFFSET] = (short) (certStart + 1);
     // Byte Header + cert length
     scratchBuf[START_OFFSET] -= getEncodedBytesLength(certLength);
-    //Array header - 1 elements i.e. 1 byte
+    // Array header - 1 elements i.e. 1 byte
     scratchBuf[START_OFFSET]--;
     if (scratchBuf[START_OFFSET] < bufferStart) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -265,7 +264,7 @@ public class KMEncoder {
     switch (tagType) {
       case KMType.BIGNUM_TAG:
         encodeBignumTag(exp);
-      return;
+        return;
       case KMType.BYTES_TAG:
         encodeBytesTag(exp);
         return;
@@ -323,13 +322,14 @@ public class KMEncoder {
     short subObj;
     while (index >= 0) {
       subObj = KMArray.cast(obj).get(index);
-      if (subObj != KMType.INVALID_VALUE)
+      if (subObj != KMType.INVALID_VALUE) {
         encode(subObj);
+      }
       index--;
     }
   }
 
-public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, short length) {
+  public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, short length) {
     bufferRef[0] = buffer;
     scratchBuf[START_OFFSET] = offset;
     scratchBuf[LEN_OFFSET] = (short) (offset + length + 1);
@@ -373,7 +373,7 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     writeTag(KMIntegerTag.cast(obj).getTagType(), KMIntegerTag.cast(obj).getKey());
     encode(KMIntegerTag.cast(obj).getValue());
   }
-  
+
   private void encodeBignumTag(short obj) {
     writeTag(KMBignumTag.getTagType(obj), KMBignumTag.getKey(obj));
     encode(KMBignumTag.cast(obj).getValue());
@@ -405,7 +405,8 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     short diff = (short) (len - msbIndex);
     if (diff == 0) {
       writeByte((byte) (majorType | 0));
-    } else if ((diff == 1) && (val[(short) (startOff + msbIndex)] < UINT8_LENGTH)
+    } else if ((diff == 1)
+        && (val[(short) (startOff + msbIndex)] < UINT8_LENGTH)
         && (val[(short) (startOff + msbIndex)] >= 0)) {
       writeByte((byte) (majorType | val[(short) (startOff + msbIndex)]));
     } else if (diff == 1) {
@@ -478,7 +479,8 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     return handleNegIntegerEncodingRule(buf, offset, len);
   }
 
-  public void removeNegIntegerEncodingRule(byte[] buf, short offset, short len, short origMsbIndex) {
+  public void removeNegIntegerEncodingRule(
+      byte[] buf, short offset, short len, short origMsbIndex) {
     // Do -1-N, where N is the negative integer
     // The value of -1-N is equal to the 1s compliment of N.
     computeOnesCompliment(origMsbIndex, buf, offset, len);
@@ -496,7 +498,8 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
   private void encodeSemanticTag(short obj) {
     short tag = KMSemanticTag.cast(obj).getKeyPtr();
     encode(KMSemanticTag.cast(obj).getValuePtr());
-    encodeInteger(KMInteger.cast(tag).getBuffer(),
+    encodeInteger(
+        KMInteger.cast(tag).getBuffer(),
         KMInteger.cast(tag).length(),
         KMInteger.cast(tag).getStartOff(),
         SEMANTIC_TAG_TYPE);
@@ -516,7 +519,9 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
 
   private void encodeTextString(short obj) {
     writeMajorTypeWithLength(TSTR_TYPE, KMTextString.cast(obj).length());
-    writeBytes(KMTextString.cast(obj).getBuffer(), KMTextString.cast(obj).getStartOff(),
+    writeBytes(
+        KMTextString.cast(obj).getBuffer(),
+        KMTextString.cast(obj).getStartOff(),
         KMTextString.cast(obj).length());
   }
 
@@ -530,7 +535,9 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
 
   private void encodeByteBlob(short obj) {
     writeMajorTypeWithLength(BYTES_TYPE, KMByteBlob.cast(obj).length());
-    writeBytes(KMByteBlob.cast(obj).getBuffer(), KMByteBlob.cast(obj).getStartOff(),
+    writeBytes(
+        KMByteBlob.cast(obj).getBuffer(),
+        KMByteBlob.cast(obj).getStartOff(),
         KMByteBlob.cast(obj).length());
   }
 
@@ -629,8 +636,9 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     short subObj;
     while (index < arrLen) {
       subObj = KMArray.cast(obj).get(index);
-      if (subObj != KMType.INVALID_VALUE)
+      if (subObj != KMType.INVALID_VALUE) {
         len += getEncodedLength(subObj);
+      }
       index++;
     }
     return len;
@@ -677,18 +685,23 @@ public void encodeArrayOnlyLength(short arrLength, byte[] buffer, short offset, 
     // find the difference between most significant byte and len
     short diff = (short) (len - msbIndex);
     switch (diff) {
-      case 0: case 1: //Byte
-        if ((val[(short) (startOff + msbIndex)] < KMEncoder.UINT8_LENGTH) &&
-            (val[(short) (startOff + msbIndex)] >= 0)) {
+      case 0:
+      case 1: // Byte
+        if ((val[(short) (startOff + msbIndex)] < KMEncoder.UINT8_LENGTH)
+            && (val[(short) (startOff + msbIndex)] >= 0)) {
           return (short) 1;
         } else {
           return (short) 2;
         }
-      case 2: //Short
+      case 2: // Short
         return (short) 3;
-      case 3: case 4: //UInt32
+      case 3:
+      case 4: // UInt32
         return (short) 5;
-      case 5: case 6: case 7: case 8: //UInt64
+      case 5:
+      case 6:
+      case 7:
+      case 8: // UInt64
         return (short) 9;
       default:
         ISOException.throwIt(ISO7816.SW_DATA_INVALID);

@@ -21,17 +21,16 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCoseCertPayload represents the COSE_Sign1 payload for each certificate in BCC. The supported key types are
- * KMInteger, KMNInteger and the supported value types are KMByteBlob and KMTextString.
- * It corresponds to a CBOR Map type. struct{byte TAG_TYPE; short length; short arrayPtr }  where
- * arrayPtr is a pointer to array with any KMCosePairTagType subtype instances.
+ * KMCoseCertPayload represents the COSE_Sign1 payload for each certificate in BCC. The supported
+ * key types are KMInteger, KMNInteger and the supported value types are KMByteBlob and
+ * KMTextString. It corresponds to a CBOR Map type. struct{byte TAG_TYPE; short length; short
+ * arrayPtr } where arrayPtr is a pointer to array with any KMCosePairTagType subtype instances.
  */
 public class KMCoseCertPayload extends KMCoseMap {
 
   private static KMCoseCertPayload prototype;
 
-  private KMCoseCertPayload() {
-  }
+  private KMCoseCertPayload() {}
 
   private static KMCoseCertPayload proto(short ptr) {
     if (prototype == null) {
@@ -68,7 +67,8 @@ public class KMCoseCertPayload extends KMCoseMap {
 
   @Override
   public short getVals() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_CERT_PAYLOAD_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_CERT_PAYLOAD_OFFSET] + TLV_HEADER_SIZE));
   }
 
   @Override
@@ -95,8 +95,8 @@ public class KMCoseCertPayload extends KMCoseMap {
       switch (tagType) {
         case KMType.COSE_PAIR_BYTE_BLOB_TAG_TYPE:
           keyPtr = KMCosePairByteBlobTag.cast(KMArray.cast(arr).get(index)).getKeyPtr();
-          if (key == KMCosePairTagType.getKeyValueShort(keyPtr) &&
-            significantKey == KMCosePairTagType.getKeyValueSignificantShort(keyPtr)) {
+          if (key == KMCosePairTagType.getKeyValueShort(keyPtr)
+              && significantKey == KMCosePairTagType.getKeyValueSignificantShort(keyPtr)) {
             valPtr = KMCosePairByteBlobTag.cast(KMArray.cast(arr).get(index)).getValuePtr();
             found = true;
           }
@@ -110,19 +110,20 @@ public class KMCoseCertPayload extends KMCoseMap {
           break;
         default:
           break;
-
       }
-      if (found)
+      if (found) {
         break;
+      }
       index++;
     }
     return valPtr;
   }
 
   public short getSubjectPublicKey() {
-    return getValueType(Util.getShort(KMCose.SUBJECT_PUBLIC_KEY, (short) 2), // LSB
-      Util.getShort(KMCose.SUBJECT_PUBLIC_KEY, (short) 0) // MSB (Significant)
-    );
+    return getValueType(
+        Util.getShort(KMCose.SUBJECT_PUBLIC_KEY, (short) 2), // LSB
+        Util.getShort(KMCose.SUBJECT_PUBLIC_KEY, (short) 0) // MSB (Significant)
+        );
   }
 
   public short getSubject() {
@@ -132,5 +133,4 @@ public class KMCoseCertPayload extends KMCoseMap {
   public short getIssuer() {
     return getValueType(KMCose.ISSUER, KMType.INVALID_VALUE);
   }
-
 }

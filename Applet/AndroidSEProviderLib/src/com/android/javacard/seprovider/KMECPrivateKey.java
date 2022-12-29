@@ -15,11 +15,8 @@
  */
 package com.android.javacard.seprovider;
 
-import org.globalplatform.upgrade.Element;
-
-import javacard.security.AESKey;
-import javacard.security.ECPrivateKey;
 import javacard.security.KeyPair;
+import org.globalplatform.upgrade.Element;
 
 public class KMECPrivateKey implements KMAttestationKey {
 
@@ -47,5 +44,4 @@ public class KMECPrivateKey implements KMAttestationKey {
   public static short getBackupObjectCount() {
     return (short) 1;
   }
-
 }

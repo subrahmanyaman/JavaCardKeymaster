@@ -27,12 +27,11 @@ import javacard.framework.Util;
  */
 public class KMInteger extends KMType {
 
-  public static final short UINT_32 = 4;
-  public static final short UINT_64 = 8;
+  public static final byte UINT_32 = 4;
+  public static final byte UINT_64 = 8;
   private static KMInteger prototype;
 
-  protected KMInteger() {
-  }
+  protected KMInteger() {}
 
   private static KMInteger proto(short ptr) {
     if (prototype == null) {
@@ -41,7 +40,8 @@ public class KMInteger extends KMType {
     KMType.instanceTable[KM_INTEGER_OFFSET] = ptr;
     return prototype;
   }
-   //| TYPE(1) | LEN(2) | DATA(4 / 8) |
+
+  // | TYPE(1) | LEN(2) | DATA(4 / 8) |
   public static short exp() {
     return KMType.exp(INTEGER_TYPE);
   }
@@ -113,6 +113,39 @@ public class KMInteger extends KMType {
     return ptr;
   }
 
+  public static short compare(short num1, short num2) {
+    short num1Buf = repository.alloc((short) 8);
+    short num2Buf = repository.alloc((short) 8);
+    Util.arrayFillNonAtomic(repository.getHeap(), num1Buf, (short) 8, (byte) 0);
+    Util.arrayFillNonAtomic(repository.getHeap(), num2Buf, (short) 8, (byte) 0);
+    short len = KMInteger.cast(num1).length();
+    KMInteger.cast(num1).getValue(repository.getHeap(), (short) (num1Buf + (short) (8 - len)), len);
+    len = KMInteger.cast(num2).length();
+    KMInteger.cast(num2).getValue(repository.getHeap(), (short) (num2Buf + (short) (8 - len)), len);
+    return KMInteger.unsignedByteArrayCompare(
+        repository.getHeap(), num1Buf, repository.getHeap(), num2Buf, (short) 8);
+  }
+
+  public static byte unsignedByteArrayCompare(
+      byte[] a1, short offset1, byte[] a2, short offset2, short length) {
+    byte count = (byte) 0;
+    short val1 = (short) 0;
+    short val2 = (short) 0;
+
+    for (; count < length; count++) {
+      val1 = (short) (a1[(short) (count + offset1)] & 0x00FF);
+      val2 = (short) (a2[(short) (count + offset2)] & 0x00FF);
+
+      if (val1 < val2) {
+        return -1;
+      }
+      if (val1 > val2) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+
   // Get the length of the integer
   public short length() {
     return Util.getShort(heap, (short) (getBaseOffset() + 1));
@@ -174,41 +207,6 @@ public class KMInteger extends KMType {
       return true;
     }
     return false;
-  }
-
-  public static short compare(short num1, short num2) {
-    short num1Buf = repository.alloc((short) 8);
-    short num2Buf = repository.alloc((short) 8);
-    Util.arrayFillNonAtomic(repository.getHeap(), num1Buf, (short) 8, (byte) 0);
-    Util.arrayFillNonAtomic(repository.getHeap(), num2Buf, (short) 8, (byte) 0);
-    short len = KMInteger.cast(num1).length();
-    KMInteger.cast(num1).getValue(repository.getHeap(), (short) (num1Buf + (short) (8 - len)), len);
-    len = KMInteger.cast(num2).length();
-    KMInteger.cast(num2).getValue(repository.getHeap(), (short) (num2Buf + (short) (8 - len)), len);
-    return KMInteger.unsignedByteArrayCompare(
-        repository.getHeap(), num1Buf,
-        repository.getHeap(), num2Buf,
-        (short) 8);
-  }
-
-  public static byte unsignedByteArrayCompare(byte[] a1, short offset1, byte[] a2, short offset2,
-      short length) {
-    byte count = (byte) 0;
-    short val1 = (short) 0;
-    short val2 = (short) 0;
-
-    for (; count < length; count++) {
-      val1 = (short) (a1[(short) (count + offset1)] & 0x00FF);
-      val2 = (short) (a2[(short) (count + offset2)] & 0x00FF);
-
-      if (val1 < val2) {
-        return -1;
-      }
-      if (val1 > val2) {
-        return 1;
-      }
-    }
-    return 0;
   }
 
   protected short getBaseOffset() {

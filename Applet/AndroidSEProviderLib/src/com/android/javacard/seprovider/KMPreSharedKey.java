@@ -20,6 +20,4 @@ package com.android.javacard.seprovider;
  * Internally Preshared key is stored as a Javacard HMac key object, which will provide additional
  * security. The pre-shared key is maintained by the SEProvider.
  */
-public interface KMPreSharedKey {
-
-}
+public interface KMPreSharedKey {}

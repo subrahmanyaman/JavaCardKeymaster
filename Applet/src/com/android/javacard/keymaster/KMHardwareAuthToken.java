@@ -38,8 +38,7 @@ public class KMHardwareAuthToken extends KMType {
 
   private static KMHardwareAuthToken prototype;
 
-  private KMHardwareAuthToken() {
-  }
+  private KMHardwareAuthToken() {}
 
   public static short exp() {
     short arrPtr = KMArray.instance((short) 6);
@@ -95,7 +94,8 @@ public class KMHardwareAuthToken extends KMType {
   }
 
   public short getVals() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_HARDWARE_AUTH_TOKEN_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_HARDWARE_AUTH_TOKEN_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short length() {

@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 package com.android.javacard.seprovider;
-import org.globalplatform.upgrade.Element;
 
-import javacard.security.ECPrivateKey;
 import javacard.security.ECPublicKey;
 import javacard.security.KeyPair;
+import org.globalplatform.upgrade.Element;
 
 public class KMECDeviceUniqueKey implements KMDeviceUniqueKeyPair {
 

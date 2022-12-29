@@ -25,13 +25,11 @@ import javacard.framework.Util;
  * this tag is the KMByteBlob pointer i.e. offset of KMByteBlob in memory heap. struct{byte
  * TAG_TYPE; short length; struct{short BYTES_TAG; short tagKey; short blobPtr}}
  */
-
 public class KMByteTag extends KMTag {
 
   private static KMByteTag prototype;
 
-  private KMByteTag() {
-  }
+  private KMByteTag() {}
 
   private static KMByteTag proto(short ptr) {
     if (prototype == null) {
@@ -75,26 +73,6 @@ public class KMByteTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getKey() {
-    return Util.getShort(heap,
-        (short) (KMType.instanceTable[KM_BYTE_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getTagType() {
-    return KMType.BYTES_TAG;
-  }
-
-  public short getValue() {
-    return Util.getShort(heap,
-        (short) (KMType.instanceTable[KM_BYTE_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
-  public short length() {
-    short blobPtr = Util.getShort(heap,
-        (short) (KMType.instanceTable[KM_BYTE_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-    return KMByteBlob.cast(blobPtr).length();
-  }
-
   private static boolean validateKey(short key, short byteBlob) {
     short valueLen = KMByteBlob.cast(byteBlob).length();
     switch (key) {
@@ -104,13 +82,13 @@ public class KMByteTag extends KMTag {
         }
         break;
       case CERTIFICATE_SUBJECT_NAME:
-      {
-        if (valueLen > KMConfigurations.MAX_SUBJECT_DER_LEN) {
-          return false;
+        {
+          if (valueLen > KMConfigurations.MAX_SUBJECT_DER_LEN) {
+            return false;
+          }
+          KMAsn1Parser asn1Decoder = KMAsn1Parser.instance();
+          asn1Decoder.validateDerSubject(byteBlob);
         }
-        KMAsn1Parser asn1Decoder = KMAsn1Parser.instance();
-        asn1Decoder.validateDerSubject(byteBlob);
-      }
         break;
       case APPLICATION_ID:
       case APPLICATION_DATA:
@@ -142,5 +120,26 @@ public class KMByteTag extends KMTag {
         return false;
     }
     return true;
+  }
+
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_BYTE_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getTagType() {
+    return KMType.BYTES_TAG;
+  }
+
+  public short getValue() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_BYTE_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+  }
+
+  public short length() {
+    short blobPtr =
+        Util.getShort(
+            heap, (short) (KMType.instanceTable[KM_BYTE_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return KMByteBlob.cast(blobPtr).length();
   }
 }

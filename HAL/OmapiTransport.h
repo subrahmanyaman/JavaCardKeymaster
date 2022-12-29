@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 
-
 #include <aidl/android/se/omapi/BnSecureElementListener.h>
 #include <aidl/android/se/omapi/ISecureElementChannel.h>
 #include <aidl/android/se/omapi/ISecureElementListener.h>
@@ -27,9 +26,9 @@ using std::vector;
 class OmapiTransport : public ITransport {
 
   public:
-    OmapiTransport() : omapiSeService(nullptr), eSEReader(nullptr), session(nullptr),
-        channel(nullptr), mVSReaders({}) {
-    }
+    OmapiTransport()
+        : omapiSeService(nullptr), eSEReader(nullptr), session(nullptr), channel(nullptr),
+          mVSReaders({}) {}
     /**
      * Gets the binder instance of ISEService, gets te reader corresponding to secure element,
      * establishes a session and opens a basic channel.
@@ -63,4 +62,4 @@ class OmapiTransport : public ITransport {
                          std::vector<uint8_t> apdu, std::vector<uint8_t>& transmitResponse);
 };
 
-}
+}  // namespace keymint::javacard
