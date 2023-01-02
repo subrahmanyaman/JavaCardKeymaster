@@ -15,7 +15,6 @@
  */
 package com.android.javacard.keymaster;
 
-import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import javacard.framework.APDU;
@@ -27,8 +26,6 @@ import javacard.security.CryptoException;
 
 public class KMJCardSimApplet extends KMKeymasterApplet {
 
-  private static final byte KM_BEGIN_STATE = 0x00;
-  private static final byte ILLEGAL_STATE = KM_BEGIN_STATE + 1;
   private static final short POWER_RESET_MASK_FLAG = (short) 0x4000;
 
   // Provider specific Commands
@@ -51,10 +48,9 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
   private static final byte INS_OEM_LOCK_PROVISIONING_CMD = INS_KEYMINT_PROVIDER_APDU_START + 17;
   private static final byte INS_PROVISION_SECURE_BOOT_MODE_CMD = INS_KEYMINT_PROVIDER_APDU_START + 18;
 
-  private static final byte INS_KEYMINT_PROVIDER_APDU_END = 0x1F;
   public static final byte BOOT_KEY_MAX_SIZE = 32;
   public static final byte BOOT_HASH_MAX_SIZE = 32;
-  public static final short SHARED_SECRET_KEY_SIZE = 32;
+  public static final byte SHARED_SECRET_KEY_SIZE = 32;
 
   // Package version.
   protected short packageVersion;
@@ -86,6 +82,7 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
   @Override
   public void process(APDU apdu) {
     try {
+      apduDataRecLen[0] = apdu.setIncomingAndReceive();
       handleDeviceBooted();
       // If this is select applet apdu which is selecting this applet then return
       if (apdu.isISOInterindustryCLA()) {
@@ -171,6 +168,7 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
       sendResponse(apdu, KMError.GENERIC_UNKNOWN_ERROR);
     } finally {
       repository.clean();
+      apduDataRecLen[0] = 0;
     }
   }
 
@@ -294,8 +292,6 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
   }
 
   private void processProvisionOEMRootPublicKeyCmd(APDU apdu) {  
-    // Re-purpose the apdu buffer as scratch pad.
-    byte[] scratchPad = apdu.getBuffer();
     // Arguments
     short keyparams = KMKeyParameters.exp();
     short keyFormatPtr = KMEnum.instance(KMType.KEY_FORMAT);
@@ -402,16 +398,15 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
     // Store the cbor encoded UdsCerts as it is in the persistent memory so cbor decoding is
     // required here.
     byte[] srcBuffer = apdu.getBuffer();
-    short recvLen = apdu.setIncomingAndReceive();
     short srcOffset = apdu.getOffsetCdata();
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);
     short index = bufferStartOffset;
     byte[] buffer = repository.getHeap();
-    while (recvLen > 0 && ((short) (index - bufferStartOffset) < bufferLength)) {
-      Util.arrayCopyNonAtomic(srcBuffer, srcOffset, buffer, index, recvLen);
-      index += recvLen;
-      recvLen = apdu.receiveBytes(srcOffset);
+    while (apduDataRecLen[0] > 0 && ((short) (index - bufferStartOffset) < bufferLength)) {
+      Util.arrayCopyNonAtomic(srcBuffer, srcOffset, buffer, index, apduDataRecLen[0]);
+      index += apduDataRecLen[0];
+      apduDataRecLen[0] = apdu.receiveBytes(srcOffset);
     }
     short byteHeaderLen = decoder.readCertificateChainHeaderLen(buffer, bufferStartOffset,
         bufferLength);

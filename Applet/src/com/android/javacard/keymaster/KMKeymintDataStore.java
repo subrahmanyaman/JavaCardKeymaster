@@ -9,14 +9,12 @@ import com.android.javacard.seprovider.KMDataStoreConstants;
 import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMECDeviceUniqueKey;
 import com.android.javacard.seprovider.KMECPrivateKey;
-import com.android.javacard.seprovider.KMError;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMHmacKey;
 import com.android.javacard.seprovider.KMMasterKey;
 import com.android.javacard.seprovider.KMPreSharedKey;
 import com.android.javacard.seprovider.KMRkpMacKey;
 import com.android.javacard.seprovider.KMSEProvider;
-import com.android.javacard.seprovider.KMType;
 import com.android.javacard.seprovider.KMUpgradable;
 
 import javacard.framework.ISO7816;
@@ -35,11 +33,11 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final short KM_APPLET_PACKAGE_VERSION_1 = 0x0100;
   public static final short KM_APPLET_PACKAGE_VERSION_2 = 0x0200;
   public static final short KM_APPLET_PACKAGE_VERSION_3 = 0x0300;
-  public static final short OLD_DATA_INDEX_SIZE = 19;
-  public static final short DATA_INDEX_SIZE = 17;
-  public static final short DATA_INDEX_ENTRY_SIZE = 4;
-  public static final short DATA_INDEX_ENTRY_LENGTH = 0;
-  public static final short DATA_INDEX_ENTRY_OFFSET = 2;
+  public static final byte OLD_DATA_INDEX_SIZE = 19;
+  public static final byte DATA_INDEX_SIZE = 17;
+  public static final byte DATA_INDEX_ENTRY_SIZE = 4;
+  public static final byte DATA_INDEX_ENTRY_LENGTH = 0;
+  public static final byte DATA_INDEX_ENTRY_OFFSET = 2;
   public static final short DATA_MEM_SIZE = 300;
 
   // Old Data table offsets
@@ -60,18 +58,18 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final byte EARLY_BOOT_ENDED_FLAG = 16;  
   
   // Data Item sizes
-  public static final short HMAC_SEED_NONCE_SIZE = 32;
-  public static final short COMPUTED_HMAC_KEY_SIZE = 32;
-  public static final short OS_VERSION_SIZE = 4;
-  public static final short OS_PATCH_SIZE = 4;
-  public static final short VENDOR_PATCH_SIZE = 4;
-  public static final short DEVICE_LOCK_TS_SIZE = 8;
-  public static final short MAX_BLOB_STORAGE = 8;
-  public static final short AUTH_TAG_LENGTH = 16;
-  public static final short AUTH_TAG_COUNTER_SIZE = 4;
-  public static final short AUTH_TAG_ENTRY_SIZE = (AUTH_TAG_LENGTH + AUTH_TAG_COUNTER_SIZE + 1);
-  private static final short MASTER_KEY_SIZE = 16;
-  private static final short SHARED_SECRET_KEY_SIZE = 32;
+  public static final byte HMAC_SEED_NONCE_SIZE = 32;
+  public static final byte COMPUTED_HMAC_KEY_SIZE = 32;
+  public static final byte OS_VERSION_SIZE = 4;
+  public static final byte OS_PATCH_SIZE = 4;
+  public static final byte VENDOR_PATCH_SIZE = 4;
+  public static final byte DEVICE_LOCK_TS_SIZE = 8;
+  public static final byte MAX_BLOB_STORAGE = 8;
+  public static final byte AUTH_TAG_LENGTH = 16;
+  public static final byte AUTH_TAG_COUNTER_SIZE = 4;
+  public static final byte AUTH_TAG_ENTRY_SIZE = (AUTH_TAG_LENGTH + AUTH_TAG_COUNTER_SIZE + 1);
+  private static final byte MASTER_KEY_SIZE = 16;
+  private static final byte SHARED_SECRET_KEY_SIZE = 32;
   private static final byte DEVICE_STATUS_FLAG_SIZE = 1;
   
   private static final short UDS_CERT_CHAIN_MAX_SIZE = 2500;//First 2 bytes for length.
@@ -95,6 +93,7 @@ public class KMKeymintDataStore implements KMUpgradable {
   private byte[] attIdProduct;
   private byte[] attIdSerial;
   private byte[] attIdImei;
+  private byte[] attIdSecondImei;
   private byte[] attIdMeId;
   private byte[] attIdManufacturer;
   private byte[] attIdModel;
@@ -651,6 +650,10 @@ public class KMKeymintDataStore implements KMUpgradable {
       case KMType.ATTESTATION_ID_IMEI:
     	attestId = attIdImei;
     	break;
+      // Attestation Id SECOND IMEI
+      case KMType.ATTESTATION_ID_SECOND_IMEI:
+        attestId = attIdSecondImei;
+        break;
       // Attestation Id MEID
       case KMType.ATTESTATION_ID_MEID:
     	attestId = attIdMeId;
@@ -708,6 +711,13 @@ public class KMKeymintDataStore implements KMUpgradable {
     	Util.arrayCopyNonAtomic(buffer, (short) start, attIdImei, (short) 0, length);
     	JCSystem.commitTransaction();        
         break;
+      // Attestation Id SECOND IMEI
+      case KMType.ATTESTATION_ID_SECOND_IMEI:
+        JCSystem.beginTransaction();
+        attIdSecondImei = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdSecondImei, (short) 0, length);
+        JCSystem.commitTransaction();
+        break;
       // Attestation Id MEID
       case KMType.ATTESTATION_ID_MEID:
     	JCSystem.beginTransaction();
@@ -738,6 +748,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     attIdProduct = null;
     attIdSerial = null;
     attIdImei = null;
+    attIdSecondImei = null;
     attIdMeId = null;
     attIdManufacturer = null;
     attIdModel = null;
@@ -884,6 +895,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     element.write(attIdProduct);
     element.write(attIdSerial);
     element.write(attIdImei);
+    element.write(attIdSecondImei);
     element.write(attIdMeId);
     element.write(attIdManufacturer);
     element.write(attIdModel);
@@ -963,6 +975,9 @@ public class KMKeymintDataStore implements KMUpgradable {
     attIdProduct = (byte[]) element.readObject();
     attIdSerial = (byte[]) element.readObject();
     attIdImei = (byte[]) element.readObject();
+    if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
+        attIdSecondImei = (byte[]) element.readObject();
+    }
     attIdMeId = (byte[]) element.readObject();
     attIdManufacturer = (byte[]) element.readObject();
     attIdModel = (byte[]) element.readObject();
@@ -1013,11 +1028,11 @@ public class KMKeymintDataStore implements KMUpgradable {
 
   @Override
   public short getBackupObjectCount() {
-    // AttestationIds - 8 
+    // AttestationIds - 9 
     // UdsCertificateChain - 1
     // diceCertificateChain - 1
     // oemRootPublicKey - 1
-    return (short) (11 +
+    return (short) (12 +
         seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY) +
         seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
         seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR) +

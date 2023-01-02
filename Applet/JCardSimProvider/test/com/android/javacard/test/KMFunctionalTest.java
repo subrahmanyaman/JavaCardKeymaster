@@ -22,8 +22,6 @@ import com.android.javacard.keymaster.KMBoolTag;
 import com.android.javacard.keymaster.KMByteBlob;
 import com.android.javacard.keymaster.KMByteTag;
 import com.android.javacard.keymaster.KMConfigurations;
-import com.android.javacard.keymaster.KMCose;
-import com.android.javacard.keymaster.KMCoseHeaders;
 import com.android.javacard.keymaster.KMDecoder;
 import com.android.javacard.keymaster.KMEncoder;
 import com.android.javacard.keymaster.KMEnum;
@@ -39,18 +37,13 @@ import com.android.javacard.keymaster.KMKeyCharacteristics;
 import com.android.javacard.keymaster.KMKeyParameters;
 import com.android.javacard.keymaster.KMKeymasterApplet;
 import com.android.javacard.keymaster.KMKeymintDataStore;
-import com.android.javacard.keymaster.KMNInteger;
 import com.android.javacard.keymaster.KMOperationState;
 import com.android.javacard.keymaster.KMRepository;
-import com.android.javacard.keymaster.KMSimpleValue;
 import com.android.javacard.keymaster.KMType;
 import com.android.javacard.keymaster.KMVerificationToken;
-import com.android.javacard.seprovider.KMHmacKey;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import com.android.javacard.seprovider.KMSEProvider;
-import com.licel.jcardsim.bouncycastle.util.encoders.Hex;
 import com.licel.jcardsim.smartcardio.CardSimulator;
-import com.licel.jcardsim.smartcardio.JCardSimProvider;
 import com.licel.jcardsim.utils.AIDUtil;
 import java.math.BigInteger;
 import java.security.AlgorithmParameters;
@@ -338,7 +331,6 @@ public class KMFunctionalTest {
   private KMEncoder encoder;
   private KMDecoder decoder;
   private KMSEProvider cryptoProvider;
-  private KMAsn1Parser asn1Parser;
 
   public KMFunctionalTest() {
     cryptoProvider = new KMJCardSimulator();
@@ -1022,7 +1014,7 @@ public class KMFunctionalTest {
     keyBlobPtr = KMArray.cast(ret2).get((short) 1);
     byte[] keyBlob2 = new byte[KMByteBlob.cast(keyBlobPtr).length()];
     len = KMByteBlob.cast(keyBlobPtr).getValues(keyBlob2, (short) 0);
-    CommandAPDU apdu = new CommandAPDU(0x80, INS_DELETE_ALL_KEYS_CMD, 0x50, 0x00);
+    CommandAPDU apdu = new CommandAPDU(0x80, INS_DELETE_ALL_KEYS_CMD, KMTestUtils.APDU_P1, KMTestUtils.APDU_P2);
     // print(commandAPDU.getBytes());
     ResponseAPDU response = simulator.transmitCommand(apdu);
     Assert.assertEquals(KMError.OK, KMTestUtils.decodeError(decoder, response));
@@ -1085,7 +1077,7 @@ public class KMFunctionalTest {
   @Test
   public void testGetHmacSharingParams() {
     init();
-    CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_GET_HMAC_SHARING_PARAM_CMD, 0x50, 0x00);
+    CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_GET_HMAC_SHARING_PARAM_CMD, KMTestUtils.APDU_P1, KMTestUtils.APDU_P2);
     //print(commandAPDU.getBytes());
     ResponseAPDU response = simulator.transmitCommand(commandAPDU);
     Assert.assertEquals(0x9000, response.getSW());

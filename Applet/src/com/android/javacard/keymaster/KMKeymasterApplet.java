@@ -30,7 +30,6 @@ import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.CryptoException;
-import javacard.security.Signature;
 import javacardx.apdu.ExtendedLength;
 
 /**
@@ -45,15 +44,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   public static final byte AES_BLOCK_SIZE = 16;
   public static final byte DES_BLOCK_SIZE = 8;
   public static final short MASTER_KEY_SIZE = 128;
-  public static final short WRAPPING_KEY_SIZE = 32;
-  public static final short MAX_OPERATIONS_COUNT = 4;
-  public static final short VERIFIED_BOOT_KEY_SIZE = 32;
-  public static final short VERIFIED_BOOT_HASH_SIZE = 32;
-  public static final short BOOT_PATCH_LVL_SIZE = 4;
+  public static final byte WRAPPING_KEY_SIZE = 32;
+  public static final byte MAX_OPERATIONS_COUNT = 4;
+  public static final byte VERIFIED_BOOT_KEY_SIZE = 32;
+  public static final byte VERIFIED_BOOT_HASH_SIZE = 32;
+  public static final byte BOOT_PATCH_LVL_SIZE = 4;
 
-  protected static final short KM_HAL_VERSION = (short) 0x5000;
+  protected static final short KM_HAL_VERSION = (short) 0x6000;
   private static final short MAX_AUTH_DATA_SIZE = (short) 512;
-  private static final short DERIVE_KEY_INPUT_SIZE = (short) 256;
   public static final byte TRUSTED_ENVIRONMENT = 1;
 
   // Subject is a fixed field with only CN= Android Keystore Key - same for all the keys
@@ -127,6 +125,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 	            KMType.ATTESTATION_ID_BRAND,
 	            KMType.ATTESTATION_ID_DEVICE,
 	            KMType.ATTESTATION_ID_IMEI,
+	            KMType.ATTESTATION_ID_SECOND_IMEI,
 	            KMType.ATTESTATION_ID_MANUFACTURER,
 	            KMType.ATTESTATION_ID_MEID,
 	            KMType.ATTESTATION_ID_MODEL,
@@ -253,7 +252,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   public static final byte AES_GCM_AUTH_TAG_LENGTH = 16;
   public static final byte AES_GCM_NONCE_LENGTH = 12;
   // ComputeHMAC constants
-  private static final short HMAC_SHARED_PARAM_MAX_SIZE = 64;
+  private static final byte HMAC_SHARED_PARAM_MAX_SIZE = 64;
   protected static final short MAX_CERT_SIZE = 3000;
   protected static final short MAX_KEY_CHARS_SIZE = 512;
   protected static final short MAX_KEYBLOB_SIZE = 1024;
@@ -261,9 +260,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // the KeyBlobs if it is changed. please increment this
   // version number whenever you change anything related to
   // KeyBlob (structure, encryption algorithm etc).
-  public static final short KEYBLOB_CURRENT_VERSION = 3;
+  public static final byte KEYBLOB_CURRENT_VERSION = 3;
   // KeyBlob Verion 1 constant.
-  public static final short KEYBLOB_VERSION_1 = 1;
+  public static final byte KEYBLOB_VERSION_1 = 1;
   // KeyBlob array size constants.
   public static final byte SYM_KEY_BLOB_SIZE_V2_V3 = 6;
   public static final byte ASYM_KEY_BLOB_SIZE_V2_V3 = 7;
@@ -277,7 +276,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // SHA-256 Digest length in bits
   public static final short SHA256_DIGEST_LEN_BITS = 256;
   // Minimum HMAC length in bits
-  public static final short MIN_HMAC_LENGTH_BITS = 64;
+  public static final byte MIN_HMAC_LENGTH_BITS = 64;
 
   // Provision reporting status
   public  static final short NOT_PROVISIONED = 0x0000;
@@ -293,7 +292,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   public static final short PROVISION_STATUS_OEM_PUBLIC_KEY = 0x0200;
   public static final short PROVISION_STATUS_SECURE_BOOT_MODE = 0x0400;
 
-  protected static RemotelyProvisionedComponentDevice rkp;
+  protected static KMRemotelyProvisionedComponentDevice rkp;
   protected static KMEncoder encoder;
   protected static KMDecoder decoder;
   protected static KMRepository repository;
@@ -304,6 +303,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   protected static short[] tmpVariables;
   protected static short[] data;
   protected static byte[] wrappingKey;
+  protected static short[] apduDataRecLen;
 
   /**
    * Registers this applet.
@@ -320,6 +320,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         JCSystem.makeTransientShortArray(TMP_VARIABLE_ARRAY_SIZE, JCSystem.CLEAR_ON_DESELECT);
     wrappingKey = JCSystem.makeTransientByteArray((short)(WRAPPING_KEY_SIZE+1), JCSystem.CLEAR_ON_RESET);
     resetWrappingKey();
+    apduDataRecLen = JCSystem.makeTransientShortArray((short)1, JCSystem.CLEAR_ON_RESET);
     opTable = new KMOperationState[MAX_OPERATIONS_COUNT];
     short index = 0;
     while(index < MAX_OPERATIONS_COUNT){
@@ -332,7 +333,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
    }
    // initialize default values
    initHmacNonceAndSeed();
-   rkp = new RemotelyProvisionedComponentDevice(encoder, decoder, repository, seProvider, kmDataStore);
+   rkp = new KMRemotelyProvisionedComponentDevice(encoder, decoder, repository, seProvider, kmDataStore);
   }
 
   protected void initHmacNonceAndSeed(){
@@ -910,7 +911,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
    */
   public static short receiveIncoming(APDU apdu, short reqExp) {
     byte[] srcBuffer = apdu.getBuffer();
-    short recvLen = apdu.setIncomingAndReceive();
     short srcOffset = apdu.getOffsetCdata();
     // TODO add logic to handle the extended length buffer. In this case the memory can be reused
     //  from extended buffer.
@@ -918,10 +918,10 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);
     short index = bufferStartOffset;
     byte[] buffer = repository.getHeap();
-    while (recvLen > 0 && ((short) (index - bufferStartOffset) < bufferLength)) {
-      Util.arrayCopyNonAtomic(srcBuffer, srcOffset, buffer, index, recvLen);
-      index += recvLen;
-      recvLen = apdu.receiveBytes(srcOffset);
+    while (apduDataRecLen[0] > 0 && ((short) (index - bufferStartOffset) < bufferLength)) {
+      Util.arrayCopyNonAtomic(srcBuffer, srcOffset, buffer, index, apduDataRecLen[0]);
+      index += apduDataRecLen[0];
+      apduDataRecLen[0] = apdu.receiveBytes(srcOffset);
     }
     short req = decoder.decode(reqExp, buffer, bufferStartOffset, bufferLength);
     repository.reclaimMemory(bufferLength);
@@ -1619,7 +1619,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       KMException.throwIt(KMError.INCOMPATIBLE_PURPOSE);
     }
     KMAsn1Parser asn1Decoder = KMAsn1Parser.instance();
-    short length = 0;
     try {
       asn1Decoder.validateDerSubject(issuer);
     } catch (KMException e) {
@@ -2517,14 +2516,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     sendOutgoing(apdu, resp);
   }
 
-  private void authorizeAlgorithm(KMOperationState op) {
-    short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]);
-    if (alg == KMType.INVALID_VALUE) {
-      KMException.throwIt(KMError.UNSUPPORTED_ALGORITHM);
-    }
-    op.setAlgorithm((byte) alg);
-  }
-
   private void authorizePurpose(KMOperationState op) {
     switch (op.getAlgorithm()) {
       case KMType.AES:
@@ -3257,6 +3248,12 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
     data[CERTIFICATE] = KMArray.instance((short)0); //by default the cert is empty.
     data[ORIGIN] = KMType.IMPORTED;
+    //ID_IMEI should be present if ID_SECOND_IMEI is present
+    short attIdTag = KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ATTESTATION_ID_SECOND_IMEI, data[KEY_PARAMETERS]);
+    if (attIdTag != KMType.INVALID_VALUE) {
+        KMTag.assertPresence(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_ID_IMEI,
+                KMError.CANNOT_ATTEST_IDS);
+    }
     importKey(apdu, keyFmt, scratchPad);
   }
 
@@ -3555,7 +3552,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     // check the keysize tag if present in key parameters.
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
-    short kSize = (short) (KMByteBlob.length(data[SECRET]) * 8);
+    short kSize = (short) (KMByteBlob.length(data[PUB_KEY]) * 8);
     if (keysize != KMType.INVALID_VALUE) {
       if (keysize != 2048 || (keysize != kSize)) {
         KMException.throwIt(KMError.IMPORT_PARAMETER_MISMATCH);
@@ -3636,7 +3633,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // is moved to a place where it is called on every boot.
   private void processInitStrongBoxCmd(APDU apdu) {
     short cmd = initStrongBoxCmd(apdu);
-    byte[] scratchPad = apdu.getBuffer();
 
     short osVersion = KMArray.cast(cmd).get((short) 0);
     short osPatchLevel = KMArray.cast(cmd).get((short) 1);
@@ -3721,6 +3717,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
       KMException.throwIt(KMError.UNSUPPORTED_TAG);
     }
+
+    //ID_IMEI should be present if ID_SECOND_IMEI is present
+    short attIdTag = KMKeyParameters.findTag(KMType.BYTES_TAG, KMType.ATTESTATION_ID_SECOND_IMEI, data[KEY_PARAMETERS]);
+    if (attIdTag != KMType.INVALID_VALUE) {
+        KMTag.assertPresence(data[KEY_PARAMETERS], KMType.BYTES_TAG, KMType.ATTESTATION_ID_IMEI,
+                KMError.CANNOT_ATTEST_IDS);
+    }
+
     short attKeyPurpose =
         KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG, KMType.PURPOSE, data[KEY_PARAMETERS]);
     // ATTEST_KEY cannot be combined with any other purpose.

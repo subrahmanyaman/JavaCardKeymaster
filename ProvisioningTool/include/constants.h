@@ -28,7 +28,7 @@
 #define P1_40 0x40
 #define P1_50 0x50
 #define APDU_CLS 0x80
-#define APDU_P1  0x50
+#define APDU_P1  0x60
 #define APDU_P2  0x00
 #define INS_BEGIN_KM_CMD 0x00
 #define APDU_RESP_STATUS_OK 0x9000
@@ -75,6 +75,7 @@ constexpr uint64_t kTagAttestationIdImei = 2415919818u;
 constexpr uint64_t kTagAttestationIdMeid = 2415919819u;
 constexpr uint64_t kTagAttestationIdManufacturer = 2415919820u;
 constexpr uint64_t kTagAttestationIdModel = 2415919821u;
+constexpr uint64_t kTagAttestationIdSecondImei = 2415919827u;
 
 // Values
 constexpr uint64_t kCurveP256 = 1;

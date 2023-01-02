@@ -507,7 +507,7 @@ public class KMProvision {
 
   public static ResponseAPDU provisionAttestIds(CardSimulator simulator, KMEncoder encoder,
       KMDecoder decoder) {
-    short arrPtr = KMArray.instance((short) 8);
+    short arrPtr = KMArray.instance((short) 9);
 
     byte[] buf = "Attestation Id".getBytes();
 
@@ -527,12 +527,15 @@ public class KMProvision {
         KMByteTag.instance(KMType.ATTESTATION_ID_IMEI,
             KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
     KMArray.cast(arrPtr).add((short) 5,
+            KMByteTag.instance(KMType.ATTESTATION_ID_SECOND_IMEI,
+                KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+    KMArray.cast(arrPtr).add((short) 6,
         KMByteTag.instance(KMType.ATTESTATION_ID_MEID,
             KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
-    KMArray.cast(arrPtr).add((short) 6,
+    KMArray.cast(arrPtr).add((short) 7,
         KMByteTag.instance(KMType.ATTESTATION_ID_MANUFACTURER,
             KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
-    KMArray.cast(arrPtr).add((short) 7,
+    KMArray.cast(arrPtr).add((short) 8,
         KMByteTag.instance(KMType.ATTESTATION_ID_SERIAL,
             KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
     short keyParams = KMKeyParameters.instance(arrPtr);
@@ -597,7 +600,7 @@ public class KMProvision {
 
   public static ResponseAPDU provisionSeLocked(CardSimulator simulator, KMDecoder decoder) {
     CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_SE_FACTORY_PROVISIONING_LOCK_CMD,
-        0x50, 0x00);
+      KMTestUtils.APDU_P1, KMTestUtils.APDU_P2);
     // print(commandAPDU.getBytes());
     return simulator.transmitCommand(commandAPDU);
   }
@@ -679,7 +682,7 @@ public class KMProvision {
   }
 
   public static void sendEarlyBootEnded(CardSimulator simulator, KMDecoder decoder) {
-    CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_EARLY_BOOT_ENDED_CMD, 0x50, 0x00);
+    CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_EARLY_BOOT_ENDED_CMD, KMTestUtils.APDU_P1, KMTestUtils.APDU_P2);
     //print(commandAPDU.getBytes());
     ResponseAPDU response = simulator.transmitCommand(commandAPDU);
     Assert.assertEquals(0x9000, response.getSW());
@@ -691,7 +694,7 @@ public class KMProvision {
   }
 
   public static short getHmacSharingParams(CardSimulator simulator, KMDecoder decoder) {
-    CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_GET_HMAC_SHARING_PARAM_CMD, 0x50, 0x00);
+    CommandAPDU commandAPDU = new CommandAPDU(0x80, INS_GET_HMAC_SHARING_PARAM_CMD, KMTestUtils.APDU_P1, KMTestUtils.APDU_P2);
     //print(commandAPDU.getBytes());
     ResponseAPDU response = simulator.transmitCommand(commandAPDU);
     KMDecoder dec = new KMDecoder();

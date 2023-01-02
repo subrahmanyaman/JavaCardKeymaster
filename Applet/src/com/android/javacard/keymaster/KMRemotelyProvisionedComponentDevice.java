@@ -35,14 +35,14 @@ import javacard.framework.Util;
  * N is the number of keys. Similarly getResponse is called is multiple times till the client receives the
  * response completely.
  */
-public class RemotelyProvisionedComponentDevice {
+public class KMRemotelyProvisionedComponentDevice {
 
-  private static final byte TRUE = 0x01;
-  private static final byte FALSE = 0x00;
   // RKP Version
-  private static final short RKP_VERSION = (short) 0x03;
+  private static final byte RKP_VERSION = 0x03;
+  // RKP supportedNumKeysInCsr
+  private static final byte MIN_SUPPORTED_NUM_KEYS_IN_CSR = 20;
   // The CsrPayload CDDL Schema version.
-  private static final short CSR_PAYLOAD_CDDL_SCHEMA_VERSION = 1;
+  private static final byte CSR_PAYLOAD_CDDL_SCHEMA_VERSION = 3;
   // Boot params
   private static final byte OS_VERSION_ID = 0x00;
   private static final byte SYSTEM_PATCH_LEVEL_ID = 0x01;
@@ -111,21 +111,21 @@ public class RemotelyProvisionedComponentDevice {
   private static final byte PROCESSING_UDS_CERTS_COMPLETE = 0x0A;
   // data table
   private static final short DATA_SIZE = 512;
-  private static final short DATA_INDEX_SIZE = 6;
-  public static final short DATA_INDEX_ENTRY_SIZE = 4;
-  public static final short DATA_INDEX_ENTRY_LENGTH = 0;
-  public static final short DATA_INDEX_ENTRY_OFFSET = 2;
+  private static final byte DATA_INDEX_SIZE = 6;
+  public static final byte DATA_INDEX_ENTRY_SIZE = 4;
+  public static final byte DATA_INDEX_ENTRY_LENGTH = 0;
+  public static final byte DATA_INDEX_ENTRY_OFFSET = 2;
   // data offsets
-  private static final short TOTAL_KEYS_TO_SIGN = 0;
-  private static final short KEYS_TO_SIGN_COUNT = 1;
-  private static final short GENERATE_CSR_PHASE = 2;
-  private static final short RESPONSE_PROCESSING_STATE = 3;
-  private static final short UDS_PROCESSED_LENGTH = 4;
-  private static final short DICE_PROCESSED_LENGTH = 5;
+  private static final byte TOTAL_KEYS_TO_SIGN = 0;
+  private static final byte KEYS_TO_SIGN_COUNT = 1;
+  private static final byte GENERATE_CSR_PHASE = 2;
+  private static final byte RESPONSE_PROCESSING_STATE = 3;
+  private static final byte UDS_PROCESSED_LENGTH = 4;
+  private static final byte DICE_PROCESSED_LENGTH = 5;
 
   // data item sizes
-  private static final short SHORT_SIZE = 2;
-  private static final short BYTE_SIZE = 1;
+  private static final byte SHORT_SIZE = 2;
+  private static final byte BYTE_SIZE = 1;
 
   // generate csr states
   private static final byte BEGIN = 0x01;
@@ -135,13 +135,13 @@ public class RemotelyProvisionedComponentDevice {
   private static final byte GET_DICE_CERT_RESPONSE = 0x08;
 
   //RKP mac key size
-  private static final short RKP_MAC_KEY_SIZE = 32;
+  private static final byte RKP_MAC_KEY_SIZE = 32;
 
-  private static final short TINY_PAYLOAD = 0x17;
+  private static final byte TINY_PAYLOAD = 0x17;
   private static final short SHORT_PAYLOAD = 0x100;
 
   //RKP CDDL Schema version
-  private static final byte RKP_SCHEMA_VERSION = 3;
+  private static final byte RKP_AUTHENTICATE_CDDL_SCHEMA_VERSION = 1;
 
   private static final short MAX_ENCODED_BUF_SIZE = 1024;
 
@@ -156,10 +156,9 @@ public class RemotelyProvisionedComponentDevice {
   private KMKeymintDataStore storeDataInst;
   private Object[] operation;
   private short[] dataIndex;
-  public static Object[] authorizedEekRoots;
   public short[] rkpTmpVariables;
 
-  public RemotelyProvisionedComponentDevice(KMEncoder encoder, KMDecoder decoder,
+  public KMRemotelyProvisionedComponentDevice(KMEncoder encoder, KMDecoder decoder,
       KMRepository repository, KMSEProvider seProvider, KMKeymintDataStore storeDInst) {
     this.encoder = encoder;
     this.decoder = decoder;
@@ -223,13 +222,14 @@ public class RemotelyProvisionedComponentDevice {
   private void processGetRkpHwInfoCmd(APDU apdu) {
     // Make the response
     // Author name - Google.
-    short respPtr = KMArray.instance((short) 5);
+    short respPtr = KMArray.instance((short) 6);
     KMArray resp = KMArray.cast(respPtr);
     resp.add((short) 0, KMInteger.uint_16(KMError.OK));
     resp.add((short) 1, KMInteger.uint_16(RKP_VERSION));
     resp.add((short) 2, KMByteBlob.instance(google, (short) 0, (short) google.length));
     resp.add((short) 3, KMInteger.uint_8(KMType.RKP_CURVE_P256));
     resp.add((short) 4, KMByteBlob.instance(uniqueId, (short) 0, (short) uniqueId.length));
+    resp.add((short) 5, KMInteger.uint_16(MIN_SUPPORTED_NUM_KEYS_IN_CSR));
     KMKeymasterApplet.sendOutgoing(apdu, respPtr);
   }
 
@@ -289,9 +289,22 @@ public class RemotelyProvisionedComponentDevice {
     short keysToSignLen = (short) (coseKeysArrHeaderLen + totalCoseKeysLen);
 
     // Calculate the payload array header len
-    short paylaodArrHeaderLen = 1; // Array of 5 elements occupies 1 byte.
-    short payloadLen = (short) (paylaodArrHeaderLen + versionLength + certTypeLen 
-        + deviceInfoLen + challengeHeaderLen + challengeLen + keysToSignLen);
+    /*
+     * paylaodArrHeaderLen is Array of 2 elements that occupies 1 byte.
+     * SignedData = [challenge, AuthenticatedRequest<CsrPayload>]
+     */
+    short paylaodArrHeaderLen = 1;
+    /*
+     * csrPaylaodArrHeaderLen is Array of 4 elements that occupies 1 byte.
+     * CsrPayload = [version: 3, CertificateType, DeviceInfo, KeysToSign]
+     */
+    short csrPaylaodArrHeaderLen = 1;
+    short csrPayloadLen = (short)(csrPaylaodArrHeaderLen + versionLength + certTypeLen
+        + deviceInfoLen + keysToSignLen);
+    short csrPaylaodByteHeaderLen = encoder.getEncodedBytesLength(csrPayloadLen);
+    short payloadLen = (short) (paylaodArrHeaderLen + challengeHeaderLen + challengeLen
+        + csrPaylaodByteHeaderLen + csrPaylaodArrHeaderLen + versionLength + certTypeLen
+            + deviceInfoLen + keysToSignLen);
 
     // Empty aad
     short aad = KMByteBlob.instance(scratchPad, (short) 0, (short) 0);
@@ -321,15 +334,24 @@ public class RemotelyProvisionedComponentDevice {
         encoder.encodeByteBlobHeader(payloadLen, heap, heapIndex, (short) 3);
     ((KMOperation) operation[0]).update(heap, heapIndex, byteBlobHeaderLen);
 
-    // Construct partial payload array
-    short arr = KMArray.instance((short) 5);
+    short arr = KMArray.instance((short) 2);
+    KMArray.cast(arr).add((short) 0, challengeByteBlob);
+    KMArray.cast(arr).add((short) 1, KMType.INVALID_VALUE);
+    short payloadArrayLen = encoder.encode(arr, heap, heapIndex, prevReclaimIndex);
+    ((KMOperation) operation[0]).update(heap, heapIndex, payloadArrayLen);
+
+    byteBlobHeaderLen =
+            encoder.encodeByteBlobHeader(csrPayloadLen, heap, heapIndex, (short) 3);
+    ((KMOperation) operation[0]).update(heap, heapIndex, byteBlobHeaderLen);
+
+    // Construct partial csr payload array
+    arr = KMArray.instance((short) 4);
     KMArray.cast(arr).add((short) 0, versionPtr);
     KMArray.cast(arr).add((short) 1, certTypePtr);
     KMArray.cast(arr).add((short) 2, deviceInfo);
-    KMArray.cast(arr).add((short) 3, challengeByteBlob);
-    KMArray.cast(arr).add((short) 4, KMType.INVALID_VALUE);
-    short paritalPayloadArrayLen = encoder.encode(arr, heap, heapIndex, prevReclaimIndex);
-    ((KMOperation) operation[0]).update(heap, heapIndex, paritalPayloadArrayLen);
+    KMArray.cast(arr).add((short) 3, KMType.INVALID_VALUE);
+    short partialCsrPayloadArrayLen = encoder.encode(arr, heap, heapIndex, prevReclaimIndex);
+    ((KMOperation) operation[0]).update(heap, heapIndex, partialCsrPayloadArrayLen);
 
     // Encode keysToSign Array Header length
     short keysToSignArrayHeaderLen =
@@ -476,7 +498,7 @@ public class RemotelyProvisionedComponentDevice {
       KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
       KMArray.cast(arr).add((short) 1, protectedHeaders);
       KMArray.cast(arr).add((short) 2, signatureData);
-      KMArray.cast(arr).add((short) 3, KMInteger.uint_8(RKP_SCHEMA_VERSION));
+      KMArray.cast(arr).add((short) 3, KMInteger.uint_8(RKP_AUTHENTICATE_CDDL_SCHEMA_VERSION));
       KMArray.cast(arr).add((short) 4, KMInteger.uint_8(MORE_DATA));
       KMKeymasterApplet.sendOutgoing(apdu, arr);
     } catch (Exception e) {
