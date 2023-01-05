@@ -110,13 +110,13 @@ cc_binary {
     ],
     required: [
         "RemoteProvisioner",
-        "android.hardware.strongbox_keystore.xml",
+        "android.hardware.hardware_keystore.jc-strongbox-keymint.xml",
     ],
 }
 
 prebuilt_etc {
-    name: "android.hardware.strongbox_keystore.xml",
+    name: "android.hardware.hardware_keystore.jc-strongbox-keymint.xml",
     sub_dir: "permissions",
     vendor: true,
-    src: "android.hardware.strongbox_keystore.xml",
+    src: "android.hardware.hardware_keystore.jc-strongbox-keymint.xml",
 }

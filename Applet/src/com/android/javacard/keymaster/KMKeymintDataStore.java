@@ -15,6 +15,12 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import org.globalplatform.upgrade.Element;
 
+/**
+ * This is a storage class which helps in storing the provisioned data, ROT, OS version, boot patch
+ * level, vendor patch level, HMAC nonce, computed shared secret, 8 auth tags, device locked, device
+ * locked timestamp and device locked password only. Only the provisioned data is restored back
+ * during applet upgrades and remaining data is flushed.
+ */
 public class KMKeymintDataStore implements KMUpgradable {
 
   // Data table configuration
@@ -66,7 +72,6 @@ public class KMKeymintDataStore implements KMUpgradable {
   private static final byte DEVICE_STATUS_FLAG_SIZE = 1;
   private static final short ADDITIONAL_CERT_CHAIN_MAX_SIZE = 2500; // First 2 bytes for length.
   private static final short BCC_MAX_SIZE = 512;
-  private static final byte[] zero = {0, 0, 0, 0, 0, 0, 0, 0};
   private static KMKeymintDataStore kmDataStore;
   // Secure Boot Mode
   public byte secureBootMode;

@@ -16,7 +16,6 @@
 
 package com.android.javacard.seprovider;
 
-
 /**
  * This class declares all types, tag types, and tag keys. It also establishes basic structure of
  * any KMType i.e. struct{byte type, short length, value} where value can any of the KMType. Also,

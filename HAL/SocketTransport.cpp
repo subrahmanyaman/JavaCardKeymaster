@@ -29,7 +29,7 @@
 #include "ITransport.h"
 
 #define PORT 8080
-#define IPADDR  "192.168.43.252"
+#define IPADDR "192.168.9.112"
 #define MAX_RECV_BUFFER_SIZE 2500
 
 namespace keymint::javacard {
