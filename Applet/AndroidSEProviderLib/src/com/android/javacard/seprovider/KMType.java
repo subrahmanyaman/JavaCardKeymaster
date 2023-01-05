@@ -76,6 +76,4 @@ public abstract class KMType {
   public static final byte RSA_PKCS1_1_5_ENCRYPT = 0x04;
   public static final byte RSA_PKCS1_1_5_SIGN = 0x05;
   public static final byte PKCS7 = 0x40;
-
-
 }
