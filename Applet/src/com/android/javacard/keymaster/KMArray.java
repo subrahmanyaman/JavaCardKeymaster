@@ -22,8 +22,7 @@ import javacard.framework.Util;
 
 /**
  * KMArray represents an array of KMTypes. Array is the sequence of elements of one or more sub
- * types of KMType. It also acts as a vector of one subtype of KMTypes on the lines of class
- * KMArray
+ * types of KMType. It also acts as a vector of one subtype of KMTypes on the lines of class KMArray
  * <subType>, where subType is subclass of KMType. Vector is the sequence of elements of one sub
  * type e.g. KMType.BYTE_BLOB_TYPE. The KMArray instance maps to the CBOR type array. KMArray is a
  * KMType and it further extends the value field in TLV_HEADER as ARRAY_HEADER struct{short subType;
@@ -37,8 +36,7 @@ public class KMArray extends KMType {
   private static final byte ARRAY_HEADER_SIZE = 4;
   private static KMArray prototype;
 
-  private KMArray() {
-  }
+  private KMArray() {}
 
   private static KMArray proto(short ptr) {
     if (prototype == null) {
@@ -87,10 +85,7 @@ public class KMArray extends KMType {
     if (index >= len) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
-    Util.setShort(
-        heap,
-        (short) (getStartOff() + (short) (index * 2)),
-        objPtr);
+    Util.setShort(heap, (short) (getStartOff() + (short) (index * 2)), objPtr);
   }
 
   public short get(short index) {
@@ -98,9 +93,8 @@ public class KMArray extends KMType {
     if (index >= len) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
-    return Util.getShort(
-        heap, (short) (getStartOff() + (short) (index * 2)));
-}
+    return Util.getShort(heap, (short) (getStartOff() + (short) (index * 2)));
+  }
 
   public void swap(short index1, short index2) {
     short len = length();
@@ -110,18 +104,34 @@ public class KMArray extends KMType {
     short indexPtr1 =
         Util.getShort(
             heap,
-            (short) (instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + ARRAY_HEADER_SIZE + (short) (index1 * 2)));
+            (short)
+                (instanceTable[KM_ARRAY_OFFSET]
+                    + TLV_HEADER_SIZE
+                    + ARRAY_HEADER_SIZE
+                    + (short) (index1 * 2)));
     short indexPtr2 =
         Util.getShort(
             heap,
-            (short) (instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + ARRAY_HEADER_SIZE + (short) (index2 * 2)));
+            (short)
+                (instanceTable[KM_ARRAY_OFFSET]
+                    + TLV_HEADER_SIZE
+                    + ARRAY_HEADER_SIZE
+                    + (short) (index2 * 2)));
     Util.setShort(
         heap,
-        (short) (instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + ARRAY_HEADER_SIZE + (short) (index1 * 2)),
+        (short)
+            (instanceTable[KM_ARRAY_OFFSET]
+                + TLV_HEADER_SIZE
+                + ARRAY_HEADER_SIZE
+                + (short) (index1 * 2)),
         indexPtr2);
     Util.setShort(
         heap,
-        (short) (instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + ARRAY_HEADER_SIZE + (short) (index2 * 2)),
+        (short)
+            (instanceTable[KM_ARRAY_OFFSET]
+                + TLV_HEADER_SIZE
+                + ARRAY_HEADER_SIZE
+                + (short) (index2 * 2)),
         indexPtr1);
   }
 
@@ -134,21 +144,22 @@ public class KMArray extends KMType {
   }
 
   public short length() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   public short setLength(short len) {
-    return Util.setShort(heap,
-        (short) (KMType.instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + 2), len);
+    return Util.setShort(
+        heap, (short) (KMType.instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + 2), len);
   }
-  
+
   public byte[] getBuffer() {
     return heap;
   }
 
   public void deleteLastEntry() {
     short len = length();
-    Util.setShort(heap, (short) (instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + 2),
-        (short) (len - 1));
+    Util.setShort(
+        heap, (short) (instanceTable[KM_ARRAY_OFFSET] + TLV_HEADER_SIZE + 2), (short) (len - 1));
   }
 }

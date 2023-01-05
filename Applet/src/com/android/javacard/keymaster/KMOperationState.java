@@ -29,6 +29,13 @@ import javacard.framework.Util;
  */
 public class KMOperationState {
 
+  // sizes
+  public static final byte OPERATION_HANDLE_SIZE = 8;
+  public static final byte DATA_SIZE = 11;
+  public static final byte AUTH_TIME_SIZE = 8;
+  // Secure user ids 5 * 8 = 40 bytes ( Considering Maximum 5 SECURE USER IDs)
+  // First two bytes are reserved to store number of secure ids. So total 42 bytes.
+  public static final byte USER_SECURE_IDS_SIZE = 42;
   // byte type
   private static final byte ALG = 0;
   private static final byte PURPOSE = 1;
@@ -41,14 +48,6 @@ public class KMOperationState {
   private static final byte MGF_DIGEST = 8;
   private static final byte AUTH_TYPE = 9;
   private static final byte MIN_MAC_LENGTH = 10;
-  // sizes
-  public static final byte OPERATION_HANDLE_SIZE = 8;
-  public static final byte DATA_SIZE = 11;
-  public static final byte AUTH_TIME_SIZE = 8;
-  // Secure user ids 5 * 8 = 40 bytes ( Considering Maximum 5 SECURE USER IDs)
-  // First two bytes are reserved to store number of secure ids. So total 42 bytes.
-  public static final byte USER_SECURE_IDS_SIZE = 42;
-
   private static final byte OPERATION = 0;
   private static final byte HMAC_SIGNER_OPERATION = 1;
   // Flag masks
@@ -67,7 +66,6 @@ public class KMOperationState {
   private short[] data;
   private Object[] operations;
 
-
   public KMOperationState() {
     opHandle = JCSystem.makeTransientByteArray(OPERATION_HANDLE_SIZE, JCSystem.CLEAR_ON_RESET);
     authTime = JCSystem.makeTransientByteArray(AUTH_TIME_SIZE, JCSystem.CLEAR_ON_RESET);
@@ -85,26 +83,28 @@ public class KMOperationState {
     }
     Util.arrayFillNonAtomic(opHandle, (short) 0, OPERATION_HANDLE_SIZE, (byte) 0);
     Util.arrayFillNonAtomic(authTime, (short) 0, AUTH_TIME_SIZE, (byte) 0);
-    
-    if(null != operations[OPERATION])
-    	((KMOperation)operations[OPERATION]).abort();
+
+    if (null != operations[OPERATION]) {
+      ((KMOperation) operations[OPERATION]).abort();
+    }
     operations[OPERATION] = null;
-    
-    if(null != operations[HMAC_SIGNER_OPERATION])
-    	((KMOperation)operations[HMAC_SIGNER_OPERATION]).abort();
+
+    if (null != operations[HMAC_SIGNER_OPERATION]) {
+      ((KMOperation) operations[HMAC_SIGNER_OPERATION]).abort();
+    }
     operations[HMAC_SIGNER_OPERATION] = null;
   }
 
-  public short compare(byte[] handle, short start, short len){
-    return Util.arrayCompare(handle, start, opHandle, (short)0, (short)opHandle.length);
-  }
-
-  public void setKeySize(short keySize) {
-    data[KEY_SIZE] = keySize;
+  public short compare(byte[] handle, short start, short len) {
+    return Util.arrayCompare(handle, start, opHandle, (short) 0, (short) opHandle.length);
   }
 
   public short getKeySize() {
     return data[KEY_SIZE];
+  }
+
+  public void setKeySize(short keySize) {
+    data[KEY_SIZE] = keySize;
   }
 
   public short getHandle() {
@@ -127,20 +127,36 @@ public class KMOperationState {
     return (data[FLAGS] & PROCESSED_INPUT_MSG) != 0;
   }
 
-  public void setOperation(KMOperation op) {
-    operations[OPERATION] = op;
-  }
-
   public KMOperation getOperation() {
     return (KMOperation) operations[OPERATION];
+  }
+
+  public void setOperation(KMOperation op) {
+    operations[OPERATION] = op;
   }
 
   public boolean isAuthPerOperationReqd() {
     return (data[FLAGS] & AUTH_PER_OP_REQD) != 0;
   }
 
+  public void setAuthPerOperationReqd(boolean flag) {
+    if (flag) {
+      data[FLAGS] = (short) (data[FLAGS] | AUTH_PER_OP_REQD);
+    } else {
+      data[FLAGS] = (short) (data[FLAGS] & (~AUTH_PER_OP_REQD));
+    }
+  }
+
   public boolean isAuthTimeoutValidated() {
     return (data[FLAGS] & AUTH_TIMEOUT_VALIDATED) != 0;
+  }
+
+  public void setAuthTimeoutValidated(boolean flag) {
+    if (flag) {
+      data[FLAGS] = (byte) (data[FLAGS] | AUTH_TIMEOUT_VALIDATED);
+    } else {
+      data[FLAGS] = (byte) (data[FLAGS] & (~AUTH_TIMEOUT_VALIDATED));
+    }
   }
 
   public boolean isSecureUserIdReqd() {
@@ -171,20 +187,12 @@ public class KMOperationState {
     }
   }
 
-  public void setAuthTimeoutValidated(boolean flag) {
-    if (flag) {
-      data[FLAGS] = (byte) (data[FLAGS] | AUTH_TIMEOUT_VALIDATED);
-    } else {
-      data[FLAGS] = (byte) (data[FLAGS] & (~AUTH_TIMEOUT_VALIDATED));
-    }
+  public short getAuthType() {
+    return data[AUTH_TYPE];
   }
 
   public void setAuthType(byte authType) {
     data[AUTH_TYPE] = authType;
-  }
-
-  public short getAuthType() {
-    return data[AUTH_TYPE];
   }
 
   public short getUserSecureId() {
@@ -222,17 +230,8 @@ public class KMOperationState {
           KMInteger.cast(obj).getStartOff(),
           userSecureIds,
           (short) (8 - KMInteger.cast(obj).length() + offset + 8 * index),
-          KMInteger.cast(obj).length()
-      );
+          KMInteger.cast(obj).length());
       index++;
-    }
-  }
-
-  public void setAuthPerOperationReqd(boolean flag) {
-    if (flag) {
-      data[FLAGS] = (short) (data[FLAGS] | AUTH_PER_OP_REQD);
-    } else {
-      data[FLAGS] = (short) (data[FLAGS] & (~AUTH_PER_OP_REQD));
     }
   }
 
@@ -264,12 +263,12 @@ public class KMOperationState {
     return data[DIGEST];
   }
 
-  public short getMgfDigest() {
-    return data[MGF_DIGEST];
-  }
-
   public void setDigest(byte digest) {
     data[DIGEST] = digest;
+  }
+
+  public short getMgfDigest() {
+    return data[MGF_DIGEST];
   }
 
   public void setMgfDigest(byte mgfDigest) {
@@ -288,20 +287,20 @@ public class KMOperationState {
     data[FLAGS] = (byte) (data[FLAGS] | AES_GCM_UPDATE_ALLOWED);
   }
 
-  public void setMacLength(short length) {
-    data[MAC_LENGTH] = length;
+  public short getMinMacLength() {
+    return data[MIN_MAC_LENGTH];
   }
 
   public void setMinMacLength(short length) {
     data[MIN_MAC_LENGTH] = length;
   }
 
-  public short getMinMacLength() {
-    return data[MIN_MAC_LENGTH];
-  }
-
   public short getMacLength() {
     return data[MAC_LENGTH];
+  }
+
+  public void setMacLength(short length) {
+    data[MAC_LENGTH] = length;
   }
 
   public byte getBufferingMode() {
@@ -311,8 +310,9 @@ public class KMOperationState {
     short padding = getPadding();
     short blockMode = getBlockMode();
 
-    if (alg == KMType.RSA && ((digest == KMType.DIGEST_NONE && purpose == KMType.SIGN) ||
-    				purpose == KMType.DECRYPT)) {
+    if (alg == KMType.RSA
+        && ((digest == KMType.DIGEST_NONE && purpose == KMType.SIGN)
+            || purpose == KMType.DECRYPT)) {
       return KMType.BUF_RSA_DECRYPT_OR_NO_DIGEST;
     }
 
@@ -339,13 +339,13 @@ public class KMOperationState {
     }
     return KMType.BUF_NONE;
   }
-  
-  public void setTrustedConfirmationSigner(KMOperation hmacSignerOp) {
-    operations[HMAC_SIGNER_OPERATION] = hmacSignerOp;
-  }
 
   public KMOperation getTrustedConfirmationSigner() {
-    return (KMOperation)operations[HMAC_SIGNER_OPERATION];
+    return (KMOperation) operations[HMAC_SIGNER_OPERATION];
+  }
+
+  public void setTrustedConfirmationSigner(KMOperation hmacSignerOp) {
+    operations[HMAC_SIGNER_OPERATION] = hmacSignerOp;
   }
 
   public boolean isTrustedConfirmationRequired() {

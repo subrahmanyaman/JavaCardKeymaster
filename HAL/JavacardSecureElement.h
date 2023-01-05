@@ -28,8 +28,6 @@
 #define KEYMINT_CMD_APDU_START 0x20
 
 namespace keymint::javacard {
-using ndk::ScopedAStatus;
-using std::optional;
 using std::shared_ptr;
 using std::vector;
 
@@ -91,7 +89,8 @@ class JavacardSecureElement {
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
                                                                      Array& request);
     std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins);
-    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins, std::vector<uint8_t>& command);
+    std::tuple<std::unique_ptr<Item>, keymaster_error_t> sendRequest(Instruction ins,
+                                                                     std::vector<uint8_t>& command);
 
     keymaster_error_t sendData(Instruction ins, std::vector<uint8_t>& inData,
                                std::vector<uint8_t>& response);

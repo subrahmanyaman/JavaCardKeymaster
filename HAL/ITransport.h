@@ -24,8 +24,7 @@
 namespace keymint::javacard {
 using std::shared_ptr;
 using std::vector;
-constexpr int KM_ERROR_HARDWARE_TYPE_UNAVAILABLE = -68;
-constexpr int KM_ERROR_HARDWARE_NOT_YET_AVAILABLE = -85;
+
 /**
  * ITransport is an interface with a set of virtual methods that allow communication between the
  * HAL and the applet on the secure element.
@@ -52,4 +51,5 @@ class ITransport {
      */
     virtual bool isConnected() = 0;
 };
+
 }  // namespace keymint::javacard

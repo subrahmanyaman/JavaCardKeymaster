@@ -22,6 +22,7 @@ import javacard.security.Key;
 import javacard.security.MessageDigest;
 import javacardx.crypto.Cipher;
 
+/** This class has the implementation for RSA_OAEP decoding algorithm. */
 public class KMRsaOAEPEncoding extends Cipher {
 
   public static final byte ALG_RSA_PKCS1_OAEP_SHA256_MGF1_SHA1 = (byte) 0x1E;
@@ -39,8 +40,8 @@ public class KMRsaOAEPEncoding extends Cipher {
     cipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
     algorithm = alg;
     if (null == mgf1Buf) {
-      mgf1Buf = JCSystem.makeTransientByteArray(MGF1_BUF_SIZE,
-          JCSystem.MEMORY_TYPE_TRANSIENT_DESELECT);
+      mgf1Buf =
+          JCSystem.makeTransientByteArray(MGF1_BUF_SIZE, JCSystem.MEMORY_TYPE_TRANSIENT_DESELECT);
     }
   }
 
@@ -80,12 +81,11 @@ public class KMRsaOAEPEncoding extends Cipher {
   @Override
   public void init(Key theKey, byte theMode) throws CryptoException {
     cipher.init(theKey, theMode);
-
   }
 
   @Override
-  public void init(Key theKey, byte theMode, byte[] bArray, short bOff,
-      short bLen) throws CryptoException {
+  public void init(Key theKey, byte theMode, byte[] bArray, short bOff, short bLen)
+      throws CryptoException {
     cipher.init(theKey, theMode, bArray, bOff, bLen);
   }
 
@@ -105,8 +105,9 @@ public class KMRsaOAEPEncoding extends Cipher {
   }
 
   @Override
-  public short doFinal(byte[] inBuff, short inOffset, short inLength,
-      byte[] outBuff, short outOffset) throws CryptoException {
+  public short doFinal(
+      byte[] inBuff, short inOffset, short inLength, byte[] outBuff, short outOffset)
+      throws CryptoException {
     short len = cipher.doFinal(inBuff, inOffset, inLength, outBuff, outOffset);
 
     // https://tools.ietf.org/html/rfc8017#section-7.1
@@ -125,19 +126,25 @@ public class KMRsaOAEPEncoding extends Cipher {
     if (len != 256 || outBuff[0] != 0) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
     }
-    Util.arrayCopyNonAtomic(outBuff, (short) (outOffset + 1), outBuff, (short) 0, (short) (len -1));
+    Util.arrayCopyNonAtomic(
+        outBuff, (short) (outOffset + 1), outBuff, (short) 0, (short) (len - 1));
     return rsaOAEPDecode(outBuff, (short) 0, (short) (len - 1));
-
   }
 
   @Override
-  public short update(byte[] inBuff, short inOffset, short inLength,
-      byte[] outBuff, short outOffset) throws CryptoException {
+  public short update(
+      byte[] inBuff, short inOffset, short inLength, byte[] outBuff, short outOffset)
+      throws CryptoException {
     return cipher.update(inBuff, inOffset, inLength, outBuff, outOffset);
   }
 
-  private void maskGenerationFunction1(byte[] input, short inputOffset,
-      short inputLen, short expectedOutLen, byte[] outBuf, short outOffset) {
+  private void maskGenerationFunction1(
+      byte[] input,
+      short inputOffset,
+      short inputLen,
+      short expectedOutLen,
+      byte[] outBuf,
+      short outOffset) {
     short counter = 0;
     MessageDigest.OneShot md = null;
     try {
@@ -147,14 +154,22 @@ public class KMRsaOAEPEncoding extends Cipher {
       Util.arrayCopyNonAtomic(input, inputOffset, mgf1Buf, (short) 0, inputLen);
       while (counter < (short) (expectedOutLen / digestLen)) {
         I2OS(counter, mgf1Buf, (short) inputLen);
-        md.doFinal(mgf1Buf, (short) 0, (short) (4 + inputLen), outBuf,
+        md.doFinal(
+            mgf1Buf,
+            (short) 0,
+            (short) (4 + inputLen),
+            outBuf,
             (short) (outOffset + (counter * digestLen)));
         counter++;
       }
 
       if ((short) (counter * digestLen) < expectedOutLen) {
         I2OS(counter, mgf1Buf, (short) inputLen);
-        md.doFinal(mgf1Buf, (short) 0, (short) (4 + inputLen), outBuf,
+        md.doFinal(
+            mgf1Buf,
+            (short) 0,
+            (short) (4 + inputLen),
+            outBuf,
             (short) (outOffset + (counter * digestLen)));
       }
 
@@ -162,8 +177,7 @@ public class KMRsaOAEPEncoding extends Cipher {
       if (md != null) {
         md.close();
       }
-      Util.arrayFillNonAtomic(mgf1Buf, (short) 0, (short) MGF1_BUF_SIZE,
-          (byte) 0);
+      Util.arrayFillNonAtomic(mgf1Buf, (short) 0, (short) MGF1_BUF_SIZE, (byte) 0);
     }
   }
 
@@ -174,8 +188,7 @@ public class KMRsaOAEPEncoding extends Cipher {
     out[(short) (offset + 2)] = (byte) (i >>> 8);
   }
 
-  private short rsaOAEPDecode(byte[] encodedMsg, short encodedMsgOff,
-      short encodedMsgLen) {
+  private short rsaOAEPDecode(byte[] encodedMsg, short encodedMsgOff, short encodedMsgLen) {
     MessageDigest.OneShot md = null;
     byte[] tmpArray = KMAndroidSEProvider.getInstance().tmpArray;
 
@@ -190,8 +203,13 @@ public class KMRsaOAEPEncoding extends Cipher {
       // Now retrieve the seedMask by calling MGF(maskedDB, hLen). The length
       // of the seedMask is hLen.
       // seedMask = MGF(maskedDB, hLen)
-      maskGenerationFunction1(encodedMsg, (short) (encodedMsgOff + hLen),
-          (short) (encodedMsgLen - hLen), hLen, tmpArray, (short) 0);
+      maskGenerationFunction1(
+          encodedMsg,
+          (short) (encodedMsgOff + hLen),
+          (short) (encodedMsgLen - hLen),
+          hLen,
+          tmpArray,
+          (short) 0);
 
       // Get the seed by doing XOR of (maskedSeed ^ seedMask).
       // seed = (maskedSeed ^ seedMask)
@@ -202,8 +220,13 @@ public class KMRsaOAEPEncoding extends Cipher {
 
       // Now get the dbMask by calling MGF(seed , (emLen-hLen)).
       // dbMask = MGF(seed , (emLen-hLen)).
-      maskGenerationFunction1(encodedMsg, (short) encodedMsgOff, hLen,
-          (short) (encodedMsgLen - hLen), tmpArray, (short) 0);
+      maskGenerationFunction1(
+          encodedMsg,
+          (short) encodedMsgOff,
+          hLen,
+          (short) (encodedMsgLen - hLen),
+          tmpArray,
+          (short) 0);
 
       // Get the DB value. DB = (maskedDB ^ dbMask)
       // DB = Hash(P)||00||01||Msg, where P is encoding parameters. (P = NULL)
@@ -216,8 +239,9 @@ public class KMRsaOAEPEncoding extends Cipher {
       md = MessageDigest.OneShot.open(hash);
       Util.arrayFillNonAtomic(tmpArray, (short) 0, (short) 256, (byte) 0);
       md.doFinal(tmpArray, (short) 0, (short) 0, tmpArray, (short) 0);
-      if (0 != Util.arrayCompare(encodedMsg, (short) (encodedMsgOff + hLen),
-          tmpArray, (short) 0, hLen)) {
+      if (0
+          != Util.arrayCompare(
+              encodedMsg, (short) (encodedMsgOff + hLen), tmpArray, (short) 0, hLen)) {
         // Verification failed.
         CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
       }
@@ -232,21 +256,25 @@ public class KMRsaOAEPEncoding extends Cipher {
       // appended to the end of the hash till the 0x01 byte.
       short start = (short) (encodedMsgOff + encodedMsgLen);
       for (short i = (short) (encodedMsgOff + 2 * hLen);
-          i < (short) (encodedMsgOff + encodedMsgLen); i++) {
+          i < (short) (encodedMsgOff + encodedMsgLen);
+          i++) {
         if ((encodedMsg[i] != 0)) {
           start = i;
           break;
         }
       }
-      if ((start >= (short)(encodedMsgOff + encodedMsgLen)) ||
-          (encodedMsg[start] != 0x01)) {
+      if ((start >= (short) (encodedMsgOff + encodedMsgLen)) || (encodedMsg[start] != 0x01)) {
         // Bad Padding.
         CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
       }
       start++; // Message starting pos.
-      if (start < (short)(encodedMsgOff + encodedMsgLen)) {
+      if (start < (short) (encodedMsgOff + encodedMsgLen)) {
         // Copy the message
-        Util.arrayCopyNonAtomic(encodedMsg, start, encodedMsg, encodedMsgOff,
+        Util.arrayCopyNonAtomic(
+            encodedMsg,
+            start,
+            encodedMsg,
+            encodedMsgOff,
             (short) (encodedMsgLen - (start - encodedMsgOff)));
       }
       return (short) (encodedMsgLen - (start - encodedMsgOff));
@@ -255,8 +283,7 @@ public class KMRsaOAEPEncoding extends Cipher {
       if (md != null) {
         md.close();
       }
-      Util.arrayFillNonAtomic(tmpArray, (short) 0,
-          KMAndroidSEProvider.TMP_ARRAY_SIZE, (byte) 0);
+      Util.arrayFillNonAtomic(tmpArray, (short) 0, KMAndroidSEProvider.TMP_ARRAY_SIZE, (byte) 0);
     }
   }
 }

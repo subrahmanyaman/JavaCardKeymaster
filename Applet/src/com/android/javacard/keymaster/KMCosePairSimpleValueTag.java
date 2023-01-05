@@ -5,15 +5,15 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCosePairSimpleValueTag represents a key-value type, where key can be KMInteger or KMNInteger and value is
- * KMSimpleValue type. struct{byte TAG_TYPE; short length; struct{short SIMPLE_VALUE_TYPE; short key; short value}}.
+ * KMCosePairSimpleValueTag represents a key-value type, where key can be KMInteger or KMNInteger
+ * and value is KMSimpleValue type. struct{byte TAG_TYPE; short length; struct{short
+ * SIMPLE_VALUE_TYPE; short key; short value}}.
  */
 public class KMCosePairSimpleValueTag extends KMCosePairTagType {
 
   private static KMCosePairSimpleValueTag prototype;
 
-  private KMCosePairSimpleValueTag() {
-  }
+  private KMCosePairSimpleValueTag() {}
 
   private static KMCosePairSimpleValueTag proto(short ptr) {
     if (prototype == null) {
@@ -34,8 +34,8 @@ public class KMCosePairSimpleValueTag extends KMCosePairTagType {
 
   public static short instance(short keyPtr, short valuePtr) {
     short offset = KMCosePairTagType.getKeyStartOffset(keyPtr);
-    if (!KMCosePairTagType.isKeyPairValid(heap, offset, KMCose.COSE_KEY_MAX_SIZE,
-        KMSimpleValue.cast(valuePtr).getValue())) {
+    if (!KMCosePairTagType.isKeyPairValid(
+        heap, offset, KMCose.COSE_KEY_MAX_SIZE, KMSimpleValue.cast(valuePtr).getValue())) {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
     }
     short ptr = KMType.instance(COSE_PAIR_TAG_TYPE, (short) 6);
@@ -64,12 +64,13 @@ public class KMCosePairSimpleValueTag extends KMCosePairTagType {
 
   @Override
   public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_SIMPLE_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_KEY_SIMPLE_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
   }
 
   @Override
   public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_SIMPLE_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_KEY_SIMPLE_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
   }
-
 }

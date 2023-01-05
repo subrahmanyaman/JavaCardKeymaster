@@ -27,12 +27,10 @@ import javacard.framework.Util;
  */
 public class KMIntegerArrayTag extends KMTag {
 
+  private static final short[] tags = {USER_SECURE_ID};
   private static KMIntegerArrayTag prototype;
 
-  private static final short[] tags = {USER_SECURE_ID};
-
-  private KMIntegerArrayTag() {
-  }
+  private KMIntegerArrayTag() {}
 
   private static KMIntegerArrayTag proto(short ptr) {
     if (prototype == null) {
@@ -93,33 +91,6 @@ public class KMIntegerArrayTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getTagType() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE));
-  }
-
-  public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getValues() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
-  public short length() {
-    short ptr = getValues();
-    return KMArray.cast(ptr).length();
-  }
-
-  public void add(short index, short val) {
-    KMArray arr = KMArray.cast(getValues());
-    arr.add(index, val);
-  }
-
-  public short get(short index) {
-    KMArray arr = KMArray.cast(getValues());
-    return arr.get(index);
-  }
-
   private static boolean validateKey(short key) {
     short index = (short) tags.length;
     while (--index >= 0) {
@@ -135,8 +106,7 @@ public class KMIntegerArrayTag extends KMTag {
   }
 
   public static boolean contains(short tagId, short tagValue, short params) {
-    short tag =
-        KMKeyParameters.findTag(KMType.UINT_ARRAY_TAG, tagId, params);
+    short tag = KMKeyParameters.findTag(KMType.UINT_ARRAY_TAG, tagId, params);
     if (tag != KMType.INVALID_VALUE) {
       short index = 0;
       tag = KMIntegerArrayTag.cast(tag).getValues();
@@ -148,6 +118,36 @@ public class KMIntegerArrayTag extends KMTag {
       }
     }
     return false;
+  }
+
+  public short getTagType() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE));
+  }
+
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getValues() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_INTEGER_ARRAY_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+  }
+
+  public short length() {
+    short ptr = getValues();
+    return KMArray.cast(ptr).length();
+  }
+
+  public void add(short index, short val) {
+    KMArray arr = KMArray.cast(getValues());
+    arr.add(index, val);
+  }
+
+  public short get(short index) {
+    KMArray arr = KMArray.cast(getValues());
+    return arr.get(index);
   }
 
   public boolean contains(short tagValue) {

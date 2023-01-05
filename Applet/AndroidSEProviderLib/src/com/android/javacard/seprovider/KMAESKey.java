@@ -15,10 +15,10 @@
  */
 package com.android.javacard.seprovider;
 
+import javacard.security.AESKey;
 import org.globalplatform.upgrade.Element;
 
-import javacard.security.AESKey;
-
+/** This is a wrapper class for AESKey. */
 public class KMAESKey implements KMMasterKey {
 
   public AESKey aesKey;
@@ -45,5 +45,4 @@ public class KMAESKey implements KMMasterKey {
   public static short getBackupObjectCount() {
     return (short) 1;
   }
-
 }

@@ -30,8 +30,6 @@ import javacard.framework.Util;
 public abstract class KMType {
 
   public static final short INVALID_VALUE = (short) 0x8000;
-  protected static final byte TLV_HEADER_SIZE = 3;
-
   // Types
   public static final byte BYTE_BLOB_TYPE = 0x01;
   public static final byte INTEGER_TYPE = 0x02;
@@ -228,7 +226,8 @@ public abstract class KMType {
   public static final short ACTIVE_DATETIME = 0x0190;
   public static final short ORIGINATION_EXPIRE_DATETIME = 0x0191;
   public static final short USAGE_EXPIRE_DATETIME = 0x0192;
-  public static final short CREATION_DATETIME = 0x02BD;;
+  public static final short CREATION_DATETIME = 0x02BD;
+  ;
   public static final short CERTIFICATE_NOT_BEFORE = 0x03F0;
   public static final short CERTIFICATE_NOT_AFTER = 0x03F1;
   // Integer Array Tags - ULONG_REP and UINT_REP.
@@ -258,9 +257,9 @@ public abstract class KMType {
   public static final short UNLOCKED_DEVICE_REQUIRED = (short) 0x01FD;
   // Reset Since Id Rotation
   public static final short RESET_SINCE_ID_ROTATION = (short) 0x03EC;
-  //Early boot ended.
+  // Early boot ended.
   public static final short EARLY_BOOT_ONLY = (short) 0x0131;
-  //Device unique attestation.
+  // Device unique attestation.
   public static final short DEVICE_UNIQUE_ATTESTATION = (short) 0x02D0;
 
   // Byte Tag
@@ -286,7 +285,7 @@ public abstract class KMType {
   public static final short ATTESTATION_ID_SERIAL = (short) 0x02C9;
   // Attestation Id IMEI
   public static final short ATTESTATION_ID_IMEI = (short) 0x02CA;
-  //Attestation Id SECOND IMEI
+  // Attestation Id SECOND IMEI
   public static final short ATTESTATION_ID_SECOND_IMEI = (short) 0x02D3;
   // Attestation Id MEID
   public static final short ATTESTATION_ID_MEID = (short) 0x02CB;
@@ -359,19 +358,18 @@ public abstract class KMType {
   public static final byte BUF_AES_GCM_DECRYPT_BLOCK_ALIGN = 7;
 
   // MAX ApplicationID or Application Data size
-  public static final short MAX_APP_ID_APP_DATA_SIZE = 64;
+  public static final byte MAX_APP_ID_APP_DATA_SIZE = 64;
   // Max attestation challenge size.
   public static final short MAX_ATTESTATION_CHALLENGE_SIZE = 128;
   // Max certificate serial size.
-  public static final short MAX_CERTIFICATE_SERIAL_SIZE = 20;
+  public static final byte MAX_CERTIFICATE_SERIAL_SIZE = 20;
   // Attestation Application ID
   public static final short MAX_ATTESTATION_APP_ID_SIZE = 1024;
-
-
-  protected static KMRepository repository;
-  protected static byte[] heap;
   // Instance table
   public static final byte INSTANCE_TABLE_SIZE = 30;
+  protected static final byte TLV_HEADER_SIZE = 3;
+  protected static KMRepository repository;
+  protected static byte[] heap;
   protected static short[] instanceTable;
 
   public static void initialize() {

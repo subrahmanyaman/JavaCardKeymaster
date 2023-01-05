@@ -21,17 +21,15 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMBignumTag represents BIGNUM Tag Type from android keymaster hal specifications. The tag value of
- * this tag is the KMByteBlob pointer i.e. offset of KMByteBlob in memory heap. struct{byte
+ * KMBignumTag represents BIGNUM Tag Type from android keymaster hal specifications. The tag value
+ * of this tag is the KMByteBlob pointer i.e. offset of KMByteBlob in memory heap. struct{byte
  * TAG_TYPE; short length; struct{short BIGNUM_TAG; short tagKey; short blobPtr}}
  */
-
 public class KMBignumTag extends KMTag {
 
   private static KMBignumTag prototype;
 
-  private KMBignumTag() {
-  }
+  private KMBignumTag() {}
 
   private static KMBignumTag proto(short ptr) {
     if (prototype == null) {
@@ -75,23 +73,6 @@ public class KMBignumTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getTagType() {
-    return KMType.BIGNUM_TAG;
-  }
-
-  public short getValue() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
-  public short length() {
-    short blobPtr = Util.getShort(heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-    return KMByteBlob.cast(blobPtr).length();
-  }
-
   private static boolean validateKey(short key, short byteBlob) {
     short valueLen = KMByteBlob.cast(byteBlob).length();
     switch (key) {
@@ -104,5 +85,26 @@ public class KMBignumTag extends KMTag {
         return false;
     }
     return true;
+  }
+
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getTagType() {
+    return KMType.BIGNUM_TAG;
+  }
+
+  public short getValue() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+  }
+
+  public short length() {
+    short blobPtr =
+        Util.getShort(
+            heap, (short) (KMType.instanceTable[KM_BIGNUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+    return KMByteBlob.cast(blobPtr).length();
   }
 }

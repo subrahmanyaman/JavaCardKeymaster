@@ -20,13 +20,20 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
 
+/**
+ * KMMap represents an array of KMType key and KMType value. Map is the sequence of pairs. Each pair
+ * is of one or more sub types of KMType. The KMMap instance maps to the CBOR type map. KMMap is a
+ * KMType and it further extends the value field in TLV_HEADER as MAP_HEADER struct{short
+ * subType;short length;} followed by sequence of pairs. Each pair contains a key and a value as
+ * short pointers to KMType instances.
+ */
 public class KMMap extends KMType {
+
   public static final short ANY_MAP_LENGTH = 0x1000;
   private static final byte MAP_HEADER_SIZE = 4;
   private static KMMap prototype;
 
-  private KMMap() {
-  }
+  private KMMap() {}
 
   private static KMMap proto(short ptr) {
     if (prototype == null) {
@@ -68,7 +75,12 @@ public class KMMap extends KMType {
     if (index >= len) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
-    short keyIndex = (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index * 4));
+    short keyIndex =
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index * 4));
     Util.setShort(heap, keyIndex, keyPtr);
     Util.setShort(heap, (short) (keyIndex + 2), valPtr);
   }
@@ -79,7 +91,12 @@ public class KMMap extends KMType {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
     return Util.getShort(
-      heap, (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index * 4)));
+        heap,
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index * 4)));
   }
 
   public short getKeyValue(short index) {
@@ -88,7 +105,12 @@ public class KMMap extends KMType {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
     return Util.getShort(
-      heap, (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index * 4 + 2)));
+        heap,
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index * 4 + 2)));
   }
 
   public void swap(short index1, short index2) {
@@ -98,37 +120,71 @@ public class KMMap extends KMType {
     }
     // Swap keys
     short indexPtr1 =
-      Util.getShort(
-        heap, (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index1 * 4)));
+        Util.getShort(
+            heap,
+            (short)
+                (instanceTable[KM_MAP_OFFSET]
+                    + TLV_HEADER_SIZE
+                    + MAP_HEADER_SIZE
+                    + (short) (index1 * 4)));
     short indexPtr2 =
-      Util.getShort(
+        Util.getShort(
+            heap,
+            (short)
+                (instanceTable[KM_MAP_OFFSET]
+                    + TLV_HEADER_SIZE
+                    + MAP_HEADER_SIZE
+                    + (short) (index2 * 4)));
+    Util.setShort(
         heap,
-        (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index2 * 4)));
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index1 * 4)),
+        indexPtr2);
     Util.setShort(
-      heap,
-      (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index1 * 4)),
-      indexPtr2);
-    Util.setShort(
-      heap,
-      (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index2 * 4)),
-      indexPtr1);
+        heap,
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index2 * 4)),
+        indexPtr1);
 
     // Swap Values
     indexPtr1 =
-      Util.getShort(
-        heap, (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index1 * 4 + 2)));
+        Util.getShort(
+            heap,
+            (short)
+                (instanceTable[KM_MAP_OFFSET]
+                    + TLV_HEADER_SIZE
+                    + MAP_HEADER_SIZE
+                    + (short) (index1 * 4 + 2)));
     indexPtr2 =
-      Util.getShort(
+        Util.getShort(
+            heap,
+            (short)
+                (instanceTable[KM_MAP_OFFSET]
+                    + TLV_HEADER_SIZE
+                    + MAP_HEADER_SIZE
+                    + (short) (index2 * 4 + 2)));
+    Util.setShort(
         heap,
-        (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index2 * 4 + 2)));
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index1 * 4 + 2)),
+        indexPtr2);
     Util.setShort(
-      heap,
-      (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index1 * 4 + 2)),
-      indexPtr2);
-    Util.setShort(
-      heap,
-      (short) (instanceTable[KM_MAP_OFFSET] + TLV_HEADER_SIZE + MAP_HEADER_SIZE + (short) (index2 * 4 + 2)),
-      indexPtr1);
+        heap,
+        (short)
+            (instanceTable[KM_MAP_OFFSET]
+                + TLV_HEADER_SIZE
+                + MAP_HEADER_SIZE
+                + (short) (index2 * 4 + 2)),
+        indexPtr1);
   }
 
   public void canonicalize() {

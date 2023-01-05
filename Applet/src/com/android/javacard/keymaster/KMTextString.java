@@ -26,12 +26,12 @@ import javacard.framework.Util;
  * TEXT_STR_TYPE; short length; sequence of bytes}
  */
 public class KMTextString extends KMByteBlob {
+
   private static byte OFFSET_SIZE = 2;
 
   private static KMTextString prototype;
 
-  private KMTextString() {
-  }
+  private KMTextString() {}
 
   private static KMTextString proto(short ptr) {
     if (prototype == null) {
@@ -49,17 +49,17 @@ public class KMTextString extends KMByteBlob {
   // return an empty byte blob instance
   public static short instance(short length) {
     short ptr = KMType.instance(TEXT_STRING_TYPE, (short) (length + OFFSET_SIZE));
-    Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE),
-        (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE));
-    Util.setShort(heap, (short)(ptr + 1), length);
+    Util.setShort(
+        heap, (short) (ptr + TLV_HEADER_SIZE), (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE));
+    Util.setShort(heap, (short) (ptr + 1), length);
     return ptr;
   }
 
   // byte blob from existing buf
   public static short instance(byte[] buf, short startOff, short length) {
     short ptr = instance(length);
-    Util.arrayCopyNonAtomic(buf, startOff, heap,
-        (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE), length);
+    Util.arrayCopyNonAtomic(
+        buf, startOff, heap, (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE), length);
     return ptr;
   }
 

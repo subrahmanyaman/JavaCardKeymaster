@@ -21,17 +21,16 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCosePairByteBlobTag represents a key-value type, where key can be KMInteger or KMNInteger and value is
- * KMByteBlob type. struct{byte TAG_TYPE; short length; struct{short BYTE_BLOB_TYPE; short key; short value}}.
+ * KMCosePairByteBlobTag represents a key-value type, where key can be KMInteger or KMNInteger and
+ * value is KMByteBlob type. struct{byte TAG_TYPE; short length; struct{short BYTE_BLOB_TYPE; short
+ * key; short value}}.
  */
 public class KMCosePairByteBlobTag extends KMCosePairTagType {
 
+  public static Object[] keys;
   private static KMCosePairByteBlobTag prototype;
 
-  public static Object[] keys;
-
-  private KMCosePairByteBlobTag() {
-  }
+  private KMCosePairByteBlobTag() {}
 
   private static KMCosePairByteBlobTag proto(short ptr) {
     if (prototype == null) {
@@ -77,32 +76,19 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
     return proto(ptr);
   }
 
-  public short getValueType() {
-    return BYTE_BLOB_TYPE;
-  }
-
-  @Override
-  public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  @Override
-  public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
   private static void createKeys() {
     if (keys == null) {
-      keys = new Object[]{
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_X},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_Y},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PRIV_KEY},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_IV},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_KEYID},
-          (Object) new byte[]{(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_KEY_ID},
-          (Object) KMCose.SUBJECT_PUBLIC_KEY,
-          (Object) KMCose.KEY_USAGE
-      };
+      keys =
+          new Object[] {
+            (Object) new byte[] {(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_X},
+            (Object) new byte[] {(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PUBKEY_Y},
+            (Object) new byte[] {(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_PRIV_KEY},
+            (Object) new byte[] {(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_IV},
+            (Object) new byte[] {(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_LABEL_KEYID},
+            (Object) new byte[] {(byte) 0, (byte) 0, (byte) 0, KMCose.COSE_KEY_KEY_ID},
+            (Object) KMCose.SUBJECT_PUBLIC_KEY,
+            (Object) KMCose.KEY_USAGE
+          };
     }
   }
 
@@ -119,7 +105,13 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
     }
     short index = 0;
     while (index < (short) keys.length) {
-      if (0 == Util.arrayCompare((byte[]) keys[index], (short) 0, heap, offset, (short) ((byte[]) keys[index]).length)) {
+      if (0
+          == Util.arrayCompare(
+              (byte[]) keys[index],
+              (short) 0,
+              heap,
+              offset,
+              (short) ((byte[]) keys[index]).length)) {
         return true;
       }
       index++;
@@ -127,4 +119,19 @@ public class KMCosePairByteBlobTag extends KMCosePairTagType {
     return false;
   }
 
+  public short getValueType() {
+    return BYTE_BLOB_TYPE;
+  }
+
+  @Override
+  public short getKeyPtr() {
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  @Override
+  public short getValuePtr() {
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_COSE_KEY_BYTE_BLOB_VAL_OFFSET] + TLV_HEADER_SIZE + 4));
+  }
 }

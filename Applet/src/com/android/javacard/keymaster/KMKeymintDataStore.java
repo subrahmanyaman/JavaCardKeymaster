@@ -1,39 +1,32 @@
 package com.android.javacard.keymaster;
 
-import org.globalplatform.upgrade.Element;
-
-import com.android.javacard.seprovider.KMAESKey;
-import com.android.javacard.seprovider.KMAttestationKey;
 import com.android.javacard.seprovider.KMComputedHmacKey;
 import com.android.javacard.seprovider.KMDataStoreConstants;
 import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
-import com.android.javacard.seprovider.KMECDeviceUniqueKey;
-import com.android.javacard.seprovider.KMECPrivateKey;
 import com.android.javacard.seprovider.KMException;
-import com.android.javacard.seprovider.KMHmacKey;
 import com.android.javacard.seprovider.KMMasterKey;
 import com.android.javacard.seprovider.KMPreSharedKey;
 import com.android.javacard.seprovider.KMRkpMacKey;
 import com.android.javacard.seprovider.KMSEProvider;
 import com.android.javacard.seprovider.KMUpgradable;
-
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
-import javacard.security.AESKey;
-import javacard.security.CryptoException;
-import javacard.security.HMACKey;
-import javacard.security.KeyBuilder;
-import javacard.security.KeyPair;
+import org.globalplatform.upgrade.Element;
 
+/**
+ * This is a storage class which helps in storing the provisioned data, ROT, OS version, boot patch
+ * level, vendor patch level, HMAC nonce, computed shared secret, 8 auth tags, device locked, device
+ * locked timestamp and device locked password only. Only the provisioned data is restored back
+ * during applet upgrades and remaining data is flushed.
+ */
 public class KMKeymintDataStore implements KMUpgradable {
-	
+
   // Data table configuration
   public static final short KM_APPLET_PACKAGE_VERSION_1 = 0x0100;
   public static final short KM_APPLET_PACKAGE_VERSION_2 = 0x0200;
   public static final short KM_APPLET_PACKAGE_VERSION_3 = 0x0300;
-  public static final byte OLD_DATA_INDEX_SIZE = 19;
   public static final byte DATA_INDEX_SIZE = 17;
   public static final byte DATA_INDEX_ENTRY_SIZE = 4;
   public static final byte DATA_INDEX_ENTRY_LENGTH = 0;
@@ -42,7 +35,7 @@ public class KMKeymintDataStore implements KMUpgradable {
 
   // Old Data table offsets
   private static final byte OLD_PROVISIONED_STATUS_OFFSET = 18;
-  
+
   // Data table offsets
   public static final byte HMAC_NONCE = 0;
   public static final byte BOOT_OS_VERSION = 1;
@@ -55,8 +48,8 @@ public class KMKeymintDataStore implements KMUpgradable {
   // Total 8 auth tags, so the next offset is AUTH_TAG_1 + 8
   public static final byte AUTH_TAG_1 = 7;
   public static final byte DEVICE_STATUS_FLAG = 15;
-  public static final byte EARLY_BOOT_ENDED_FLAG = 16;  
-  
+  public static final byte EARLY_BOOT_ENDED_FLAG = 16;
+
   // Data Item sizes
   public static final byte HMAC_SEED_NONCE_SIZE = 32;
   public static final byte COMPUTED_HMAC_KEY_SIZE = 32;
@@ -68,24 +61,23 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final byte AUTH_TAG_LENGTH = 16;
   public static final byte AUTH_TAG_COUNTER_SIZE = 4;
   public static final byte AUTH_TAG_ENTRY_SIZE = (AUTH_TAG_LENGTH + AUTH_TAG_COUNTER_SIZE + 1);
-  private static final byte MASTER_KEY_SIZE = 16;
   private static final byte SHARED_SECRET_KEY_SIZE = 32;
   private static final byte DEVICE_STATUS_FLAG_SIZE = 1;
-  
-  private static final short UDS_CERT_CHAIN_MAX_SIZE = 2500;//First 2 bytes for length.
+
+  private static final short UDS_CERT_CHAIN_MAX_SIZE = 2500; // First 2 bytes for length.
   private static final short DICE_CERT_CHAIN_MAX_SIZE = 512;
 
- //Device boot states. Applet starts executing the
- // core commands once all the states are set. The commands
- // that are allowed irrespective of these states are:
- // All the provision commands
- // INS_GET_HW_INFO_CMD
- // INS_ADD_RNG_ENTROPY_CMD
- // INS_COMPUTE_SHARED_HMAC_CMD
- // INS_GET_HMAC_SHARING_PARAM_CMD
- public static final byte SET_BOOT_PARAMS_SUCCESS = 0x01;
- public static final byte SET_SYSTEM_PROPERTIES_SUCCESS = 0x02;
- public static final byte NEGOTIATED_SHARED_SECRET_SUCCESS = 0x04;
+  // Device boot states. Applet starts executing the
+  // core commands once all the states are set. The commands
+  // that are allowed irrespective of these states are:
+  // All the provision commands
+  // INS_GET_HW_INFO_CMD
+  // INS_ADD_RNG_ENTROPY_CMD
+  // INS_COMPUTE_SHARED_HMAC_CMD
+  // INS_GET_HMAC_SHARING_PARAM_CMD
+  public static final byte SET_BOOT_PARAMS_SUCCESS = 0x01;
+  public static final byte SET_SYSTEM_PROPERTIES_SUCCESS = 0x02;
+  public static final byte NEGOTIATED_SHARED_SECRET_SUCCESS = 0x04;
 
   // Data - originally was in repository
   private byte[] attIdBrand;
@@ -109,7 +101,7 @@ public class KMKeymintDataStore implements KMUpgradable {
 
   // Secure Boot Mode
   public byte secureBootMode;
-  
+
   private short dataIndex;
   private byte[] dataTable;
   private KMSEProvider seProvider;
@@ -128,13 +120,13 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static KMKeymintDataStore instance() {
     return kmDataStore;
   }
-  
+
   public KMKeymintDataStore(KMSEProvider provider, KMRepository repo) {
     seProvider = provider;
     repository = repo;
     boolean isUpgrading = provider.isUpgrading();
     initDataTable();
-    //Initialize the device locked status
+    // Initialize the device locked status
     if (!isUpgrading) {
       udsCertChain = new byte[UDS_CERT_CHAIN_MAX_SIZE];
       diceCertChain = new byte[DICE_CERT_CHAIN_MAX_SIZE];
@@ -144,14 +136,14 @@ public class KMKeymintDataStore implements KMUpgradable {
     setDeviceLock(false);
     kmDataStore = this;
   }
-  
+
   private void initDataTable() {
     if (dataTable == null) {
       dataTable = new byte[DATA_MEM_SIZE];
       dataIndex = (short) (DATA_INDEX_SIZE * DATA_INDEX_ENTRY_SIZE);
-    }  
+    }
   }
-  
+
   private short dataAlloc(short length) {
     if (((short) (dataIndex + length)) > dataTable.length) {
       ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
@@ -206,7 +198,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     }
     return len;
   }
-  
+
   private short readDataEntry(byte[] dataTable, short id, byte[] buf, short offset) {
     id = (short) (id * DATA_INDEX_ENTRY_SIZE);
     short len = Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_LENGTH));
@@ -225,7 +217,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     id = (short) (id * DATA_INDEX_ENTRY_SIZE);
     return Util.getShort(dataTable, (short) (id + DATA_INDEX_ENTRY_LENGTH));
   }
-  
+
   public short readData(short id) {
     short len = dataLength(id);
     if (len != 0) {
@@ -235,12 +227,10 @@ public class KMKeymintDataStore implements KMUpgradable {
     }
     return KMType.INVALID_VALUE;
   }
-  
+
   public short getHmacNonce() {
     return readData(HMAC_NONCE);
   }
-
-  private static final byte[] zero = {0, 0, 0, 0, 0, 0, 0, 0};
 
   public short getOsVersion() {
     short blob = readData(BOOT_OS_VERSION);
@@ -248,7 +238,7 @@ public class KMKeymintDataStore implements KMUpgradable {
       KMException.throwIt(KMError.INVALID_DATA);
     }
     return KMInteger.uint_32(
-          KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
+        KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
   }
 
   public short getVendorPatchLevel() {
@@ -257,7 +247,7 @@ public class KMKeymintDataStore implements KMUpgradable {
       KMException.throwIt(KMError.INVALID_DATA);
     }
     return KMInteger.uint_32(
-          KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
+        KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
   }
 
   public short getOsPatch() {
@@ -266,7 +256,7 @@ public class KMKeymintDataStore implements KMUpgradable {
       KMException.throwIt(KMError.INVALID_DATA);
     }
     return KMInteger.uint_32(
-          KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
+        KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
   }
 
   private boolean readBoolean(short id) {
@@ -281,12 +271,24 @@ public class KMKeymintDataStore implements KMUpgradable {
     return readBoolean(DEVICE_LOCKED);
   }
 
+  public void setDeviceLock(boolean flag) {
+    writeBoolean(DEVICE_LOCKED, flag);
+  }
+
   public boolean getDeviceLockPasswordOnly() {
     return readBoolean(DEVICE_LOCKED_PASSWORD_ONLY);
   }
 
+  public void setDeviceLockPasswordOnly(boolean flag) {
+    writeBoolean(DEVICE_LOCKED_PASSWORD_ONLY, flag);
+  }
+
   public boolean getEarlyBootEndedStatus() {
     return readBoolean(EARLY_BOOT_ENDED_FLAG);
+  }
+
+  public void setEarlyBootEndedStatus(boolean flag) {
+    writeBoolean(EARLY_BOOT_ENDED_FLAG, flag);
   }
 
   public short getDeviceTimeStamp() {
@@ -294,8 +296,8 @@ public class KMKeymintDataStore implements KMUpgradable {
     if (blob == KMType.INVALID_VALUE) {
       KMException.throwIt(KMError.INVALID_DATA);
     }
-    return KMInteger.uint_64(KMByteBlob.cast(blob).getBuffer(),
-          KMByteBlob.cast(blob).getStartOff());
+    return KMInteger.uint_64(
+        KMByteBlob.cast(blob).getBuffer(), KMByteBlob.cast(blob).getStartOff());
   }
 
   public void setOsVersion(byte[] buf, short start, short len) {
@@ -322,14 +324,6 @@ public class KMKeymintDataStore implements KMUpgradable {
     writeDataEntry(id, repository.getHeap(), start, (short) 1);
   }
 
-  public void setDeviceLock(boolean flag) {
-    writeBoolean(DEVICE_LOCKED, flag);
-  }
-
-  public void setDeviceLockPasswordOnly(boolean flag) {
-    writeBoolean(DEVICE_LOCKED_PASSWORD_ONLY, flag);
-  }
-
   public void setDeviceLockTimestamp(byte[] buf, short start, short len) {
     if (len != DEVICE_LOCK_TS_SIZE) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
@@ -337,19 +331,15 @@ public class KMKeymintDataStore implements KMUpgradable {
     writeDataEntry(DEVICE_LOCKED_TIME, buf, start, len);
   }
 
-  public void setEarlyBootEndedStatus(boolean flag) {
-    writeBoolean(EARLY_BOOT_ENDED_FLAG, flag);
-  }
-  
   public void clearDeviceBootStatus() {
-	clearDataEntry(DEVICE_STATUS_FLAG);
+    clearDataEntry(DEVICE_STATUS_FLAG);
   }
 
   public void setDeviceBootStatus(byte initStatus) {
     short offset = repository.allocReclaimableMemory(DEVICE_STATUS_FLAG_SIZE);
-	byte[] buf = repository.getHeap();
-	getDeviceBootStatus(buf, offset);
-	buf[offset] |= initStatus;
+    byte[] buf = repository.getHeap();
+    getDeviceBootStatus(buf, offset);
+    buf[offset] |= initStatus;
     writeDataEntry(DEVICE_STATUS_FLAG, buf, offset, DEVICE_STATUS_FLAG_SIZE);
     repository.reclaimMemory(DEVICE_STATUS_FLAG_SIZE);
   }
@@ -359,8 +349,10 @@ public class KMKeymintDataStore implements KMUpgradable {
     short offset = repository.allocReclaimableMemory(DEVICE_STATUS_FLAG_SIZE);
     byte[] buf = repository.getHeap();
     getDeviceBootStatus(buf, offset);
-    byte bootCompleteStatus = (SET_BOOT_PARAMS_SUCCESS | SET_SYSTEM_PROPERTIES_SUCCESS |
-        NEGOTIATED_SHARED_SECRET_SUCCESS);
+    byte bootCompleteStatus =
+        (SET_BOOT_PARAMS_SUCCESS
+            | SET_SYSTEM_PROPERTIES_SUCCESS
+            | NEGOTIATED_SHARED_SECRET_SUCCESS);
     if (bootCompleteStatus == (buf[offset] & bootCompleteStatus)) {
       result = true;
     }
@@ -388,7 +380,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     readDataEntry(tagId, buf, offset);
     return (0 == buf[offset]);
   }
-  
+
   public void initHmacNonce(byte[] nonce, short offset, short len) {
     if (len != HMAC_SEED_NONCE_SIZE) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
@@ -399,7 +391,7 @@ public class KMKeymintDataStore implements KMUpgradable {
   public void clearHmacNonce() {
     clearDataEntry(HMAC_NONCE);
   }
-  
+
   public boolean persistAuthTag(short authTag) {
 
     if (KMByteBlob.cast(authTag).length() != AUTH_TAG_LENGTH) {
@@ -413,15 +405,18 @@ public class KMKeymintDataStore implements KMUpgradable {
     Util.arrayCopyNonAtomic(
         KMByteBlob.cast(authTag).getBuffer(),
         KMByteBlob.cast(authTag).getStartOff(),
-        repository.getHeap(), (short) (authTagEntry + 1), AUTH_TAG_LENGTH);
-    Util.setShort(repository.getHeap(), (short) (authTagEntry + AUTH_TAG_LENGTH + 1 + 2),
-        (short) 1);
+        repository.getHeap(),
+        (short) (authTagEntry + 1),
+        AUTH_TAG_LENGTH);
+    Util.setShort(
+        repository.getHeap(), (short) (authTagEntry + AUTH_TAG_LENGTH + 1 + 2), (short) 1);
     short index = 0;
     while (index < MAX_BLOB_STORAGE) {
-      if ((dataLength((short) (index + AUTH_TAG_1)) == 0) ||
-          isAuthTagSlotAvailable((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff)) {
+      if ((dataLength((short) (index + AUTH_TAG_1)) == 0)
+          || isAuthTagSlotAvailable((short) (index + AUTH_TAG_1), scratchPad, scratchPadOff)) {
 
-        writeDataEntry((short) (index + AUTH_TAG_1), repository.getHeap(), authTagEntry, AUTH_TAG_ENTRY_SIZE);
+        writeDataEntry(
+            (short) (index + AUTH_TAG_1), repository.getHeap(), authTagEntry, AUTH_TAG_ENTRY_SIZE);
         return true;
       }
       index++;
@@ -450,11 +445,10 @@ public class KMKeymintDataStore implements KMUpgradable {
     short offset = repository.alloc(AUTH_TAG_ENTRY_SIZE);
     while (index < MAX_BLOB_STORAGE) {
       if (dataLength((short) (index + AUTH_TAG_1)) != 0) {
-        readDataEntry((short) (index + AUTH_TAG_1),
-        		repository.getHeap(), offset);
+        readDataEntry((short) (index + AUTH_TAG_1), repository.getHeap(), offset);
         found =
             Util.arrayCompare(
-            		repository.getHeap(),
+                repository.getHeap(),
                 (short) (offset + 1),
                 KMByteBlob.cast(authTag).getBuffer(),
                 KMByteBlob.cast(authTag).getStartOff(),
@@ -494,13 +488,14 @@ public class KMKeymintDataStore implements KMUpgradable {
           KMByteBlob.cast(dataPtr).getBuffer(),
           (short) (KMByteBlob.cast(dataPtr).getStartOff() + AUTH_TAG_LENGTH + 1),
           len);
-      writeDataEntry(tag,
+      writeDataEntry(
+          tag,
           KMByteBlob.cast(dataPtr).getBuffer(),
           KMByteBlob.cast(dataPtr).getStartOff(),
           KMByteBlob.cast(dataPtr).length());
     }
   }
-  
+
   public void persistUdsCertChain(byte[] buf, short offset, short len) {
     // Input buffer contains encoded Uds certificate chain as shown below.
     //    UdsDKSignatures = {
@@ -517,8 +512,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     }
     JCSystem.beginTransaction();
     Util.setShort(udsCertChain, (short) 0, (short) len);
-    Util.arrayCopyNonAtomic(buf, offset, udsCertChain,
-        (short) 2, len);
+    Util.arrayCopyNonAtomic(buf, offset, udsCertChain, (short) 2, len);
     JCSystem.commitTransaction();
   }
 
@@ -540,18 +534,17 @@ public class KMKeymintDataStore implements KMUpgradable {
     }
     JCSystem.beginTransaction();
     Util.setShort(diceCertChain, (short) 0, (short) len);
-    Util.arrayCopyNonAtomic(buf, offset, diceCertChain,
-        (short) 2, len);
+    Util.arrayCopyNonAtomic(buf, offset, diceCertChain, (short) 2, len);
     JCSystem.commitTransaction();
   }
-  
+
   private void writeAuthTagState(byte[] buf, short offset, byte state) {
     buf[offset] = state;
   }
-  
+
   public KMMasterKey createMasterKey(short keySizeBits) {
     if (masterKey == null) {
-	  masterKey = seProvider.createMasterKey(masterKey, keySizeBits);
+      masterKey = seProvider.createMasterKey(masterKey, keySizeBits);
     }
     return (KMMasterKey) masterKey;
   }
@@ -568,14 +561,14 @@ public class KMKeymintDataStore implements KMUpgradable {
       preSharedKey = seProvider.createPreSharedKey(preSharedKey, keyData, offset, length);
     }
   }
-  
+
   public KMPreSharedKey getPresharedKey() {
     if (preSharedKey == null) {
       KMException.throwIt(KMError.INVALID_DATA);
-    } 
+    }
     return preSharedKey;
   }
-  
+
   public void createComputedHmacKey(byte[] keyData, short offset, short length) {
     if (length != COMPUTED_HMAC_KEY_SIZE) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
@@ -585,163 +578,167 @@ public class KMKeymintDataStore implements KMUpgradable {
     } else {
       seProvider.createComputedHmacKey(computedHmacKey, keyData, offset, length);
     }
-  }  
-  
+  }
+
   public KMComputedHmacKey getComputedHmacKey() {
     if (computedHmacKey == null) {
-      KMException.throwIt(KMError.INVALID_DATA);		
-    }  
+      KMException.throwIt(KMError.INVALID_DATA);
+    }
     return computedHmacKey;
   }
 
-  public KMDeviceUniqueKeyPair createRkpDeviceUniqueKeyPair(byte[] pubKey, short pubKeyOff, short pubKeyLen,
-      byte[] privKey, short privKeyOff,
+  public KMDeviceUniqueKeyPair createRkpDeviceUniqueKeyPair(
+      byte[] pubKey,
+      short pubKeyOff,
+      short pubKeyLen,
+      byte[] privKey,
+      short privKeyOff,
       short privKeyLen) {
     if (deviceUniqueKeyPair == null) {
-      deviceUniqueKeyPair = seProvider.createRkpDeviceUniqueKeyPair(deviceUniqueKeyPair, pubKey, pubKeyOff,
-          pubKeyLen, privKey,
-          privKeyOff, privKeyLen);
+      deviceUniqueKeyPair =
+          seProvider.createRkpDeviceUniqueKeyPair(
+              deviceUniqueKeyPair, pubKey, pubKeyOff, pubKeyLen, privKey, privKeyOff, privKeyLen);
     } else {
-      seProvider.createRkpDeviceUniqueKeyPair(deviceUniqueKeyPair, pubKey, pubKeyOff, pubKeyLen, privKey,
-          privKeyOff, privKeyLen);
+      seProvider.createRkpDeviceUniqueKeyPair(
+          deviceUniqueKeyPair, pubKey, pubKeyOff, pubKeyLen, privKey, privKeyOff, privKeyLen);
     }
     return deviceUniqueKeyPair;
   }
-  
+
   public KMDeviceUniqueKeyPair getRkpDeviceUniqueKeyPair() {
     return ((KMDeviceUniqueKeyPair) deviceUniqueKeyPair);
   }
-  
+
   public void createRkpMacKey(byte[] keydata, short offset, short length) {
     if (rkpMacKey == null) {
-    	rkpMacKey = seProvider.createRkpMacKey(rkpMacKey, keydata, offset, length);
+      rkpMacKey = seProvider.createRkpMacKey(rkpMacKey, keydata, offset, length);
     } else {
       seProvider.createRkpMacKey(rkpMacKey, keydata, offset, length);
     }
   }
-  
+
   public KMRkpMacKey getRkpMacKey() {
     if (rkpMacKey == null) {
-      KMException.throwIt(KMError.INVALID_DATA);		
-    }  
+      KMException.throwIt(KMError.INVALID_DATA);
+    }
     return rkpMacKey;
   }
-	
+
   public short getAttestationId(short tag, byte[] buffer, short start) {
     byte[] attestId = null;
     switch (tag) {
-      // Attestation Id Brand
+        // Attestation Id Brand
       case KMType.ATTESTATION_ID_BRAND:
-    	attestId = attIdBrand;
-    	break;
-      // Attestation Id Device
+        attestId = attIdBrand;
+        break;
+        // Attestation Id Device
       case KMType.ATTESTATION_ID_DEVICE:
-    	attestId = attIdDevice;
-    	break;
-      // Attestation Id Product
+        attestId = attIdDevice;
+        break;
+        // Attestation Id Product
       case KMType.ATTESTATION_ID_PRODUCT:
-    	attestId = attIdProduct;
-    	break;
-      // Attestation Id Serial
+        attestId = attIdProduct;
+        break;
+        // Attestation Id Serial
       case KMType.ATTESTATION_ID_SERIAL:
-    	attestId = attIdSerial;
-    	break;
-      // Attestation Id IMEI
+        attestId = attIdSerial;
+        break;
+        // Attestation Id IMEI
       case KMType.ATTESTATION_ID_IMEI:
-    	attestId = attIdImei;
-    	break;
-      // Attestation Id SECOND IMEI
+        attestId = attIdImei;
+        break;
+        // Attestation Id SECOND IMEI
       case KMType.ATTESTATION_ID_SECOND_IMEI:
         attestId = attIdSecondImei;
         break;
-      // Attestation Id MEID
+        // Attestation Id MEID
       case KMType.ATTESTATION_ID_MEID:
-    	attestId = attIdMeId;
-    	break;
-      // Attestation Id Manufacturer
+        attestId = attIdMeId;
+        break;
+        // Attestation Id Manufacturer
       case KMType.ATTESTATION_ID_MANUFACTURER:
-    	attestId = attIdManufacturer;
-    	break;
-      // Attestation Id Model
+        attestId = attIdManufacturer;
+        break;
+        // Attestation Id Model
       case KMType.ATTESTATION_ID_MODEL:
-    	attestId = attIdModel;
-    	break;
+        attestId = attIdModel;
+        break;
     }
-    if(attestId == null) {
+    if (attestId == null) {
       KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
     }
     Util.arrayCopyNonAtomic(attestId, (short) 0, buffer, start, (short) attestId.length);
     return (short) attestId.length;
   }
-  
+
   public void setAttestationId(short tag, byte[] buffer, short start, short length) {
     switch (tag) {
-      // Attestation Id Brand
+        // Attestation Id Brand
       case KMType.ATTESTATION_ID_BRAND:
-    	JCSystem.beginTransaction();   	  
+        JCSystem.beginTransaction();
         attIdBrand = new byte[length];
         Util.arrayCopyNonAtomic(buffer, (short) start, attIdBrand, (short) 0, length);
-        JCSystem.commitTransaction();       
-        break;
-      // Attestation Id Device
-      case KMType.ATTESTATION_ID_DEVICE:
-    	JCSystem.beginTransaction();
-    	attIdDevice = new byte[length];
-    	Util.arrayCopyNonAtomic(buffer, (short) start, attIdDevice, (short) 0, length);
         JCSystem.commitTransaction();
         break;
-      // Attestation Id Product
+        // Attestation Id Device
+      case KMType.ATTESTATION_ID_DEVICE:
+        JCSystem.beginTransaction();
+        attIdDevice = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdDevice, (short) 0, length);
+        JCSystem.commitTransaction();
+        break;
+        // Attestation Id Product
       case KMType.ATTESTATION_ID_PRODUCT:
-    	JCSystem.beginTransaction();
-    	attIdProduct = new byte[length];
-    	Util.arrayCopyNonAtomic(buffer, (short) start, attIdProduct, (short) 0, length);
-    	JCSystem.commitTransaction();
+        JCSystem.beginTransaction();
+        attIdProduct = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdProduct, (short) 0, length);
+        JCSystem.commitTransaction();
         break;
-      // Attestation Id Serial
+        // Attestation Id Serial
       case KMType.ATTESTATION_ID_SERIAL:
-    	JCSystem.beginTransaction();
-    	attIdSerial = new byte[length];
-    	Util.arrayCopyNonAtomic(buffer, (short) start, attIdSerial, (short) 0, length);
-    	JCSystem.commitTransaction();
+        JCSystem.beginTransaction();
+        attIdSerial = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdSerial, (short) 0, length);
+        JCSystem.commitTransaction();
         break;
-      // Attestation Id IMEI
+        // Attestation Id IMEI
       case KMType.ATTESTATION_ID_IMEI:
-    	JCSystem.beginTransaction();
-    	attIdImei = new byte[length];
-    	Util.arrayCopyNonAtomic(buffer, (short) start, attIdImei, (short) 0, length);
-    	JCSystem.commitTransaction();        
+        JCSystem.beginTransaction();
+        attIdImei = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdImei, (short) 0, length);
+        JCSystem.commitTransaction();
         break;
-      // Attestation Id SECOND IMEI
+        // Attestation Id SECOND IMEI
       case KMType.ATTESTATION_ID_SECOND_IMEI:
         JCSystem.beginTransaction();
         attIdSecondImei = new byte[length];
         Util.arrayCopyNonAtomic(buffer, (short) start, attIdSecondImei, (short) 0, length);
         JCSystem.commitTransaction();
         break;
-      // Attestation Id MEID
+        // Attestation Id MEID
       case KMType.ATTESTATION_ID_MEID:
-    	JCSystem.beginTransaction();
-    	attIdMeId = new byte[length];
-    	Util.arrayCopyNonAtomic(buffer, (short) start, attIdMeId, (short) 0, length);
-    	JCSystem.commitTransaction();
+        JCSystem.beginTransaction();
+        attIdMeId = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdMeId, (short) 0, length);
+        JCSystem.commitTransaction();
         break;
-      // Attestation Id Manufacturer
+        // Attestation Id Manufacturer
       case KMType.ATTESTATION_ID_MANUFACTURER:
-    	JCSystem.beginTransaction();
-    	attIdManufacturer = new byte[length];
+        JCSystem.beginTransaction();
+        attIdManufacturer = new byte[length];
         Util.arrayCopyNonAtomic(buffer, (short) start, attIdManufacturer, (short) 0, length);
         JCSystem.commitTransaction();
         break;
-      // Attestation Id Model
+        // Attestation Id Model
       case KMType.ATTESTATION_ID_MODEL:
-    	JCSystem.beginTransaction();
-    	attIdModel = new byte[length];
-    	Util.arrayCopyNonAtomic(buffer, (short) start, attIdModel, (short) 0, length);
-    	JCSystem.commitTransaction();
+        JCSystem.beginTransaction();
+        attIdModel = new byte[length];
+        Util.arrayCopyNonAtomic(buffer, (short) start, attIdModel, (short) 0, length);
+        JCSystem.commitTransaction();
         break;
     }
   }
- 
+
   public void deleteAttestationIds() {
     attIdBrand = null;
     attIdDevice = null;
@@ -752,13 +749,13 @@ public class KMKeymintDataStore implements KMUpgradable {
     attIdMeId = null;
     attIdManufacturer = null;
     attIdModel = null;
-    //Trigger garbage collection
+    // Trigger garbage collection.
     JCSystem.requestObjectDeletion();
   }
-  
+
   public short getVerifiedBootHash(byte[] buffer, short start) {
     if (verifiedHash == null) {
-      KMException.throwIt(KMError.INVALID_DATA);		
+      KMException.throwIt(KMError.INVALID_DATA);
     }
     Util.arrayCopyNonAtomic(verifiedHash, (short) 0, buffer, start, (short) verifiedHash.length);
     return (short) verifiedHash.length;
@@ -766,7 +763,7 @@ public class KMKeymintDataStore implements KMUpgradable {
 
   public short getBootKey(byte[] buffer, short start) {
     if (bootKey == null) {
-      KMException.throwIt(KMError.INVALID_DATA);		
+      KMException.throwIt(KMError.INVALID_DATA);
     }
     Util.arrayCopyNonAtomic(bootKey, (short) 0, buffer, start, (short) bootKey.length);
     return (short) bootKey.length;
@@ -774,6 +771,10 @@ public class KMKeymintDataStore implements KMUpgradable {
 
   public short getBootState() {
     return bootState;
+  }
+
+  public void setBootState(short state) {
+    bootState = state;
   }
 
   public boolean isDeviceBootLocked() {
@@ -807,10 +808,6 @@ public class KMKeymintDataStore implements KMUpgradable {
     Util.arrayCopy(buffer, start, bootKey, (short) 0, (short) 32);
   }
 
-  public void setBootState(short state) {
-    bootState = state;
-  }
-
   public void setDeviceLocked(boolean state) {
     deviceBootLocked = state;
   }
@@ -839,28 +836,27 @@ public class KMKeymintDataStore implements KMUpgradable {
     if (challenge == null) {
       KMException.throwIt(KMError.INVALID_DATA);
     }
-    Util.arrayCopyNonAtomic(challenge, (short) 0, buffer, start,
-        (short) challenge.length);
+    Util.arrayCopyNonAtomic(challenge, (short) 0, buffer, start, (short) challenge.length);
     return (short) challenge.length;
   }
 
   public boolean isProvisionLocked() {
     if (0 != (provisionStatus & KMKeymasterApplet.PROVISION_STATUS_PROVISIONING_LOCKED)) {
-	  return true;
+      return true;
     }
     return false;
   }
-  
+
+  public short getProvisionStatus() {
+    return provisionStatus;
+  }
+
   public void setProvisionStatus(short pStatus) {
     JCSystem.beginTransaction();
     provisionStatus |= pStatus;
     JCSystem.commitTransaction();
   }
-  
-  public short getProvisionStatus() {
-    return provisionStatus;
-  }
-  
+
   public void unlockProvision() {
     JCSystem.beginTransaction();
     provisionStatus &= ~KMKeymasterApplet.PROVISION_STATUS_PROVISIONING_LOCKED;
@@ -871,15 +867,15 @@ public class KMKeymintDataStore implements KMUpgradable {
     if (inLength != 65) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
-    if(oemRootPublicKey == null) {
+    if (oemRootPublicKey == null) {
       oemRootPublicKey = new byte[65];
     }
     Util.arrayCopy(inBuff, inOffset, oemRootPublicKey, (short) 0, inLength);
   }
 
   public byte[] getOEMRootPublicKey() {
-    if(oemRootPublicKey == null) {
-      KMException.throwIt(KMError.INVALID_DATA);	
+    if (oemRootPublicKey == null) {
+      KMException.throwIt(KMError.INVALID_DATA);
     }
     return oemRootPublicKey;
   }
@@ -902,11 +898,12 @@ public class KMKeymintDataStore implements KMUpgradable {
     element.write(udsCertChain);
     element.write(diceCertChain);
     element.write(oemRootPublicKey);
-    
+
     // Key Objects
     seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY, masterKey);
     seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY, preSharedKey);
-    seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR, deviceUniqueKeyPair);
+    seProvider.onSave(
+        element, KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR, deviceUniqueKeyPair);
     seProvider.onSave(element, KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY, rkpMacKey);
   }
 
@@ -931,13 +928,13 @@ public class KMKeymintDataStore implements KMUpgradable {
 
   private void handlePreviousVersionUpgrade(Element element) {
     // Read Primitives
-    //restore old data table index
-    short oldDataIndex = element.readShort(); 
+    // restore old data table index
+    short oldDataIndex = element.readShort();
     element.readBoolean(); // pop deviceBootLocked
-    element.readShort(); // pop bootState 
-	
+    element.readShort(); // pop bootState
+
     // Read Objects
-    //restore old data table
+    // restore old data table
     byte[] oldDataTable = (byte[]) element.readObject();
 
     attIdBrand = (byte[]) element.readObject();
@@ -949,7 +946,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     attIdManufacturer = (byte[]) element.readObject();
     attIdModel = (byte[]) element.readObject();
     element.readObject(); // pop verifiedHash
-    element.readObject(); //pop bootKey
+    element.readObject(); // pop bootKey
     element.readObject(); // pop bootPatchLevel
     udsCertChain = (byte[]) element.readObject();
     diceCertChain = (byte[]) element.readObject();
@@ -962,10 +959,10 @@ public class KMKeymintDataStore implements KMUpgradable {
     rkpMacKey = (KMRkpMacKey) seProvider.onRestore(element);
     handleProvisionStatusUpgrade(oldDataTable, oldDataIndex);
   }
-  
+
   private void handleUpgrade(Element element, short oldVersion) {
     // Read Primitives
-    provisionStatus =  element.readShort();
+    provisionStatus = element.readShort();
     if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
       secureBootMode = element.readByte();
     }
@@ -976,7 +973,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     attIdSerial = (byte[]) element.readObject();
     attIdImei = (byte[]) element.readObject();
     if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
-        attIdSecondImei = (byte[]) element.readObject();
+      attIdSecondImei = (byte[]) element.readObject();
     }
     attIdMeId = (byte[]) element.readObject();
     attIdManufacturer = (byte[]) element.readObject();
@@ -992,19 +989,20 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   public void getProvisionStatus(byte[] dataTable, byte[] scratchpad, short offset) {
-    Util.setShort(scratchpad, offset, (short)0);
+    Util.setShort(scratchpad, offset, (short) 0);
     readDataEntry(dataTable, OLD_PROVISIONED_STATUS_OFFSET, scratchpad, offset);
   }
 
-  void handleProvisionStatusUpgrade(byte[] dataTable, short dataTableIndex){
-    short dInex = repository.allocReclaimableMemory((short)2);
+  void handleProvisionStatusUpgrade(byte[] dataTable, short dataTableIndex) {
+    short dInex = repository.allocReclaimableMemory((short) 2);
     byte data[] = repository.getHeap();
     getProvisionStatus(dataTable, data, dInex);
-    short pStatus = (short)( data[dInex] & 0x00ff);
-    if( KMKeymasterApplet.PROVISION_STATUS_PROVISIONING_LOCKED 
-          == (pStatus & KMKeymasterApplet.PROVISION_STATUS_PROVISIONING_LOCKED)) {
-      pStatus |= KMKeymasterApplet.PROVISION_STATUS_SE_LOCKED
-          | KMKeymasterApplet.PROVISION_STATUS_SECURE_BOOT_MODE;
+    short pStatus = (short) (data[dInex] & 0x00ff);
+    if (KMKeymasterApplet.PROVISION_STATUS_PROVISIONING_LOCKED
+        == (pStatus & KMKeymasterApplet.PROVISION_STATUS_PROVISIONING_LOCKED)) {
+      pStatus |=
+          KMKeymasterApplet.PROVISION_STATUS_SE_LOCKED
+              | KMKeymasterApplet.PROVISION_STATUS_SECURE_BOOT_MODE;
     }
     JCSystem.beginTransaction();
     // While upgrading Secure Boot Mode flag from 1.0 to 3.0, implementations
@@ -1012,31 +1010,36 @@ public class KMKeymintDataStore implements KMUpgradable {
     secureBootMode = 0;
     provisionStatus = pStatus;
     JCSystem.commitTransaction();
-    repository.reclaimMemory((short)2);
+    repository.reclaimMemory((short) 2);
   }
-  
+
   @Override
   public short getBackupPrimitiveByteCount() {
     // provisionStatus - 2 bytes
     // secureBootMode - 1 byte
-    return (short) (3 +
-        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY) +
-        seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
-        seProvider.getBackupPrimitiveByteCount( KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR) + 
-            		seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY));
+    return (short)
+        (3
+            + seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY)
+            + seProvider.getBackupPrimitiveByteCount(
+                KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY)
+            + seProvider.getBackupPrimitiveByteCount(
+                KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR)
+            + seProvider.getBackupPrimitiveByteCount(
+                KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY));
   }
 
   @Override
   public short getBackupObjectCount() {
-    // AttestationIds - 9 
+    // AttestationIds - 9
     // UdsCertificateChain - 1
     // diceCertificateChain - 1
     // oemRootPublicKey - 1
-    return (short) (12 +
-        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY) +
-        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY) +
-        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR) +
-        seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY));
+    return (short)
+        (12
+            + seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY)
+            + seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY)
+            + seProvider.getBackupObjectCount(
+                KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR)
+            + seProvider.getBackupObjectCount(KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY));
   }
-  
 }

@@ -24,20 +24,18 @@ import javacard.framework.Util;
  * KMEnumTag represents ENUM Tag type specified in android keymaster hal specifications. struct{byte
  * TAG_TYPE; short length; struct{short ENUM_TAG; short tagKey; byte value}}
  */
-
 public class KMEnumTag extends KMTag {
 
   private static KMEnumTag prototype;
 
   // The allowed tag keys of type enum tag.
   private static short[] tags = {
-      ALGORITHM, ECCURVE, BLOB_USAGE_REQ, USER_AUTH_TYPE, ORIGIN, HARDWARE_TYPE
+    ALGORITHM, ECCURVE, BLOB_USAGE_REQ, USER_AUTH_TYPE, ORIGIN, HARDWARE_TYPE
   };
 
   private static Object[] enums = null;
 
-  private KMEnumTag() {
-  }
+  private KMEnumTag() {}
 
   private static KMEnumTag proto(short ptr) {
     if (prototype == null) {
@@ -85,29 +83,17 @@ public class KMEnumTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getTagType() {
-    return KMType.ENUM_TAG;
-  }
-
-  public byte getValue() {
-    return heap[(short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4)];
-  }
-
   public static void create() {
     if (enums == null) {
       // enum tag values.
       enums =
-          new Object[]{
-              new byte[]{RSA, DES, EC, AES, HMAC},
-              new byte[]{P_224, P_256, P_384, P_521, CURVE_25519},
-              new byte[]{STANDALONE, REQUIRES_FILE_SYSTEM},
-              new byte[]{USER_AUTH_NONE, PASSWORD, FINGERPRINT, BOTH, ANY},
-              new byte[]{GENERATED, DERIVED, IMPORTED, UNKNOWN, SECURELY_IMPORTED},
-              new byte[]{SOFTWARE, TRUSTED_ENVIRONMENT, STRONGBOX}
+          new Object[] {
+            new byte[] {RSA, DES, EC, AES, HMAC},
+            new byte[] {P_224, P_256, P_384, P_521, CURVE_25519},
+            new byte[] {STANDALONE, REQUIRES_FILE_SYSTEM},
+            new byte[] {USER_AUTH_NONE, PASSWORD, FINGERPRINT, BOTH, ANY},
+            new byte[] {GENERATED, DERIVED, IMPORTED, UNKNOWN, SECURELY_IMPORTED},
+            new byte[] {SOFTWARE, TRUSTED_ENVIRONMENT, STRONGBOX}
           };
     }
   }
@@ -149,5 +135,18 @@ public class KMEnumTag extends KMTag {
       return heap[(short) (tagPtr + TLV_HEADER_SIZE + 4)];
     }
     return KMType.INVALID_VALUE;
+  }
+
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getTagType() {
+    return KMType.ENUM_TAG;
+  }
+
+  public byte getValue() {
+    return heap[(short) (KMType.instanceTable[KM_ENUM_TAG_OFFSET] + TLV_HEADER_SIZE + 4)];
   }
 }

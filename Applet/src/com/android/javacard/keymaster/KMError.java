@@ -37,11 +37,8 @@ public class KMError {
 
   public static final short UNSUPPORTED_KEY_ENCRYPTION_ALGORITHM = 19;
 
-  /**
-   * For PKCS8 & PKCS12
-   */
+  /** For PKCS8 & PKCS12 */
   public static final short INVALID_INPUT_LENGTH = 21;
-
 
   public static final short KEY_USER_NOT_AUTHENTICATED = 26;
   public static final short INVALID_OPERATION_HANDLE = 28;
@@ -75,7 +72,7 @@ public class KMError {
   public static final short NO_USER_CONFIRMATION = 71;
   public static final short DEVICE_LOCKED = 72;
   public static final short EARLY_BOOT_ENDED = 73;
-  public static final short ATTESTATION_KEYS_NOT_PROVISIONED =74;
+  public static final short ATTESTATION_KEYS_NOT_PROVISIONED = 74;
   public static final short INCOMPATIBLE_MGF_DIGEST = 78;
   public static final short UNSUPPORTED_MGF_DIGEST = 79;
   public static final short MISSING_NOT_BEFORE = 80;
@@ -86,7 +83,7 @@ public class KMError {
   public static final short UNIMPLEMENTED = 100;
   public static final short UNKNOWN_ERROR = 1000;
 
-  //Extended errors
+  // Extended errors
   public static final short SW_CONDITIONS_NOT_SATISFIED = 10001;
   public static final short UNSUPPORTED_CLA = 10002;
   public static final short INVALID_P1P2 = 10003;
@@ -95,13 +92,13 @@ public class KMError {
   public static final short SW_WRONG_LENGTH = 10006;
   public static final short INVALID_DATA = 10007;
 
-  //Crypto errors
+  // Crypto errors
   public static final short CRYPTO_ILLEGAL_USE = 10008;
   public static final short CRYPTO_ILLEGAL_VALUE = 10009;
   public static final short CRYPTO_INVALID_INIT = 10010;
   public static final short CRYPTO_NO_SUCH_ALGORITHM = 10011;
   public static final short CRYPTO_UNINITIALIZED_KEY = 10012;
-  //Generic Unknown error.
+  // Generic Unknown error.
   public static final short GENERIC_UNKNOWN_ERROR = 10013;
 
   // Remote key provisioning error codes.
@@ -113,7 +110,7 @@ public class KMError {
   public static final short INVALID_STATE = 32005;
 
   public static short translate(short err) {
-    switch(err) {
+    switch (err) {
       case SW_CONDITIONS_NOT_SATISFIED:
       case UNSUPPORTED_CLA:
       case INVALID_P1P2:

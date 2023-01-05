@@ -22,6 +22,7 @@ import javacard.security.MessageDigest;
 import javacard.security.Signature;
 import javacardx.crypto.Cipher;
 
+/** This class provides support for RSA_NO_DIGEST signature algorithm. */
 public class KMRsa2048NoDigestSignature extends Signature {
 
   public static final byte ALG_RSA_SIGN_NOPAD = (byte) 0x65;
@@ -40,15 +41,13 @@ public class KMRsa2048NoDigestSignature extends Signature {
   }
 
   @Override
-  public void init(Key key, byte b, byte[] bytes, short i, short i1)
-      throws CryptoException {
+  public void init(Key key, byte b, byte[] bytes, short i, short i1) throws CryptoException {
     inst.init(key, b, bytes, i, i1);
   }
 
   @Override
-  public void setInitialDigest(byte[] bytes, short i, short i1, byte[] bytes1,
-      short i2, short i3) throws CryptoException {
-  }
+  public void setInitialDigest(byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3)
+      throws CryptoException {}
 
   @Override
   public byte getAlgorithm() {
@@ -84,43 +83,40 @@ public class KMRsa2048NoDigestSignature extends Signature {
   public short sign(byte[] bytes, short i, short i1, byte[] bytes1, short i2)
       throws CryptoException {
     padData(bytes, i, i1, KMAndroidSEProvider.getInstance().tmpArray, (short) 0);
-    return inst.doFinal(KMAndroidSEProvider.getInstance().tmpArray, (short) 0,
-        (short) 256, bytes1, i2);
+    return inst.doFinal(
+        KMAndroidSEProvider.getInstance().tmpArray, (short) 0, (short) 256, bytes1, i2);
   }
 
   @Override
-  public short signPreComputedHash(byte[] bytes, short i, short i1,
-      byte[] bytes1, short i2) throws CryptoException {
+  public short signPreComputedHash(byte[] bytes, short i, short i1, byte[] bytes1, short i2)
+      throws CryptoException {
     return 0;
   }
 
   @Override
-  public boolean verify(byte[] bytes, short i, short i1, byte[] bytes1,
-      short i2, short i3) throws CryptoException {
-    //Verification is handled inside HAL
+  public boolean verify(byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3)
+      throws CryptoException {
+    // Verification is handled inside HAL
     return false;
   }
 
   @Override
-  public boolean verifyPreComputedHash(byte[] bytes, short i, short i1,
-      byte[] bytes1, short i2, short i3) throws CryptoException {
-    //Verification is handled inside HAL
+  public boolean verifyPreComputedHash(
+      byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3) throws CryptoException {
+    // Verification is handled inside HAL
     return false;
   }
 
-  private void padData(byte[] buf, short start, short len, byte[] outBuf,
-      short outBufStart) {
+  private void padData(byte[] buf, short start, short len, byte[] outBuf, short outBufStart) {
     if (!isValidData(buf, start, len)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
     }
-    Util.arrayFillNonAtomic(outBuf, (short) outBufStart, (short) 256,
-        (byte) 0x00);
+    Util.arrayFillNonAtomic(outBuf, (short) outBufStart, (short) 256, (byte) 0x00);
     if (algorithm == ALG_RSA_SIGN_NOPAD) { // add zero to right
-    } else if (algorithm == ALG_RSA_PKCS1_NODIGEST) {// 0x00||0x01||PS||0x00
+    } else if (algorithm == ALG_RSA_PKCS1_NODIGEST) { // 0x00||0x01||PS||0x00
       outBuf[0] = 0x00;
       outBuf[1] = 0x01;
-      Util.arrayFillNonAtomic(outBuf, (short) 2, (short) (256 - len - 3),
-          (byte) 0xFF);
+      Util.arrayFillNonAtomic(outBuf, (short) 2, (short) (256 - len - 3), (byte) 0xFF);
       outBuf[(short) (256 - len - 1)] = 0x00;
     } else {
       CryptoException.throwIt(CryptoException.ILLEGAL_USE);

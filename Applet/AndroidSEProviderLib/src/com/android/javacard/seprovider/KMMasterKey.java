@@ -20,6 +20,4 @@ package com.android.javacard.seprovider;
  * Masterkey is stored as a Javacard AES key object, which will provide additional security. The
  * master key is maintained by the SEProvider.
  */
-public interface KMMasterKey {
-
-}
+public interface KMMasterKey {}

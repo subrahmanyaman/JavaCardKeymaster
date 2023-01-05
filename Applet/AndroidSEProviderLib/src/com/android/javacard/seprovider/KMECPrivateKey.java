@@ -15,10 +15,10 @@
  */
 package com.android.javacard.seprovider;
 
+import javacard.security.KeyPair;
 import org.globalplatform.upgrade.Element;
 
-import javacard.security.KeyPair;
-
+/** This is a wrapper class for KeyPair. */
 public class KMECPrivateKey implements KMAttestationKey {
 
   public KeyPair ecKeyPair;
@@ -45,5 +45,4 @@ public class KMECPrivateKey implements KMAttestationKey {
   public static short getBackupObjectCount() {
     return (short) 1;
   }
-
 }

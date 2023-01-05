@@ -27,38 +27,36 @@ import javacard.framework.Util;
  */
 public class KMIntegerTag extends KMTag {
 
-  private static KMIntegerTag prototype;
-
   // Allowed tag keys.
   private static final short[] tags = {
-      // UINT
-      KEYSIZE,
-      MIN_MAC_LENGTH,
-      MIN_SEC_BETWEEN_OPS,
-      MAX_USES_PER_BOOT,
-      USERID,
-      AUTH_TIMEOUT,
-      OS_VERSION,
-      OS_PATCH_LEVEL,
-      VENDOR_PATCH_LEVEL,
-      BOOT_PATCH_LEVEL,
-      MAC_LENGTH,
-      // ULONG
-      RSA_PUBLIC_EXPONENT,
-      // DATE
-      ACTIVE_DATETIME,
-      ORIGINATION_EXPIRE_DATETIME,
-      USAGE_EXPIRE_DATETIME,
-      CREATION_DATETIME,
-      CERTIFICATE_NOT_BEFORE,
-      CERTIFICATE_NOT_AFTER,
-      USAGE_COUNT_LIMIT,
-      // custom tag
-      AUTH_TIMEOUT_MILLIS,
+    // UINT
+    KEYSIZE,
+    MIN_MAC_LENGTH,
+    MIN_SEC_BETWEEN_OPS,
+    MAX_USES_PER_BOOT,
+    USERID,
+    AUTH_TIMEOUT,
+    OS_VERSION,
+    OS_PATCH_LEVEL,
+    VENDOR_PATCH_LEVEL,
+    BOOT_PATCH_LEVEL,
+    MAC_LENGTH,
+    // ULONG
+    RSA_PUBLIC_EXPONENT,
+    // DATE
+    ACTIVE_DATETIME,
+    ORIGINATION_EXPIRE_DATETIME,
+    USAGE_EXPIRE_DATETIME,
+    CREATION_DATETIME,
+    CERTIFICATE_NOT_BEFORE,
+    CERTIFICATE_NOT_AFTER,
+    USAGE_COUNT_LIMIT,
+    // custom tag
+    AUTH_TIMEOUT_MILLIS,
   };
+  private static KMIntegerTag prototype;
 
-  private KMIntegerTag() {
-  }
+  private KMIntegerTag() {}
 
   private static KMIntegerTag proto(short ptr) {
     if (prototype == null) {
@@ -119,23 +117,6 @@ public class KMIntegerTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getTagType() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE));
-  }
-
-  public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getValue() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
-  public short length() {
-    KMInteger obj = KMInteger.cast(getValue());
-    return obj.length();
-  }
-
   private static boolean validateKey(short key) {
     short index = (short) tags.length;
     while (--index >= 0) {
@@ -175,6 +156,26 @@ public class KMIntegerTag extends KMTag {
       }
     }
     return KMType.INVALID_VALUE;
+  }
+
+  public short getTagType() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE));
+  }
+
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getValue() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_INTEGER_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
+  }
+
+  public short length() {
+    KMInteger obj = KMInteger.cast(getValue());
+    return obj.length();
   }
 
   public boolean isValidKeySize(byte alg) {
