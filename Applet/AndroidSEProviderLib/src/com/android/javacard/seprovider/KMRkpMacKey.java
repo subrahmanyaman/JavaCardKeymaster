@@ -1,5 +1,3 @@
 package com.android.javacard.seprovider;
 
-
-public interface KMRkpMacKey {
-}
+public interface KMRkpMacKey {}

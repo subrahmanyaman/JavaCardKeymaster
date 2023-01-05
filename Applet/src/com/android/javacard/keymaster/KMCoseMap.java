@@ -70,12 +70,6 @@ public abstract class KMCoseMap extends KMType {
     }
   }
 
-  abstract public short getVals();
-
-  abstract public short length();
-
-  abstract public void canonicalize();
-
   private static short getKey(short tagPtr) {
     short tagType = KMCosePairTagType.getTagValueType(tagPtr);
     switch (tagType) {
@@ -127,11 +121,17 @@ public abstract class KMCoseMap extends KMType {
       firstKey = KMMap.cast(ptr).getKey(index);
       secondKey = KMMap.cast(ptr).getKey((short) (index + 1));
     }
-    firstKeyLen = KMKeymasterApplet.encoder.encode(firstKey, scratchpad, (short) 0, (short) scratchpad.length);
-    secondKeyLen = KMKeymasterApplet.encoder.encode(secondKey, scratchpad, firstKeyLen, (short) scratchpad.length);
-    if ((firstKeyLen > secondKeyLen) ||
-        ((firstKeyLen == secondKeyLen) &&
-            (0 < Util.arrayCompare(scratchpad, (short) 0, scratchpad, firstKeyLen, firstKeyLen)))) {
+    firstKeyLen =
+        KMKeymasterApplet.encoder.encode(
+            firstKey, scratchpad, (short) 0, (short) scratchpad.length);
+    secondKeyLen =
+        KMKeymasterApplet.encoder.encode(
+            secondKey, scratchpad, firstKeyLen, (short) scratchpad.length);
+    if ((firstKeyLen > secondKeyLen)
+        || ((firstKeyLen == secondKeyLen)
+            && (0
+                < Util.arrayCompare(
+                    scratchpad, (short) 0, scratchpad, firstKeyLen, firstKeyLen)))) {
       swap(ptr, index, (short) (index + 1));
       return true;
     }
@@ -162,4 +162,10 @@ public abstract class KMCoseMap extends KMType {
       index++;
     }
   }
+
+  public abstract short getVals();
+
+  public abstract short length();
+
+  public abstract void canonicalize();
 }

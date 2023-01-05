@@ -16,24 +16,25 @@
 cc_library {
     name: "libjc_keymint",
     defaults: [
-    	"keymaster_defaults",
+        "keymaster_defaults",
         "keymint_use_latest_hal_aidl_ndk_shared",
     ],
     srcs: [
-    	"CborConverter.cpp",
+        "CborConverter.cpp",
         "JavacardKeyMintDevice.cpp",
         "JavacardKeyMintOperation.cpp",
-	"JavacardRemotelyProvisionedComponentDevice.cpp",
+        "JavacardRemotelyProvisionedComponentDevice.cpp",
         "JavacardSecureElement.cpp",
         "JavacardSharedSecret.cpp",
-	"JavacardKeyMintUtils.cpp",
         "keymint_utils.cpp",
     ],
-    cflags:["-O0",],
+    cflags: ["-O0"],
     shared_libs: [
         "android.hardware.security.secureclock-V1-ndk",
         "android.hardware.security.sharedsecret-V1-ndk",
-    	"libbase",
+        "android.hardware.security.rkp-V3-ndk",
+        "lib_android_keymaster_keymint_utils",
+        "libbase",
         "libcppbor_external",
         "libkeymaster_portable",
         "libkeymaster_messages",
@@ -53,12 +54,15 @@ cc_library {
 cc_library {
     name: "libjc_keymint_transport",
     vendor_available: true,
+    defaults: [
+        "keymint_use_latest_hal_aidl_ndk_shared",
+    ],
     srcs: [
         "SocketTransport.cpp",
-	"OmapiTransport.cpp"
+        "OmapiTransport.cpp",
     ],
     export_include_dirs: [
-        "."
+        ".",
     ],
     shared_libs: [
         "libbinder",
@@ -66,7 +70,7 @@ cc_library {
         "liblog",
         "libbinder_ndk",
         "android.se.omapi-V1-ndk",
-        "libhardware"
+        "libhardware",
     ],
 }
 
@@ -88,6 +92,8 @@ cc_binary {
     ],
     shared_libs: [
         "android.hardware.security.sharedsecret-V1-ndk",
+        "lib_android_keymaster_keymint_utils",
+        "android.hardware.security.rkp-V3-ndk",
         "libbase",
         "libbinder_ndk",
         "libcppbor_external",
@@ -114,5 +120,3 @@ prebuilt_etc {
     vendor: true,
     src: "android.hardware.strongbox_keystore.xml",
 }
-
-

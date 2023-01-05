@@ -26,11 +26,11 @@ import javacard.framework.Util;
  * BYTE_BLOB_TYPE; short length; sequence of bytes}
  */
 public class KMByteBlob extends KMType {
-  private static short OFFSET_SIZE = 2;
+
+  private static byte OFFSET_SIZE = 2;
   private static KMByteBlob prototype;
 
-  protected KMByteBlob() {
-  }
+  protected KMByteBlob() {}
 
   private static KMByteBlob proto(short ptr) {
     if (prototype == null) {
@@ -47,16 +47,18 @@ public class KMByteBlob extends KMType {
 
   // return an empty byte blob instance
   public static short instance(short length) {
-    short ptr = KMType.instance(BYTE_BLOB_TYPE, (short)(length+2));
-    Util.setShort(heap, (short)(ptr+TLV_HEADER_SIZE), (short)(ptr+TLV_HEADER_SIZE+OFFSET_SIZE));
-    Util.setShort(heap, (short)(ptr + 1), length);
+    short ptr = KMType.instance(BYTE_BLOB_TYPE, (short) (length + 2));
+    Util.setShort(
+        heap, (short) (ptr + TLV_HEADER_SIZE), (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE));
+    Util.setShort(heap, (short) (ptr + 1), length);
     return ptr;
   }
 
   // byte blob from existing buf
   public static short instance(byte[] buf, short startOff, short length) {
     short ptr = instance(length);
-    Util.arrayCopyNonAtomic(buf, startOff, heap, (short)(ptr+TLV_HEADER_SIZE+OFFSET_SIZE), length);
+    Util.arrayCopyNonAtomic(
+        buf, startOff, heap, (short) (ptr + TLV_HEADER_SIZE + OFFSET_SIZE), length);
     return ptr;
   }
 
@@ -91,7 +93,11 @@ public class KMByteBlob extends KMType {
 
   // Get the start of blob
   public short getStartOff() {
-    return Util.getShort(heap, (short)(getBaseOffset() + TLV_HEADER_SIZE));
+    return Util.getShort(heap, (short) (getBaseOffset() + TLV_HEADER_SIZE));
+  }
+
+  public void setStartOff(short offset) {
+    Util.setShort(heap, (short) (getBaseOffset() + TLV_HEADER_SIZE), offset);
   }
 
   // Get the length of the blob
@@ -126,15 +132,11 @@ public class KMByteBlob extends KMType {
     return (length() != 0);
   }
 
-  public void setStartOff(short offset){
-    Util.setShort(heap, (short)(getBaseOffset() + TLV_HEADER_SIZE), offset);
-  }
-
   protected short getBaseOffset() {
     return instanceTable[KM_BYTE_BLOB_OFFSET];
   }
 
-  public void setLength(short len){
-    Util.setShort(heap, (short)(getBaseOffset() + 1), len);
+  public void setLength(short len) {
+    Util.setShort(heap, (short) (getBaseOffset() + 1), len);
   }
 }

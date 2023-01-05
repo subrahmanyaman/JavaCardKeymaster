@@ -21,6 +21,7 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
+
 public class KMDecoder {
 
   // major types
@@ -43,10 +44,10 @@ public class KMDecoder {
   private static final short UINT32_LENGTH = 0x1A;
   private static final short UINT64_LENGTH = 0x1B;
 
-  private static final short SCRATCH_BUF_SIZE = 6;
-  private static final short START_OFFSET = 0;
-  private static final short LEN_OFFSET = 2;
-  private static final short TAG_KEY_OFFSET = 4;
+  private static final byte SCRATCH_BUF_SIZE = 6;
+  private static final byte START_OFFSET = 0;
+  private static final byte LEN_OFFSET = 2;
+  private static final byte TAG_KEY_OFFSET = 4;
   private Object[] bufferRef;
   private short[] scratchBuf;
 
@@ -235,8 +236,8 @@ public class KMDecoder {
     byte[] buffer = (byte[]) bufferRef[0];
     short startOff = scratchBuf[START_OFFSET];
     // Cose Key should be always either UINT or Negative int
-    if ((buffer[startOff] & MAJOR_TYPE_MASK) != UINT_TYPE &&
-        (buffer[startOff] & MAJOR_TYPE_MASK) != NEG_INT_TYPE) {
+    if ((buffer[startOff] & MAJOR_TYPE_MASK) != UINT_TYPE
+        && (buffer[startOff] & MAJOR_TYPE_MASK) != NEG_INT_TYPE) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
 
@@ -267,7 +268,7 @@ public class KMDecoder {
       tagValueType = KMType.COSE_PAIR_SIMPLE_VALUE_TAG_TYPE;
     } else if (majorType == TSTR_TYPE) {
       tagValueType = KMType.COSE_PAIR_TEXT_STR_TAG_TYPE;
-    }else {
+    } else {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
     return tagValueType;
@@ -337,7 +338,7 @@ public class KMDecoder {
     short payloadLength = readMajorTypeWithPayloadLength(MAP_TYPE);
     // allowed tags
     short allowedTags = KMKeyParameters.cast(exp).getVals();
-    short tagRule = KMArray.cast(allowedTags).get((short)0);
+    short tagRule = KMArray.cast(allowedTags).get((short) 0);
     boolean ignoreInvalidTags = KMEnum.cast(tagRule).getVal() == KMType.IGNORE_INVALID_TAGS;
     short vals = KMArray.instance(payloadLength);
     short length = KMArray.cast(allowedTags).length();
@@ -366,12 +367,12 @@ public class KMDecoder {
             obj = decode(tagClass);
             KMArray.cast(vals).add(arrPos++, obj);
             break;
-          } catch(KMException e){
+          } catch (KMException e) {
             if (KMException.reason() == KMError.INVALID_TAG) {
-              if(!ignoreInvalidTags){
+              if (!ignoreInvalidTags) {
                 KMException.throwIt(KMError.INVALID_TAG);
               }
-            }else {
+            } else {
               KMException.throwIt(KMException.reason());
             }
             break;
@@ -391,21 +392,26 @@ public class KMDecoder {
 
   private short decodeEnumArrayTag(short exp) {
     readTagKey(KMEnumArrayTag.cast(exp).getTagType());
-    return KMEnumArrayTag.instance(scratchBuf[TAG_KEY_OFFSET], decode(KMEnumArrayTag.cast(exp).getValues()));
+    return KMEnumArrayTag.instance(
+        scratchBuf[TAG_KEY_OFFSET], decode(KMEnumArrayTag.cast(exp).getValues()));
   }
 
   private short decodeIntegerArrayTag(short exp) {
     readTagKey(KMIntegerArrayTag.cast(exp).getTagType());
     // the values are array of integers.
-    return KMIntegerArrayTag.instance(KMIntegerArrayTag.cast(exp).getTagType(),
-        scratchBuf[TAG_KEY_OFFSET], decode(KMIntegerArrayTag.cast(exp).getValues()));
+    return KMIntegerArrayTag.instance(
+        KMIntegerArrayTag.cast(exp).getTagType(),
+        scratchBuf[TAG_KEY_OFFSET],
+        decode(KMIntegerArrayTag.cast(exp).getValues()));
   }
 
   private short decodeIntegerTag(short exp) {
     readTagKey(KMIntegerTag.cast(exp).getTagType());
     // the value is an integer
-    return KMIntegerTag.instance(KMIntegerTag.cast(exp).getTagType(),
-        scratchBuf[TAG_KEY_OFFSET], decode(KMIntegerTag.cast(exp).getValue()));
+    return KMIntegerTag.instance(
+        KMIntegerTag.cast(exp).getTagType(),
+        scratchBuf[TAG_KEY_OFFSET],
+        decode(KMIntegerTag.cast(exp).getValue()));
   }
 
   private short decodeBytesTag(short exp) {
@@ -417,7 +423,8 @@ public class KMDecoder {
   private short decodeBignumTag(short exp) {
     readTagKey(KMBignumTag.cast(exp).getTagType());
     // The value must be byte blob
-    return KMBignumTag.instance(scratchBuf[TAG_KEY_OFFSET], decode(KMBignumTag.cast(exp).getValue()));
+    return KMBignumTag.instance(
+        scratchBuf[TAG_KEY_OFFSET], decode(KMBignumTag.cast(exp).getValue()));
   }
 
   private short decodeMap(short exp) {
@@ -445,7 +452,8 @@ public class KMDecoder {
     short type;
     short obj;
     // check whether array contains one type of objects or multiple types
-    if (KMArray.cast(exp).containedType() == KMType.INVALID_VALUE) {// multiple types specified by expression.
+    if (KMArray.cast(exp).containedType()
+        == KMType.INVALID_VALUE) { // multiple types specified by expression.
       if (KMArray.cast(exp).length() != KMArray.ANY_ARRAY_LENGTH) {
         if (KMArray.cast(exp).length() != payloadLength) {
           ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -623,7 +631,8 @@ public class KMDecoder {
       short offset = KMByteBlob.cast(scratchpad).getStartOff();
       Util.arrayFillNonAtomic(input, offset, len, (byte) -1);
       Util.arrayCopyNonAtomic(buf, startOffset, input, (short) (offset + len), len);
-      KMUtils.subtract(input, offset, (short) (offset + len), (short) (offset + 2 * len), (byte) len);
+      KMUtils.subtract(
+          input, offset, (short) (offset + len), (short) (offset + 2 * len), (byte) len);
       inst = KMNInteger.instance(input, (short) (offset + 2 * len), len);
       incrementStartOff(len);
     }
@@ -649,14 +658,16 @@ public class KMDecoder {
 
   private short decodeTstr(short exp) {
     short payloadLength = readMajorTypeWithPayloadLength(TSTR_TYPE);
-    short inst = KMTextString.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET], payloadLength);
+    short inst =
+        KMTextString.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET], payloadLength);
     incrementStartOff(payloadLength);
     return inst;
   }
 
   private short decodeByteBlob(short exp) {
     short payloadLength = readMajorTypeWithPayloadLength(BYTES_TYPE);
-    short inst = KMByteBlob.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET], payloadLength);
+    short inst =
+        KMByteBlob.instance((byte[]) bufferRef[0], scratchBuf[START_OFFSET], payloadLength);
     incrementStartOff(payloadLength);
     return inst;
   }
@@ -747,14 +758,13 @@ public class KMDecoder {
     short version = KMType.INVALID_VALUE;
     try {
       version = decodeInteger(KMInteger.exp());
-    } catch(Exception e) {
+    } catch (Exception e) {
       // Fail to decode Integer. It can happen if it is an old KeyBlob.
     }
     return version;
   }
 
-  public short readCertificateChainHeaderLen(byte[] buf, short bufOffset,
-      short bufLen) {
+  public short readCertificateChainHeaderLen(byte[] buf, short bufOffset, short bufLen) {
     bufferRef[0] = buf;
     scratchBuf[START_OFFSET] = bufOffset;
     scratchBuf[LEN_OFFSET] = (short) (bufOffset + bufLen);

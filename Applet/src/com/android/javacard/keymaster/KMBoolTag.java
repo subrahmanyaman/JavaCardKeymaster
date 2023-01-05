@@ -27,29 +27,26 @@ import javacard.framework.Util;
  * because it is a key value pair. The bool tag always has 0x01 as its value. struct{byte TAG_TYPE;
  * short length; struct{short BOOL_TAG; short tagKey; byte value 1}}
  */
-
 public class KMBoolTag extends KMTag {
-
-  private static KMBoolTag prototype;
 
   // The allowed tag keys of type bool tag.
   private static final short[] tags = {
-      CALLER_NONCE,
-      INCLUDE_UNIQUE_ID,
-      BOOTLOADER_ONLY,
-      ROLLBACK_RESISTANCE,
-      NO_AUTH_REQUIRED,
-      ALLOW_WHILE_ON_BODY,
-      TRUSTED_USER_PRESENCE_REQUIRED,
-      TRUSTED_CONFIRMATION_REQUIRED,
-      UNLOCKED_DEVICE_REQUIRED,
-      RESET_SINCE_ID_ROTATION,
-      EARLY_BOOT_ONLY,
-      DEVICE_UNIQUE_ATTESTATION
+    CALLER_NONCE,
+    INCLUDE_UNIQUE_ID,
+    BOOTLOADER_ONLY,
+    ROLLBACK_RESISTANCE,
+    NO_AUTH_REQUIRED,
+    ALLOW_WHILE_ON_BODY,
+    TRUSTED_USER_PRESENCE_REQUIRED,
+    TRUSTED_CONFIRMATION_REQUIRED,
+    UNLOCKED_DEVICE_REQUIRED,
+    RESET_SINCE_ID_ROTATION,
+    EARLY_BOOT_ONLY,
+    DEVICE_UNIQUE_ATTESTATION
   };
+  private static KMBoolTag prototype;
 
-  private KMBoolTag() {
-  }
+  private KMBoolTag() {}
 
   private static KMBoolTag proto(short ptr) {
     if (prototype == null) {
@@ -88,18 +85,6 @@ public class KMBoolTag extends KMTag {
     return proto(ptr);
   }
 
-  public short getKey() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_BOOL_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getTagType() {
-    return KMType.BOOL_TAG;
-  }
-
-  public byte getVal() {
-    return heap[(short) (KMType.instanceTable[KM_BOOL_TAG_OFFSET] + TLV_HEADER_SIZE + 4)];
-  }
-
   // validate the tag key.
   private static boolean validateKey(short key) {
     short index = (short) tags.length;
@@ -115,4 +100,16 @@ public class KMBoolTag extends KMTag {
     return tags;
   }
 
+  public short getKey() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_BOOL_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getTagType() {
+    return KMType.BOOL_TAG;
+  }
+
+  public byte getVal() {
+    return heap[(short) (KMType.instanceTable[KM_BOOL_TAG_OFFSET] + TLV_HEADER_SIZE + 4)];
+  }
 }

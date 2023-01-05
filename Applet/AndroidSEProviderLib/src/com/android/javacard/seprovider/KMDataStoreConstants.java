@@ -8,5 +8,4 @@ public class KMDataStoreConstants {
   public static final byte INTERFACE_TYPE_MASTER_KEY = 0x04;
   public static final byte INTERFACE_TYPE_PRE_SHARED_KEY = 0x05;
   public static final byte INTERFACE_TYPE_RKP_MAC_KEY = 0x06;
-	
 }

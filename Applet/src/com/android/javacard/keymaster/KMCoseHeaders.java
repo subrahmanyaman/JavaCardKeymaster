@@ -21,17 +21,16 @@ import javacard.framework.Util;
 
 /**
  * KMCoseHeaders represents headers section from the Cose standard
- * https://datatracker.ietf.org/doc/html/rfc8152#section-3. The supported key types are
- * KMInteger, KMNInteger and the supported value types are KMInteger, KMNInteger, KMByteBlob,
- * KMCoseKey. It corresponds to a CBOR Map type. struct{byte TAG_TYPE; short length; short arrayPtr }  where
+ * https://datatracker.ietf.org/doc/html/rfc8152#section-3. The supported key types are KMInteger,
+ * KMNInteger and the supported value types are KMInteger, KMNInteger, KMByteBlob, KMCoseKey. It
+ * corresponds to a CBOR Map type. struct{byte TAG_TYPE; short length; short arrayPtr } where
  * arrayPtr is a pointer to array with any KMTag subtype instances.
  */
 public class KMCoseHeaders extends KMCoseMap {
 
   private static KMCoseHeaders prototype;
 
-  private KMCoseHeaders() {
-  }
+  private KMCoseHeaders() {}
 
   private static KMCoseHeaders proto(short ptr) {
     if (prototype == null) {
@@ -52,7 +51,6 @@ public class KMCoseHeaders extends KMCoseMap {
     arr.add((short) 3, coseKeyValueExp);
     return KMCoseHeaders.instance(arrPtr);
   }
-
 
   public static short instance(short vals) {
     short ptr = KMType.instance(COSE_HEADERS_TYPE, (short) 2);
@@ -129,8 +127,9 @@ public class KMCoseHeaders extends KMCoseMap {
         default:
           break;
       }
-      if (found)
+      if (found) {
         break;
+      }
       index++;
     }
     return valPtr;
@@ -152,7 +151,7 @@ public class KMCoseHeaders extends KMCoseMap {
     return getValueType(KMCose.COSE_LABEL_ALGORITHM);
   }
 
-  public boolean isDataValid(short []buff, short alg, short keyIdPtr) {
+  public boolean isDataValid(short[] buff, short alg, short keyIdPtr) {
     short bufLen = 4;
     buff[0] = KMCose.COSE_LABEL_ALGORITHM;
     buff[1] = alg;
@@ -169,9 +168,10 @@ public class KMCoseHeaders extends KMCoseMap {
         ptr = getValueType(buff[tagIndex]);
         switch (KMType.getType(ptr)) {
           case KMType.BYTE_BLOB_TYPE:
-            if ((KMByteBlob.cast(value).length() == KMByteBlob.cast(ptr).length()) &&
-                (0 ==
-                    Util.arrayCompare(KMByteBlob.cast(value).getBuffer(),
+            if ((KMByteBlob.cast(value).length() == KMByteBlob.cast(ptr).length())
+                && (0
+                    == Util.arrayCompare(
+                        KMByteBlob.cast(value).getBuffer(),
                         KMByteBlob.cast(value).getStartOff(),
                         KMByteBlob.cast(ptr).getBuffer(),
                         KMByteBlob.cast(ptr).getStartOff(),
@@ -192,13 +192,12 @@ public class KMCoseHeaders extends KMCoseMap {
           default:
             break;
         }
-        if (!valid)
+        if (!valid) {
           break;
+        }
       }
       tagIndex += 2;
     }
     return valid;
   }
-
-
 }

@@ -35,8 +35,7 @@ public class KMVerificationToken extends KMType {
 
   private static KMVerificationToken prototype;
 
-  private KMVerificationToken() {
-  }
+  private KMVerificationToken() {}
 
   public static short exp() {
     short arrPtr = KMArray.instance((short) 3);
@@ -86,7 +85,8 @@ public class KMVerificationToken extends KMType {
   }
 
   public short getVals() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_VERIFICATION_TOKEN_OFFSET] + TLV_HEADER_SIZE));
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_VERIFICATION_TOKEN_OFFSET] + TLV_HEADER_SIZE));
   }
 
   public short length() {
@@ -126,5 +126,4 @@ public class KMVerificationToken extends KMType {
     short arrPtr = getVals();
     KMArray.cast(arrPtr).add(MAC, vals);
   }
-
 }

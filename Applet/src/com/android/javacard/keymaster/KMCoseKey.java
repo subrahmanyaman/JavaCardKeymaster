@@ -21,17 +21,17 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMCoseKey represents COSE_Key section from the Cose standard https://datatracker.ietf.org/doc/html/rfc8152#section-7
- * The supported key types are KMNInteger, KMInteger and the supported value types are KMInteger, KMNInteger,
- * KMByteBlob, KMSimpleValue. It corresponds to a CBOR Map type.  struct{byte TAG_TYPE; short length; short arrayPtr }
- * where arrayPtr is a pointer to array with any KMTag subtype instances.
+ * KMCoseKey represents COSE_Key section from the Cose standard
+ * https://datatracker.ietf.org/doc/html/rfc8152#section-7 The supported key types are KMNInteger,
+ * KMInteger and the supported value types are KMInteger, KMNInteger, KMByteBlob, KMSimpleValue. It
+ * corresponds to a CBOR Map type. struct{byte TAG_TYPE; short length; short arrayPtr } where
+ * arrayPtr is a pointer to array with any KMTag subtype instances.
  */
 public class KMCoseKey extends KMCoseMap {
 
   private static KMCoseKey prototype;
 
-  private KMCoseKey() {
-  }
+  private KMCoseKey() {}
 
   private static KMCoseKey proto(short ptr) {
     if (prototype == null) {
@@ -50,7 +50,6 @@ public class KMCoseKey extends KMCoseMap {
     arr.add((short) 3, KMCosePairSimpleValueTag.exp());
     return KMCoseKey.instance(arrPtr);
   }
-
 
   public static short instance(short vals) {
     short ptr = KMType.instance(COSE_KEY_TYPE, (short) 2);
@@ -114,18 +113,18 @@ public class KMCoseKey extends KMCoseMap {
           break;
         case KMType.COSE_PAIR_SIMPLE_VALUE_TAG_TYPE:
           keyPtr = KMCosePairSimpleValueTag.cast(KMArray.cast(arr).get(index)).getKeyPtr();
-          if (key == KMCosePairTagType.getKeyValueShort(keyPtr) &&
-              significantKey == KMCosePairTagType.getKeyValueSignificantShort(keyPtr)) {
+          if (key == KMCosePairTagType.getKeyValueShort(keyPtr)
+              && significantKey == KMCosePairTagType.getKeyValueSignificantShort(keyPtr)) {
             valPtr = KMCosePairSimpleValueTag.cast(KMArray.cast(arr).get(index)).getValuePtr();
             found = true;
           }
           break;
         default:
           break;
-
       }
-      if (found)
+      if (found) {
         break;
+      }
       index++;
     }
     return valPtr;
@@ -140,20 +139,32 @@ public class KMCoseKey extends KMCoseMap {
     pubKey[pubKeyOff] = (byte) 0x04; // uncompressed.
     pubKeyOff++;
     short ptr = getValueType(KMCose.COSE_KEY_PUBKEY_X, KMType.INVALID_VALUE);
-    Util.arrayCopy(KMByteBlob.cast(ptr).getBuffer(), KMByteBlob.cast(ptr).getStartOff(),
-        pubKey, pubKeyOff, KMByteBlob.cast(ptr).length());
+    Util.arrayCopy(
+        KMByteBlob.cast(ptr).getBuffer(),
+        KMByteBlob.cast(ptr).getStartOff(),
+        pubKey,
+        pubKeyOff,
+        KMByteBlob.cast(ptr).length());
     pubKeyOff += KMByteBlob.cast(ptr).length();
     ptr = getValueType(KMCose.COSE_KEY_PUBKEY_Y, KMType.INVALID_VALUE);
-    Util.arrayCopy(KMByteBlob.cast(ptr).getBuffer(), KMByteBlob.cast(ptr).getStartOff(),
-        pubKey, pubKeyOff, KMByteBlob.cast(ptr).length());
+    Util.arrayCopy(
+        KMByteBlob.cast(ptr).getBuffer(),
+        KMByteBlob.cast(ptr).getStartOff(),
+        pubKey,
+        pubKeyOff,
+        KMByteBlob.cast(ptr).length());
     pubKeyOff += KMByteBlob.cast(ptr).length();
     return (short) (pubKeyOff - baseOffset);
   }
 
   public short getPrivateKey(byte[] priv, short privOff) {
     short ptr = getValueType(KMCose.COSE_KEY_PRIV_KEY, KMType.INVALID_VALUE);
-    Util.arrayCopy(KMByteBlob.cast(ptr).getBuffer(), KMByteBlob.cast(ptr).getStartOff(),
-        priv, privOff, KMByteBlob.cast(ptr).length());
+    Util.arrayCopy(
+        KMByteBlob.cast(ptr).getBuffer(),
+        KMByteBlob.cast(ptr).getStartOff(),
+        priv,
+        privOff,
+        KMByteBlob.cast(ptr).length());
     return KMByteBlob.cast(ptr).length();
   }
 
@@ -162,24 +173,26 @@ public class KMCoseKey extends KMCoseMap {
         getValueType(
             Util.getShort(KMCose.COSE_TEST_KEY, (short) 2), // LSB
             Util.getShort(KMCose.COSE_TEST_KEY, (short) 0) // MSB (Significant)
-        );
+            );
     boolean isTestKey = false;
-    if (ptr != 0)
+    if (ptr != 0) {
       isTestKey = (KMSimpleValue.cast(ptr).getValue() == KMSimpleValue.NULL);
+    }
     return isTestKey;
   }
 
   /**
    * Verifies the KMCoseKey values against the input values.
    *
-   * @param keyType  value of the key type
+   * @param keyType value of the key type
    * @param keyIdPtr instance of KMByteBlob containing the key id.
-   * @param keyAlg   value of the algorithm.
-   * @param keyOps   value of the key operations.
-   * @param curve    value of the curve.
+   * @param keyAlg value of the algorithm.
+   * @param keyOps value of the key operations.
+   * @param curve value of the curve.
    * @return true if valid, otherwise false.
    */
-  public boolean isDataValid(short []buff, short keyType, short keyIdPtr, short keyAlg, short keyOps, short curve) {
+  public boolean isDataValid(
+      short[] buff, short keyType, short keyIdPtr, short keyAlg, short keyOps, short curve) {
     short buffLen = 10;
     buff[0] = KMCose.COSE_KEY_KEY_TYPE;
     buff[1] = keyType;
@@ -202,9 +215,10 @@ public class KMCoseKey extends KMCoseMap {
         ptr = getValueType(buff[tagIndex], KMType.INVALID_VALUE);
         switch (KMType.getType(ptr)) {
           case KMType.BYTE_BLOB_TYPE:
-            if ((KMByteBlob.cast(value).length() == KMByteBlob.cast(ptr).length()) &&
-                (0 ==
-                    Util.arrayCompare(KMByteBlob.cast(value).getBuffer(),
+            if ((KMByteBlob.cast(value).length() == KMByteBlob.cast(ptr).length())
+                && (0
+                    == Util.arrayCompare(
+                        KMByteBlob.cast(value).getBuffer(),
                         KMByteBlob.cast(value).getStartOff(),
                         KMByteBlob.cast(ptr).getBuffer(),
                         KMByteBlob.cast(ptr).getStartOff(),
@@ -223,8 +237,9 @@ public class KMCoseKey extends KMCoseMap {
             }
             break;
         }
-        if (!valid)
+        if (!valid) {
           break;
+        }
       }
       tagIndex += 2;
     }
@@ -235,5 +250,4 @@ public class KMCoseKey extends KMCoseMap {
   public void canonicalize() {
     KMCoseMap.canonicalize(getVals());
   }
-
 }

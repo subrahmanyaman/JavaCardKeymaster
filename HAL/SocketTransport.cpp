@@ -22,16 +22,18 @@
 #include <memory>
 #include <vector>
 
+#include <aidl/android/hardware/security/keymint/ErrorCode.h>
 #include <android-base/logging.h>
 #include <sys/socket.h>
 
 #include "ITransport.h"
 
 #define PORT 8080
-#define IPADDR  "192.168.7.239"
+#define IPADDR  "192.168.43.252"
 #define MAX_RECV_BUFFER_SIZE 2500
 
 namespace keymint::javacard {
+using ::aidl::android::hardware::security::keymint::ErrorCode;
 using std::shared_ptr;
 using std::vector;
 
@@ -40,7 +42,7 @@ keymaster_error_t SocketTransport::openConnection() {
     if ((mSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         LOG(ERROR) << "Socket creation failed"
                    << " Error: " << strerror(errno);
-        return static_cast<keymaster_error_t>(KM_ERROR_HARDWARE_TYPE_UNAVAILABLE);
+        return static_cast<keymaster_error_t>(ErrorCode::HARDWARE_TYPE_UNAVAILABLE);
     }
 
     serv_addr.sin_family = AF_INET;
@@ -49,7 +51,7 @@ keymaster_error_t SocketTransport::openConnection() {
     // Convert IPv4 and IPv6 addresses from text to binary form
     if (inet_pton(AF_INET, IPADDR, &serv_addr.sin_addr) <= 0) {
         LOG(ERROR) << "Invalid address/ Address not supported.";
-        return static_cast<keymaster_error_t>(KM_ERROR_HARDWARE_TYPE_UNAVAILABLE);
+        return static_cast<keymaster_error_t>(ErrorCode::HARDWARE_TYPE_UNAVAILABLE);
     }
 
     if (connect(mSocket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
@@ -61,7 +63,8 @@ keymaster_error_t SocketTransport::openConnection() {
     return KM_ERROR_OK;
 }
 
-keymaster_error_t SocketTransport::sendData(const vector<uint8_t>& inData, vector<uint8_t>& output) {
+keymaster_error_t SocketTransport::sendData(const vector<uint8_t>& inData,
+                                            vector<uint8_t>& output) {
     int count = 1;
     while (!socketStatus && count++ < 5) {
         sleep(1);
@@ -79,7 +82,8 @@ keymaster_error_t SocketTransport::sendData(const vector<uint8_t>& inData, vecto
     inDataPrependedLength.push_back(static_cast<uint8_t>(inData.size() & 0xFF));
     inDataPrependedLength.insert(inDataPrependedLength.end(), inData.begin(), inData.end());
 
-    if (0 > send(mSocket, inDataPrependedLength.data(), inDataPrependedLength.size(), MSG_NOSIGNAL)) {
+    if (0 >
+        send(mSocket, inDataPrependedLength.data(), inDataPrependedLength.size(), MSG_NOSIGNAL)) {
         static int connectionResetCnt = 0; /* To avoid loop */
         if ((ECONNRESET == errno || EPIPE == errno) && connectionResetCnt == 0) {
             // Connection reset. Try open socket and then sendData.
@@ -91,7 +95,7 @@ keymaster_error_t SocketTransport::sendData(const vector<uint8_t>& inData, vecto
         connectionResetCnt = 0;
         return KM_ERROR_SECURE_HW_COMMUNICATION_FAILED;
     }
-    
+
     if (!readData(output)) {
         return KM_ERROR_SECURE_HW_COMMUNICATION_FAILED;
     }
@@ -114,25 +118,25 @@ bool SocketTransport::readData(vector<uint8_t>& output) {
     ssize_t totalBytesRead = 0;
     // The first 2 bytes in the response contains the expected response length.
     do {
-      size_t i = 0;
-      ssize_t numBytes = read(mSocket, buffer, MAX_RECV_BUFFER_SIZE);
-      if (0 > numBytes) {
-        LOG(ERROR) << "Failed to read data from socket.";
-        return false;
-      }
-      totalBytesRead += numBytes;
-      if (expectedResponseLen == 0) {
-        // First two bytes in the response contains the expected response length.
-        expectedResponseLen |=  static_cast<ssize_t>(buffer[1] & 0xFF);
-        expectedResponseLen |=  static_cast<ssize_t>((buffer[0] << 8) & 0xFF00);
-        // 2 bytes for storing the length.
-        expectedResponseLen += 2;
-        i = 2;
-      }
-      for (; i < numBytes; i++) {
-        output.push_back(buffer[i]);
-      }
-    } while(totalBytesRead < expectedResponseLen);
+        size_t i = 0;
+        ssize_t numBytes = read(mSocket, buffer, MAX_RECV_BUFFER_SIZE);
+        if (0 > numBytes) {
+            LOG(ERROR) << "Failed to read data from socket.";
+            return false;
+        }
+        totalBytesRead += numBytes;
+        if (expectedResponseLen == 0) {
+            // First two bytes in the response contains the expected response length.
+            expectedResponseLen |= static_cast<ssize_t>(buffer[1] & 0xFF);
+            expectedResponseLen |= static_cast<ssize_t>((buffer[0] << 8) & 0xFF00);
+            // 2 bytes for storing the length.
+            expectedResponseLen += 2;
+            i = 2;
+        }
+        for (; i < numBytes; i++) {
+            output.push_back(buffer[i]);
+        }
+    } while (totalBytesRead < expectedResponseLen);
 
     return true;
 }

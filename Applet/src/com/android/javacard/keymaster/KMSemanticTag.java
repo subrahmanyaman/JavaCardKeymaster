@@ -5,14 +5,12 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 public class KMSemanticTag extends KMType {
-  private static KMSemanticTag prototype;
 
   public static final short COSE_MAC_SEMANTIC_TAG = (short) 0x0011;
   public static final short ROT_SEMANTIC_TAG = (short) 0x9C41;
+  private static KMSemanticTag prototype;
 
-
-  private KMSemanticTag() {
-  }
+  private KMSemanticTag() {}
 
   private static KMSemanticTag proto(short ptr) {
     if (prototype == null) {
@@ -28,10 +26,6 @@ public class KMSemanticTag extends KMType {
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE + 2), KMInteger.exp());
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE + 4), valuePtr);
     return ptr;
-  }
-
-  public short length() {
-    return Util.getShort(heap, (short) (instanceTable[KM_SEMANTIC_TAG_OFFSET] + 1));
   }
 
   public static KMSemanticTag cast(short ptr) {
@@ -53,14 +47,6 @@ public class KMSemanticTag extends KMType {
     return ptr;
   }
 
-  public short getKeyPtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_SEMANTIC_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
-  }
-
-  public short getValuePtr() {
-    return Util.getShort(heap, (short) (instanceTable[KM_SEMANTIC_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
-  }
-
   private static boolean isSemanticTagSupported(short tag) {
     tag = KMInteger.cast(tag).getShort();
     switch (tag) {
@@ -71,5 +57,19 @@ public class KMSemanticTag extends KMType {
         return false;
     }
     return true;
+  }
+
+  public short length() {
+    return Util.getShort(heap, (short) (instanceTable[KM_SEMANTIC_TAG_OFFSET] + 1));
+  }
+
+  public short getKeyPtr() {
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_SEMANTIC_TAG_OFFSET] + TLV_HEADER_SIZE + 2));
+  }
+
+  public short getValuePtr() {
+    return Util.getShort(
+        heap, (short) (instanceTable[KM_SEMANTIC_TAG_OFFSET] + TLV_HEADER_SIZE + 4));
   }
 }

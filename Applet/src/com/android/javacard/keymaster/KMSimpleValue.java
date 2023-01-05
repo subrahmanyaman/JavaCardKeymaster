@@ -5,15 +5,13 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 public class KMSimpleValue extends KMType {
-  private static KMSimpleValue prototype;
 
   public static final byte FALSE = (byte) 20;
   public static final byte TRUE = (byte) 21;
   public static final byte NULL = (byte) 22;
+  private static KMSimpleValue prototype;
 
-
-  private KMSimpleValue() {
-  }
+  private KMSimpleValue() {}
 
   private static KMSimpleValue proto(short ptr) {
     if (prototype == null) {
@@ -26,10 +24,6 @@ public class KMSimpleValue extends KMType {
   // pointer to an empty instance used as expression
   public static short exp() {
     return KMType.exp(SIMPLE_VALUE_TYPE);
-  }
-
-  public short length() {
-    return Util.getShort(heap, (short) (instanceTable[KM_SIMPLE_VALUE_OFFSET] + 1));
   }
 
   public static KMSimpleValue cast(short ptr) {
@@ -51,10 +45,6 @@ public class KMSimpleValue extends KMType {
     return ptr;
   }
 
-  public byte getValue() {
-    return heap[(short) (instanceTable[KM_SIMPLE_VALUE_OFFSET] + 3)];
-  }
-
   private static boolean isSimpleValueValid(byte value) {
     switch (value) {
       case TRUE:
@@ -65,5 +55,13 @@ public class KMSimpleValue extends KMType {
         return false;
     }
     return true;
+  }
+
+  public short length() {
+    return Util.getShort(heap, (short) (instanceTable[KM_SIMPLE_VALUE_OFFSET] + 1));
+  }
+
+  public byte getValue() {
+    return heap[(short) (instanceTable[KM_SIMPLE_VALUE_OFFSET] + 3)];
   }
 }

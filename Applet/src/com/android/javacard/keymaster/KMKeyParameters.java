@@ -28,68 +28,61 @@ import javacard.framework.Util;
  */
 public class KMKeyParameters extends KMType {
 
+  private static final short[] customTags = {
+    KMType.ULONG_TAG, KMType.AUTH_TIMEOUT_MILLIS,
+  };
+  private static final short[] tagArr = {
+    // Unsupported tags.
+    KMType.BOOL_TAG, KMType.TRUSTED_USER_PRESENCE_REQUIRED,
+    KMType.UINT_TAG, KMType.MIN_SEC_BETWEEN_OPS
+  };
+  private static final short[] hwEnforcedTagArr = {
+    // HW Enforced
+    KMType.ENUM_ARRAY_TAG, KMType.PURPOSE,
+    KMType.ENUM_TAG, KMType.ALGORITHM,
+    KMType.UINT_TAG, KMType.KEYSIZE,
+    KMType.ULONG_TAG, KMType.RSA_PUBLIC_EXPONENT,
+    KMType.ENUM_TAG, KMType.BLOB_USAGE_REQ,
+    KMType.ENUM_ARRAY_TAG, KMType.DIGEST,
+    KMType.ENUM_ARRAY_TAG, KMType.PADDING,
+    KMType.ENUM_ARRAY_TAG, KMType.BLOCK_MODE,
+    KMType.ENUM_ARRAY_TAG, KMType.RSA_OAEP_MGF_DIGEST,
+    KMType.BOOL_TAG, KMType.NO_AUTH_REQUIRED,
+    KMType.BOOL_TAG, KMType.CALLER_NONCE,
+    KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,
+    KMType.ENUM_TAG, KMType.ECCURVE,
+    KMType.BOOL_TAG, KMType.INCLUDE_UNIQUE_ID,
+    KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE,
+    KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY,
+    KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY,
+    KMType.UINT_TAG, KMType.MAX_USES_PER_BOOT,
+  };
+  private static final short[] swEnforcedTagsArr = {
+    KMType.DATE_TAG, KMType.ACTIVE_DATETIME,
+    KMType.DATE_TAG, KMType.ORIGINATION_EXPIRE_DATETIME,
+    KMType.DATE_TAG, KMType.USAGE_EXPIRE_DATETIME,
+    KMType.UINT_TAG, KMType.USERID,
+    KMType.DATE_TAG, KMType.CREATION_DATETIME,
+    KMType.UINT_TAG, KMType.USAGE_COUNT_LIMIT,
+    KMType.BOOL_TAG, KMType.ALLOW_WHILE_ON_BODY,
+    KMType.UINT_TAG, KMType.MAX_BOOT_LEVEL,
+  };
+  private static final short[] teeEnforcedTagsArr = {
+    KMType.ULONG_ARRAY_TAG, KMType.USER_SECURE_ID,
+    KMType.UINT_TAG, KMType.AUTH_TIMEOUT,
+    KMType.ENUM_TAG, KMType.USER_AUTH_TYPE,
+    KMType.BOOL_TAG, KMType.UNLOCKED_DEVICE_REQUIRED,
+    KMType.BOOL_TAG, KMType.TRUSTED_CONFIRMATION_REQUIRED,
+  };
+  private static final short[] invalidTagsArr = {
+    KMType.BYTES_TAG, KMType.NONCE,
+    KMType.BYTES_TAG, KMType.ASSOCIATED_DATA,
+    KMType.BYTES_TAG, KMType.UNIQUE_ID,
+    KMType.UINT_TAG, KMType.MAC_LENGTH,
+  };
   private static KMKeyParameters prototype;
 
-  private static final short[] customTags  = {
-      KMType.ULONG_TAG, KMType.AUTH_TIMEOUT_MILLIS,
-  };
-
-  private static final short[] tagArr = {
-	        // Unsupported tags.
-	        KMType.BOOL_TAG, KMType.TRUSTED_USER_PRESENCE_REQUIRED,
-	        KMType.UINT_TAG, KMType.MIN_SEC_BETWEEN_OPS 
-	        };
-
-  private static final short[] hwEnforcedTagArr = {
-	        // HW Enforced
-	        KMType.ENUM_ARRAY_TAG, KMType.PURPOSE,
-	        KMType.ENUM_TAG, KMType.ALGORITHM,
-	        KMType.UINT_TAG, KMType.KEYSIZE,
-	        KMType.ULONG_TAG, KMType.RSA_PUBLIC_EXPONENT,
-	        KMType.ENUM_TAG, KMType.BLOB_USAGE_REQ,
-	        KMType.ENUM_ARRAY_TAG, KMType.DIGEST,
-	        KMType.ENUM_ARRAY_TAG, KMType.PADDING,
-	        KMType.ENUM_ARRAY_TAG, KMType.BLOCK_MODE,
-	        KMType.ENUM_ARRAY_TAG, KMType.RSA_OAEP_MGF_DIGEST,
-	        KMType.BOOL_TAG, KMType.NO_AUTH_REQUIRED,
-	        KMType.BOOL_TAG, KMType.CALLER_NONCE,
-	        KMType.UINT_TAG, KMType.MIN_MAC_LENGTH,
-	        KMType.ENUM_TAG, KMType.ECCURVE,
-	        KMType.BOOL_TAG, KMType.INCLUDE_UNIQUE_ID,
-	        KMType.BOOL_TAG, KMType.ROLLBACK_RESISTANCE,
-	        KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY,
-	        KMType.BOOL_TAG, KMType.BOOTLOADER_ONLY,
-	        KMType.UINT_TAG, KMType.MAX_USES_PER_BOOT,
-	    };
-
-  private static final short[] swEnforcedTagsArr = {
-	        KMType.DATE_TAG, KMType.ACTIVE_DATETIME,
-	        KMType.DATE_TAG, KMType.ORIGINATION_EXPIRE_DATETIME,
-	        KMType.DATE_TAG, KMType.USAGE_EXPIRE_DATETIME,
-	        KMType.UINT_TAG, KMType.USERID,
-	        KMType.DATE_TAG, KMType.CREATION_DATETIME,
-	        KMType.UINT_TAG, KMType.USAGE_COUNT_LIMIT,
-	        KMType.BOOL_TAG, KMType.ALLOW_WHILE_ON_BODY,
-	        KMType.UINT_TAG, KMType.MAX_BOOT_LEVEL,
-	    };
-
-  private static final short[] teeEnforcedTagsArr = {
-	        KMType.ULONG_ARRAY_TAG, KMType.USER_SECURE_ID,
-	        KMType.UINT_TAG, KMType.AUTH_TIMEOUT,
-	        KMType.ENUM_TAG, KMType.USER_AUTH_TYPE,
-                KMType.BOOL_TAG, KMType.UNLOCKED_DEVICE_REQUIRED,
-                KMType.BOOL_TAG, KMType.TRUSTED_CONFIRMATION_REQUIRED,
-	    };
-
-  private static final short[] invalidTagsArr = {
-	        KMType.BYTES_TAG, KMType.NONCE,
-	        KMType.BYTES_TAG, KMType.ASSOCIATED_DATA,
-	        KMType.BYTES_TAG, KMType.UNIQUE_ID,
-	        KMType.UINT_TAG, KMType.MAC_LENGTH,
-	    };
-
-  private KMKeyParameters() {
-  }
+  private KMKeyParameters() {}
 
   private static KMKeyParameters proto(short ptr) {
     if (prototype == null) {
@@ -150,39 +143,9 @@ public class KMKeyParameters extends KMType {
     return proto(ptr);
   }
 
-  public short getVals() {
-    return Util.getShort(heap, (short) (KMType.instanceTable[KM_KEY_PARAMETERS_OFFSET] + TLV_HEADER_SIZE));
-  }
-
-  public short length() {
-    short arrPtr = getVals();
-    return KMArray.cast(arrPtr).length();
-  }
-
   public static short findTag(short tagType, short tagKey, short keyParam) {
     KMKeyParameters instParam = KMKeyParameters.cast(keyParam);
     return instParam.findTag(tagType, tagKey);
-  }
-
-  public short findTag(short tagType, short tagKey) {
-    KMArray vals = KMArray.cast(getVals());
-    short index = 0;
-    short length = vals.length();
-    short key;
-    short type;
-    short ret = KMType.INVALID_VALUE;
-    short obj;
-    while (index < length) {
-      obj = vals.get(index);
-      key = KMTag.getKey(obj);
-      type = KMTag.getTagType(obj);
-      if ((tagKey == key) && (tagType == type)) {
-        ret = obj;
-        break;
-      }
-      index++;
-    }
-    return ret;
   }
 
   public static boolean hasUnsupportedTags(short keyParamsPtr) {
@@ -199,8 +162,7 @@ public class KMKeyParameters extends KMType {
       tagKey = KMTag.getKey(tagPtr);
       tagType = KMTag.getTagType(tagPtr);
       while (tagInd < (short) tagArr.length) {
-        if ((tagArr[tagInd] == tagType)
-            && (tagArr[(short) (tagInd + 1)] == tagKey)) {
+        if ((tagArr[tagInd] == tagType) && (tagArr[(short) (tagInd + 1)] == tagKey)) {
           return true;
         }
         tagInd += 2;
@@ -211,9 +173,14 @@ public class KMKeyParameters extends KMType {
   }
 
   // KDF, ECIES_SINGLE_HASH_MODE missing from types.hal
-  public static short makeSbEnforced(short keyParamsPtr, byte origin,
-      short osVersionObjPtr, short osPatchObjPtr, short vendorPatchObjPtr,
-      short bootPatchObjPtr, byte[] scratchPad) {
+  public static short makeSbEnforced(
+      short keyParamsPtr,
+      byte origin,
+      short osVersionObjPtr,
+      short osPatchObjPtr,
+      short vendorPatchObjPtr,
+      short bootPatchObjPtr,
+      byte[] scratchPad) {
     byte index = 0;
     short tagInd;
     short arrInd = 0;
@@ -250,18 +217,18 @@ public class KMKeyParameters extends KMType {
     short osPatchTag = KMIntegerTag.instance(KMType.UINT_TAG, KMType.OS_PATCH_LEVEL, osPatchObjPtr);
     Util.setShort(scratchPad, arrInd, osPatchTag);
     arrInd += 2;
-    short vendorPatchTag = KMIntegerTag
-        .instance(KMType.UINT_TAG, KMType.VENDOR_PATCH_LEVEL, vendorPatchObjPtr);
+    short vendorPatchTag =
+        KMIntegerTag.instance(KMType.UINT_TAG, KMType.VENDOR_PATCH_LEVEL, vendorPatchObjPtr);
     Util.setShort(scratchPad, arrInd, vendorPatchTag);
     arrInd += 2;
-    short bootPatchTag = KMIntegerTag
-        .instance(KMType.UINT_TAG, KMType.BOOT_PATCH_LEVEL, bootPatchObjPtr);
+    short bootPatchTag =
+        KMIntegerTag.instance(KMType.UINT_TAG, KMType.BOOT_PATCH_LEVEL, bootPatchObjPtr);
     Util.setShort(scratchPad, arrInd, bootPatchTag);
     arrInd += 2;
     return createKeyParameters(scratchPad, (short) (arrInd / 2));
   }
 
-  public static short makeHwEnforced(short sb, short tee){
+  public static short makeHwEnforced(short sb, short tee) {
     short len = KMKeyParameters.cast(sb).length();
     len += KMKeyParameters.cast(tee).length();
     short hwEnf = KMArray.instance(len);
@@ -269,9 +236,9 @@ public class KMKeyParameters extends KMType {
     tee = KMKeyParameters.cast(tee).getVals();
     len = KMArray.cast(sb).length();
     short src = 0;
-    short dest =0;
+    short dest = 0;
     short val = 0;
-    while(src < len){
+    while (src < len) {
       val = KMArray.cast(sb).get(src);
       KMArray.cast(hwEnf).add(dest, val);
       src++;
@@ -279,7 +246,7 @@ public class KMKeyParameters extends KMType {
     }
     src = 0;
     len = KMArray.cast(tee).length();
-    while(src < len){
+    while (src < len) {
       val = KMArray.cast(tee).get(src);
       KMArray.cast(hwEnf).add(dest, val);
       src++;
@@ -287,6 +254,7 @@ public class KMKeyParameters extends KMType {
     }
     return KMKeyParameters.instance(hwEnf);
   }
+
   // ALL_USERS, EXPORTABLE missing from types.hal
   public static short makeKeystoreEnforced(short keyParamsPtr, byte[] scratchPad) {
     byte index = 0;
@@ -369,8 +337,8 @@ public class KMKeyParameters extends KMType {
     return makeHidden(appId, appData, rootOfTrustBlob, scratchPad);
   }
 
-  public static short makeHidden(short appIdBlob, short appDataBlob, short rootOfTrustBlob,
-      byte[] scratchPad) {
+  public static short makeHidden(
+      short appIdBlob, short appDataBlob, short rootOfTrustBlob, byte[] scratchPad) {
     // Order in which the hidden array is created should not change.
     short index = 0;
     KMByteBlob.cast(rootOfTrustBlob);
@@ -387,7 +355,6 @@ public class KMKeyParameters extends KMType {
       index += 2;
     }
     return createKeyParameters(scratchPad, (short) (index / 2));
-
   }
 
   public static boolean isValidTag(short tagType, short tagKey) {
@@ -424,7 +391,7 @@ public class KMKeyParameters extends KMType {
     short tagType;
     while (index < len) {
       tagType = customTags[(short) (index + 1)];
-      switch(tagType) {
+      switch (tagType) {
         case KMType.AUTH_TIMEOUT_MILLIS:
           short authTimeOutTag =
               KMKeyParameters.cast(keyParams).findTag(KMType.UINT_TAG, KMType.AUTH_TIMEOUT);
@@ -442,6 +409,54 @@ public class KMKeyParameters extends KMType {
     return createKeyParameters(scratchPad, (short) (offset / 2));
   }
 
+  public static short createAuthTimeOutMillisTag(
+      short authTimeOutTag, byte[] scratchPad, short offset) {
+    short authTime = KMIntegerTag.cast(authTimeOutTag).getValue();
+    Util.arrayFillNonAtomic(scratchPad, offset, (short) 40, (byte) 0);
+    Util.arrayCopyNonAtomic(
+        KMInteger.cast(authTime).getBuffer(),
+        KMInteger.cast(authTime).getStartOff(),
+        scratchPad,
+        (short) (offset + 8 - KMInteger.cast(authTime).length()),
+        KMInteger.cast(authTime).length());
+    KMUtils.convertToMilliseconds(scratchPad, offset, (short) (offset + 8), (short) (offset + 16));
+    return KMIntegerTag.instance(
+        KMType.ULONG_TAG,
+        KMType.AUTH_TIMEOUT_MILLIS,
+        KMInteger.uint_64(scratchPad, (short) (offset + 8)));
+  }
+
+  public short getVals() {
+    return Util.getShort(
+        heap, (short) (KMType.instanceTable[KM_KEY_PARAMETERS_OFFSET] + TLV_HEADER_SIZE));
+  }
+
+  public short length() {
+    short arrPtr = getVals();
+    return KMArray.cast(arrPtr).length();
+  }
+
+  public short findTag(short tagType, short tagKey) {
+    KMArray vals = KMArray.cast(getVals());
+    short index = 0;
+    short length = vals.length();
+    short key;
+    short type;
+    short ret = KMType.INVALID_VALUE;
+    short obj;
+    while (index < length) {
+      obj = vals.get(index);
+      key = KMTag.getKey(obj);
+      type = KMTag.getTagType(obj);
+      if ((tagKey == key) && (tagType == type)) {
+        ret = obj;
+        break;
+      }
+      index++;
+    }
+    return ret;
+  }
+
   public void deleteCustomTags() {
     short arrPtr = getVals();
     short index = (short) (customTags.length - 1);
@@ -453,19 +468,5 @@ public class KMKeyParameters extends KMType {
       }
       index -= 2;
     }
-  }
-
-  public static short createAuthTimeOutMillisTag(short authTimeOutTag, byte[] scratchPad, short offset) {
-    short authTime = KMIntegerTag.cast(authTimeOutTag).getValue();
-    Util.arrayFillNonAtomic(scratchPad, offset, (short) 40, (byte) 0);
-    Util.arrayCopyNonAtomic(
-        KMInteger.cast(authTime).getBuffer(),
-        KMInteger.cast(authTime).getStartOff(),
-        scratchPad,
-        (short) (offset + 8 - KMInteger.cast(authTime).length()),
-        KMInteger.cast(authTime).length());
-    KMUtils.convertToMilliseconds(scratchPad, offset, (short) (offset + 8), (short) (offset + 16));
-    return KMIntegerTag.instance(KMType.ULONG_TAG, KMType.AUTH_TIMEOUT_MILLIS,
-        KMInteger.uint_64(scratchPad, (short) (offset + 8)));
   }
 }

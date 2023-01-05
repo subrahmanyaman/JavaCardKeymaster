@@ -20,6 +20,4 @@ package com.android.javacard.seprovider;
  * Internally attestation key is stored as a Javacard EC key pair object, which will provide
  * additional security. The attestation key is maintained by the SEProvider.
  */
-public interface KMAttestationKey {
-}
-
+public interface KMAttestationKey {}
