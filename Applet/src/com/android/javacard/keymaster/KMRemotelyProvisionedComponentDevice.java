@@ -889,14 +889,20 @@ public class KMRemotelyProvisionedComponentDevice {
     signStructure =
         KMKeymasterApplet.encodeToApduBuffer(
             signStructure, scratchPad, (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
+    // 72 is the maximum ECDSA Signature length.
+    short maxEcdsaSignLen = 72;
+    short reclaimIndex = repository.allocReclaimableMemory(maxEcdsaSignLen);
     short len =
         seProvider.ecSign256(
-            deviceUniqueKeyPair, scratchPad, (short) 0, signStructure, scratchPad, signStructure);
+            deviceUniqueKeyPair, scratchPad, (short) 0, signStructure,
+            repository.getHeap(), reclaimIndex);
+    Util.arrayCopyNonAtomic(repository.getHeap(), reclaimIndex, scratchPad, (short) 0, len);
+    repository.reclaimMemory(maxEcdsaSignLen);
     len =
         KMAsn1Parser.instance()
             .decodeEcdsa256Signature(
-                KMByteBlob.instance(scratchPad, signStructure, len), scratchPad, signStructure);
-    signStructure = KMByteBlob.instance(scratchPad, signStructure, len);
+                KMByteBlob.instance(scratchPad, (short) 0, len), scratchPad, (short) 0);
+    signStructure = KMByteBlob.instance(scratchPad, (short) 0, len);
 
     /* Construct unprotected headers */
     short unprotectedHeader = KMArray.instance((short) 0);
