@@ -33,9 +33,9 @@ import javacard.security.CryptoException;
 import javacardx.apdu.ExtendedLength;
 
 /**
- * KMKeymasterApplet implements the javacard applet. It creates repository and other install time
- * objects. It also implements the keymaster state machine and handles javacard applet life cycle
- * events.
+ * KMKeymasterApplet implements the javacard applet. It creates an instance of the KMRepository
+ * and other install time objects. It also implements the keymaster state machine and handles
+ * javacard applet life cycle events.
  */
 public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLength {
 
@@ -63,7 +63,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74, 0x65, 0x72, 0x20, 0x48, 0x4D, 0x41, 0x43, 0x20, 0x56,
     0x65, 0x72, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6F, 0x6E
   };
-  // "KeymasterSharedMac"
+  // The ckdfLabel "KeymasterSharedMac" in hex.
   public static final byte[] ckdfLabel = {
     0x4B, 0x65, 0x79, 0x6D, 0x61, 0x73, 0x74, 0x65, 0x72, 0x53, 0x68, 0x61, 0x72, 0x65, 0x64, 0x4D,
     0x61, 0x63
@@ -128,7 +128,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   public static final byte CONFIRMATION_TOKEN = 36;
   public static final byte KEY_BLOB_VERSION_DATA_OFFSET = 37;
   public static final byte CUSTOM_TAGS = 38;
-  // Keyblob offsets.
+  // Below are the Keyblob offsets.
   public static final byte KEY_BLOB_VERSION_OFFSET = 0;
   public static final byte KEY_BLOB_SECRET = 1;
   public static final byte KEY_BLOB_NONCE = 2;
@@ -206,6 +206,10 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   protected static final short MAX_KEYBLOB_SIZE = 1024;
   // The maximum size of the Auth data which is used while encrypting/decrypting the KeyBlob.
   private static final short MAX_AUTH_DATA_SIZE = (short) 512;
+  // The minimum bits in length for AES-GCM tag.
+  private static final short MIN_GCM_TAG_LENGTH_BITS = (short) 96;
+  // The maximum bits in length for AES-GCM tag.
+  private static final short MAX_GCM_TAG_LENGTH_BITS = (short) 128;
   // Subject is a fixed field with only CN= Android Keystore Key - same for all the keys
   private static final byte[] defaultSubject = {
     0x30, 0x1F, 0x31, 0x1D, 0x30, 0x1B, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x14, 0x41, 0x6e, 0x64,
@@ -3440,11 +3444,18 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
           if (macLen == KMType.INVALID_VALUE) {
             KMException.throwIt(KMError.MISSING_MAC_LENGTH);
           }
+          short minMacLen =
+              KMIntegerTag.getShortValue(
+                  KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[HW_PARAMETERS]);
+          if (minMacLen == KMType.INVALID_VALUE) {
+            KMException.throwIt(KMError.INVALID_KEY_BLOB);
+          }
           if (macLen % 8 != 0
-              || macLen > 128
-              || macLen
-                  < KMIntegerTag.getShortValue(
-                      KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[HW_PARAMETERS])) {
+              || macLen > MAX_GCM_TAG_LENGTH_BITS
+              || macLen < MIN_GCM_TAG_LENGTH_BITS) {
+            KMException.throwIt(KMError.UNSUPPORTED_MAC_LENGTH);
+          }
+          if (macLen < minMacLen) {
             KMException.throwIt(KMError.INVALID_MAC_LENGTH);
           }
           op.setMacLength(macLen);
@@ -3471,6 +3482,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case KMType.HMAC:
         short minMacLen =
             KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[HW_PARAMETERS]);
+        if (minMacLen == KMType.INVALID_VALUE) {
+          KMException.throwIt(KMError.INVALID_KEY_BLOB);
+        }
         op.setMinMacLength(minMacLen);
         if (macLen == KMType.INVALID_VALUE) {
           if (op.getPurpose() == KMType.SIGN) {
@@ -4514,7 +4528,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     // is an error.
     // 4) If the generated/imported keys are RSA or EC then validity period must be specified.
     // Device Unique Attestation is not supported.
-    // Device unique attestation not supported
     short heapStart = repository.getHeapIndex();
     KMTag.assertAbsence(
         data[KEY_PARAMETERS],
@@ -4542,6 +4555,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         cert = makeSelfSignedCert(data[SECRET], data[PUB_KEY], mode, scratchPad);
         break;
       case KMType.FAKE_CERT:
+        // Generate certificate with no signature.
         cert = makeSelfSignedCert(KMType.INVALID_VALUE, data[PUB_KEY], mode, scratchPad);
         break;
       default:
@@ -4668,6 +4682,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
   }
 
+  // Decode the KeyBlob from CBOR structures to the sub types of KMType.
   private void decodeKeyBlob(short version, short keyBlob) {
     // Decode KeyBlob and read the KeyBlob params based on the version.
     short parsedBlob =
@@ -4699,6 +4714,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     readKeyBlobParams(version, parsedBlob);
   }
 
+  // Decrypts the secret key in the KeyBlob. The secret can be a Symmetric or Asymmetric key.
   private void processDecryptSecret(short version, short appId, short appData, byte[] scratchPad) {
     data[TEE_PARAMETERS] = KMKeyCharacteristics.cast(data[KEY_CHARACTERISTICS]).getTeeEnforced();
     data[SB_PARAMETERS] =

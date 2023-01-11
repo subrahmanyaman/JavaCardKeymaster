@@ -28,9 +28,9 @@ import org.globalplatform.upgrade.OnUpgradeListener;
 import org.globalplatform.upgrade.UpgradeManager;
 
 /**
- * This class extends from KMKeymasterApplet which is main entry point to receive apdu commands. All
- * the provision commands are processed here and after the data is handed over to KMDataStore class,
- * which stores the data in flash.
+ * This class extends from KMKeymasterApplet which is main entry point to receive apdu commands.
+ * All the provision commands are processed here and later the data is handed over to the
+ * KMDataStore class which stores the data in flash.
  */
 public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeListener {
   // Magic number version stored along with provisioned data. This is used to differentiate

@@ -19,8 +19,8 @@ import com.android.javacard.seprovider.KMException;
 import javacard.framework.Util;
 
 /**
- * This is a utility class which helps in converting date to UTC format and doing some arthmetic
- * operations.
+ * This is a utility class which helps in converting date to UTC format and doing some arithmetic
+ * Operations.
  */
 public class KMUtils {
 

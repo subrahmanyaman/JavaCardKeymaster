@@ -24,9 +24,9 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /**
- * The class encodes strongbox generated amd signed attestation certificate. This only encodes
- * required fields of the certificates. It is not meant to be generic X509 cert encoder. Whatever
- * fields that are fixed are added as byte arrays. The Extensions are encoded as per the values. The
+ * The class encodes strongbox generated and signed attestation certificates. It only encodes the
+ * required fields of the certificates. This class is not meant to be a generic X509 cert encoder.
+ * Any fields that are fixed are added as byte arrays. Extensions are encoded as per the values. The
  * certificate is assembled with leafs first and then the sequences.
  */
 public class KMAttestationCertImpl implements KMAttestationCert {

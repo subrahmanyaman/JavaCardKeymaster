@@ -158,6 +158,9 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   public AESKey createAESKey(short keysize) {
     try {
+      if (keysize > TMP_ARRAY_SIZE) {
+        KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+      }
       newRandomNumber(tmpArray, (short) 0, (short) (keysize / 8));
       return createAESKey(tmpArray, (short) 0, (short) (keysize / 8));
     } finally {
@@ -174,6 +177,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
     } else if (keysize == 256) {
       key = (AESKey) aesKeys[KEYSIZE_256_OFFSET];
       key.setKey(buf, (short) startOff);
+    } else {
+      KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
     return key;
   }
@@ -193,6 +198,10 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   public HMACKey createHMACKey(short keysize) {
+    // As per the KeyMint2.0 specification
+    // 64 is the minimum supported HMAC key size in bits.
+    // 512 is the maximum supported HMAC key size in bits.
+    // The keysize should be a multiple of 8.
     if ((keysize % 8 != 0) || !(keysize >= 64 && keysize <= 512)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
     }

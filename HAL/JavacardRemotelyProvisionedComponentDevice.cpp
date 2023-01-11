@@ -34,19 +34,17 @@ using ::keymint::javacard::Instruction;
 using std::string;
 
 // RKP error codes defined in keymint applet.
-constexpr keymaster_error_t kStatusFailed = static_cast<keymaster_error_t>(32000);
-constexpr keymaster_error_t kStatusInvalidMac = static_cast<keymaster_error_t>(32001);
-constexpr keymaster_error_t kStatusProductionKeyInTestRequest =
-    static_cast<keymaster_error_t>(32002);
-constexpr keymaster_error_t kStatusTestKeyInProductionRequest =
-    static_cast<keymaster_error_t>(32003);
-constexpr keymaster_error_t kStatusInvalidEek = static_cast<keymaster_error_t>(32004);
-constexpr keymaster_error_t kStatusInvalidState = static_cast<keymaster_error_t>(32005);
+constexpr int32_t kStatusFailed = 32000;
+constexpr int32_t kStatusInvalidMac = 32001;
+constexpr int32_t kStatusProductionKeyInTestRequest = 32002;
+constexpr int32_t kStatusTestKeyInProductionRequest = 32003;
+constexpr int32_t kStatusInvalidEek = 32004;
+constexpr int32_t kStatusInvalidState = 32005;
 
 namespace {
 
-keymaster_error_t translateRkpErrorCode(keymaster_error_t error) {
-    switch (static_cast<int32_t>(-error)) {
+keymaster_error_t translateRkpErrorCode(int32_t error) {
+    switch (-error) {
     case kStatusFailed:
     case kStatusInvalidState:
         return static_cast<keymaster_error_t>(BnRemotelyProvisionedComponent::STATUS_FAILED);
@@ -61,7 +59,7 @@ keymaster_error_t translateRkpErrorCode(keymaster_error_t error) {
     case kStatusInvalidEek:
         return static_cast<keymaster_error_t>(BnRemotelyProvisionedComponent::STATUS_INVALID_EEK);
     }
-    return error;
+    return static_cast<keymaster_error_t>(error);
 }
 
 ScopedAStatus defaultHwInfo(RpcHardwareInfo* info) {
