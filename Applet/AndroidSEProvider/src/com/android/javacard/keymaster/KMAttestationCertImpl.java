@@ -18,7 +18,7 @@ package com.android.javacard.keymaster;
 import com.android.javacard.seprovider.KMAESKey;
 import com.android.javacard.seprovider.KMAttestationCert;
 import com.android.javacard.seprovider.KMException;
-import com.android.javacard.seprovider.KMMasterKey;
+import com.android.javacard.seprovider.KMKey;
 import com.android.javacard.seprovider.KMSEProvider;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
@@ -971,7 +971,7 @@ public class KMAttestationCertImpl implements KMAttestationCert {
       short appIdOff,
       short attestAppIdLen,
       byte resetSinceIdRotation,
-      KMMasterKey masterKey) {
+      KMKey masterKey) {
     // Concatenate T||C||R
     // temporal count T
     short temp =

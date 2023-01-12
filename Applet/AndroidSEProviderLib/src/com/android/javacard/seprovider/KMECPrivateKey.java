@@ -18,8 +18,8 @@ package com.android.javacard.seprovider;
 import javacard.security.KeyPair;
 import org.globalplatform.upgrade.Element;
 
-/** This is a wrapper class for ECKey. */
-public class KMECPrivateKey implements KMAttestationKey {
+/** This is a wrapper class for KeyPair. */
+public class KMECPrivateKey implements KMKey {
 
   public KeyPair ecKeyPair;
 
@@ -44,5 +44,10 @@ public class KMECPrivateKey implements KMAttestationKey {
 
   public static short getBackupObjectCount() {
     return (short) 1;
+  }
+
+  @Override
+  public short getPublicKey(byte[] buf, short offset) {
+    return 0;
   }
 }

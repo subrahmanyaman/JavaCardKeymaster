@@ -18,8 +18,8 @@ package com.android.javacard.keymaster;
 
 import com.android.javacard.seprovider.KMAttestationCert;
 import com.android.javacard.seprovider.KMDataStoreConstants;
-import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
+import com.android.javacard.seprovider.KMKey;
 import com.android.javacard.seprovider.KMOperation;
 import com.android.javacard.seprovider.KMSEProvider;
 import javacard.framework.APDU;
@@ -1017,7 +1017,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     if (!testMode && kmDataStore.isProvisionLocked()) {
       KMException.throwIt(KMError.STATUS_FAILED);
     }
-    KMDeviceUniqueKeyPair deviceUniqueKey = kmDataStore.getRkpDeviceUniqueKeyPair(testMode);
+    KMKey deviceUniqueKey = kmDataStore.getRkpDeviceUniqueKeyPair(testMode);
     short temp = deviceUniqueKey.getPublicKey(scratchPad, (short) 0);
     short coseKey =
         KMCose.constructCoseKey(
@@ -1087,7 +1087,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
             coseSignStructure, scratchPad, (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
     // do sign
     short len =
-        seProvider.ecSign256(deviceUniqueKey, scratchPad, (short) 0, temp, scratchPad, temp);
+        seProvider.signWithDeviceUniqueKey(deviceUniqueKey, scratchPad, (short) 0, temp, scratchPad, temp);
     len =
         KMAsn1Parser.instance()
             .decodeEcdsa256Signature(KMByteBlob.instance(scratchPad, temp, len), scratchPad, temp);

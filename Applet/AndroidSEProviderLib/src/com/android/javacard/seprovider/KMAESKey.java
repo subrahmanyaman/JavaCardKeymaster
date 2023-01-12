@@ -19,7 +19,7 @@ import javacard.security.AESKey;
 import org.globalplatform.upgrade.Element;
 
 /** This is a wrapper class for AESKey. */
-public class KMAESKey implements KMMasterKey {
+public class KMAESKey implements KMKey {
 
   public AESKey aesKey;
 
@@ -44,5 +44,10 @@ public class KMAESKey implements KMMasterKey {
 
   public static short getBackupObjectCount() {
     return (short) 1;
+  }
+
+  @Override
+  public short getPublicKey(byte[] buf, short offset) {
+    return 0;
   }
 }

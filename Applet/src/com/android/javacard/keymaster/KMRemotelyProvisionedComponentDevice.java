@@ -15,8 +15,8 @@
  */
 package com.android.javacard.keymaster;
 
-import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
+import com.android.javacard.seprovider.KMKey;
 import com.android.javacard.seprovider.KMOperation;
 import com.android.javacard.seprovider.KMSEProvider;
 import javacard.framework.APDU;
@@ -953,7 +953,7 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   private short createSignedMac(
-      KMDeviceUniqueKeyPair deviceUniqueKeyPair,
+      KMKey deviceUniqueKeyPair,
       byte[] scratchPad,
       short deviceMapPtr,
       short pubKeysToSign) {
@@ -997,7 +997,7 @@ public class KMRemotelyProvisionedComponentDevice {
     short maxEcdsaSignLen = 72;
     short reclaimIndex = repository.allocReclaimableMemory(maxEcdsaSignLen);
     short len =
-        seProvider.ecSign256(
+        seProvider.signWithDeviceUniqueKey(
             deviceUniqueKeyPair, scratchPad, (short) 0, signStructure,
             repository.getHeap(), reclaimIndex);
     Util.arrayCopyNonAtomic(repository.getHeap(), reclaimIndex, scratchPad, (short) 0, len);
@@ -1017,8 +1017,8 @@ public class KMRemotelyProvisionedComponentDevice {
         protectedHeaders, unprotectedHeader, ephmeralMacKey, signStructure);
   }
 
-  private KMDeviceUniqueKeyPair createDeviceUniqueKeyPair(boolean testMode, byte[] scratchPad) {
-    KMDeviceUniqueKeyPair deviceUniqueKeyPair;
+  private KMKey createDeviceUniqueKeyPair(boolean testMode, byte[] scratchPad) {
+    KMKey deviceUniqueKeyPair;
     rkpTmpVariables[0] = 0;
     rkpTmpVariables[1] = 0;
     if (testMode) {
@@ -1531,7 +1531,7 @@ public class KMRemotelyProvisionedComponentDevice {
 
   private short processSignedMac(byte[] scratchPad, short pubKeysToSignMac, short deviceInfo) {
     // Construct SignedMac
-    KMDeviceUniqueKeyPair deviceUniqueKeyPair =
+    KMKey deviceUniqueKeyPair =
         createDeviceUniqueKeyPair((TRUE == data[getEntry(TEST_MODE)]) ? true : false, scratchPad);
     // Create signedMac
     short signedMac =
