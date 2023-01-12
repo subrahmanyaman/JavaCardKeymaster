@@ -679,8 +679,7 @@ public interface KMSEProvider {
    * @param length length of the buffer.
    * @return An instance of the KMComputedHmacKey.
    */
-  KMKey createComputedHmacKey(
-      KMKey computedHmacKey, byte[] keyData, short offset, short length);
+  KMKey createComputedHmacKey(KMKey computedHmacKey, byte[] keyData, short offset, short length);
 
   /** Returns true if factory provisioned attestation key is supported. */
   boolean isAttestationKeyProvisioned();
@@ -734,8 +733,7 @@ public interface KMSEProvider {
    * @param length is the length of the key.
    * @return instance of KMPresharedKey.
    */
-  KMKey createPreSharedKey(
-      KMKey presharedKey, byte[] key, short offset, short length);
+  KMKey createPreSharedKey(KMKey presharedKey, byte[] key, short offset, short length);
 
   /**
    * This function saves the key objects while upgrade.
@@ -780,6 +778,5 @@ public interface KMSEProvider {
    * @param length length of the buffer.
    * @return An instance of the KMRkpMacKey.
    */
-  KMKey createRkpMacKey(
-      KMKey createComputedHmacKey, byte[] keyData, short offset, short length);
+  KMKey createRkpMacKey(KMKey createComputedHmacKey, byte[] keyData, short offset, short length);
 }

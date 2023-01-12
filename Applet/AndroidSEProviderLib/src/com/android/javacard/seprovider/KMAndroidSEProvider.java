@@ -42,7 +42,7 @@ import org.globalplatform.upgrade.UpgradeManager;
  * This class implements KMSEProvider and provides all the necessary crypto operations required to
  * support the KeyMint specification. This class supports AES, 3DES, HMAC, RSA, ECDSA, ECDH
  * algorithms additionally it also supports ECDSA_NO_DIGEST, RSA_NO_DIGEST and RSA_OAEP_MGF1_SHA1
- * and RSA_OAEP_MGF1_SHA256 algorithms. This class respects the model of Init-Update-Final for the
+ * and RSA_OAEP_MGF1_SHA256 algorithms. This class follows the pattern of Init-Update-Final for the
  * crypto operations.
  */
 public class KMAndroidSEProvider implements KMSEProvider {
@@ -199,8 +199,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   public HMACKey createHMACKey(short keysize) {
     // As per the KeyMint2.0 specification
-    // 64 is the minimum supported HMAC key size in bits.
-    // 512 is the maximum supported HMAC key size in bits.
+    // The minimum supported HMAC key size is 64 bits
+    // The maximum supported HMAC key size is 512 bits
     // The keysize should be a multiple of 8.
     if ((keysize % 8 != 0) || !(keysize >= 64 && keysize <= 512)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
