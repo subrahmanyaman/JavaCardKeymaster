@@ -22,7 +22,10 @@ import javacard.security.MessageDigest;
 import javacard.security.Signature;
 import javacardx.crypto.Cipher;
 
-/** This class provides support for ECDSA_NO_DIGEST signature algorithm. */
+/**
+ * This class provides support for ECDSA_NO_DIGEST signature algorithm. Added this because javacard
+ * 3.0.5 does not support this
+ */
 public class KMEcdsa256NoDigestSignature extends Signature {
 
   public static final byte ALG_ECDSA_NODIGEST = (byte) 0x67;

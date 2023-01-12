@@ -28,9 +28,9 @@ import org.globalplatform.upgrade.OnUpgradeListener;
 import org.globalplatform.upgrade.UpgradeManager;
 
 /**
- * This class extends from KMKeymasterApplet which is main entry point to receive apdu commands.
- * All the provision commands are processed here and later the data is handed over to the
- * KMDataStore class which stores the data in flash.
+ * This class extends from KMKeymasterApplet which is main entry point to receive apdu commands. All
+ * the provision commands are processed here and later the data is handed over to the KMDataStore
+ * class which stores the data in the flash memory.
  */
 public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeListener {
   // Magic number version stored along with provisioned data. This is used to differentiate
@@ -309,8 +309,6 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
   }
 
   private void processProvisionOEMRootPublicKeyCmd(APDU apdu) {
-    // Re-purpose the apdu buffer as scratch pad.
-    byte[] scratchPad = apdu.getBuffer();
     // Arguments
     short keyparams = KMKeyParameters.exp();
     short keyFormatPtr = KMEnum.instance(KMType.KEY_FORMAT);

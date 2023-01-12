@@ -33,9 +33,9 @@ import javacard.security.CryptoException;
 import javacardx.apdu.ExtendedLength;
 
 /**
- * KMKeymasterApplet implements the javacard applet. It creates an instance of the KMRepository
- * and other install time objects. It also implements the keymaster state machine and handles
- * javacard applet life cycle events.
+ * KMKeymasterApplet implements the javacard applet. It creates an instance of the KMRepository and
+ * other install time objects. It also implements the keymaster state machine and handles javacard
+ * applet life cycle events.
  */
 public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLength {
 
@@ -321,7 +321,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // Short array used to hold the dictionary items.
   protected static short[] data;
   // Buffer to store the transportKey which is used in the import wrapped key. Import wrapped
-  // key is divided into two stages 1. BEGIN_IMPORT_WRAPPED_KEY 2. FINISH_IMPORT_WRAPPEDK_KEY.
+  // key is divided into two stages 1. BEGIN_IMPORT_WRAPPED_KEY 2. FINISH_IMPORT_WRAPPED_KEY.
   // The transportKey is retrieved and stored in this buffer at stage 1) and is later used in
   // stage 2).
   protected static byte[] wrappingKey;
