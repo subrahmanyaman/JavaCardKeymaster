@@ -48,6 +48,6 @@ public class KMAESKey implements KMKey {
 
   @Override
   public short getPublicKey(byte[] buf, short offset) {
-    return 0;
+    return (short) 0;
   }
 }
