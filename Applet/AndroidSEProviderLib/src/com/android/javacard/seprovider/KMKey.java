@@ -1,10 +1,9 @@
 package com.android.javacard.seprovider;
 
 /**
- * KMKey is an interface and the SE Provider has to implement this interface. KMAESKey,
- * KMECDeviceUniqueKey, KMECPrivateKey and KMHmacKey implements this interface. Internally, keys are
- * stored as a Javacard key objects, which will provide additional security by avoiding side channel
- * attacks.
+ * This interface helps to decouple Javacard internal key objects from the keymaster package.
+ * Using Javacard key objects provides security by providing protection against side channel
+ * attacks. KMAESKey, KMECDeviceUniqueKey and KMHmacKey implements this interface.
  */
 public interface KMKey {
   short getPublicKey(byte[] buf, short offset);
