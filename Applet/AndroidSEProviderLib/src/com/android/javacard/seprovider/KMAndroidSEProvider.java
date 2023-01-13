@@ -1402,7 +1402,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
       signer =
           Signature.OneShot.open(
               MessageDigest.ALG_SHA_256, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL);
-      signer.init(((KMECDeviceUniqueKey) ecPrivKey).ecKeyPair.getPrivate(), Signature.MODE_SIGN);
+      signer.init(((KMECDeviceUniqueKeyPair) ecPrivKey).ecKeyPair.getPrivate(), Signature.MODE_SIGN);
       return signer.sign(
           inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
     } finally {
@@ -1424,10 +1424,10 @@ public class KMAndroidSEProvider implements KMSEProvider {
     if (key == null) {
       KeyPair ecKeyPair = new KeyPair(KeyPair.ALG_EC_FP, KeyBuilder.LENGTH_EC_FP_256);
       poolMgr.initECKey(ecKeyPair);
-      key = new KMECDeviceUniqueKey(ecKeyPair);
+      key = new KMECDeviceUniqueKeyPair(ecKeyPair);
     }
-    ECPrivateKey ecKeyPair = (ECPrivateKey) ((KMECDeviceUniqueKey) key).ecKeyPair.getPrivate();
-    ECPublicKey ecPublicKey = (ECPublicKey) ((KMECDeviceUniqueKey) key).ecKeyPair.getPublic();
+    ECPrivateKey ecKeyPair = (ECPrivateKey) ((KMECDeviceUniqueKeyPair) key).ecKeyPair.getPrivate();
+    ECPublicKey ecPublicKey = (ECPublicKey) ((KMECDeviceUniqueKeyPair) key).ecKeyPair.getPublic();
     ecKeyPair.setS(privKey, privKeyOff, privKeyLen);
     ecPublicKey.setW(pubKey, pubKeyOff, pubKeyLen);
     return (KMKey) key;
@@ -1489,7 +1489,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
         KMHmacKey.onSave(element, (KMHmacKey) object);
         break;
       case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR:
-        KMECDeviceUniqueKey.onSave(element, (KMECDeviceUniqueKey) object);
+        KMECDeviceUniqueKeyPair.onSave(element, (KMECDeviceUniqueKeyPair) object);
         break;
       case KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY:
         KMHmacKey.onSave(element, (KMHmacKey) object);
@@ -1513,7 +1513,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
       case KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY:
         return KMHmacKey.onRestore((HMACKey) element.readObject());
       case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR:
-        return KMECDeviceUniqueKey.onRestore((KeyPair) element.readObject());
+        return KMECDeviceUniqueKeyPair.onRestore((KeyPair) element.readObject());
       case KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY:
         return KMHmacKey.onRestore((HMACKey) element.readObject());
       default:
@@ -1533,7 +1533,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
         primitiveCount += KMHmacKey.getBackupPrimitiveByteCount();
         break;
       case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR:
-        primitiveCount += KMECDeviceUniqueKey.getBackupPrimitiveByteCount();
+        primitiveCount += KMECDeviceUniqueKeyPair.getBackupPrimitiveByteCount();
         break;
       case KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY:
         primitiveCount += KMHmacKey.getBackupPrimitiveByteCount();
@@ -1552,7 +1552,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
       case KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY:
         return KMHmacKey.getBackupObjectCount();
       case KMDataStoreConstants.INTERFACE_TYPE_DEVICE_UNIQUE_KEY_PAIR:
-        return KMECDeviceUniqueKey.getBackupObjectCount();
+        return KMECDeviceUniqueKeyPair.getBackupObjectCount();
       case KMDataStoreConstants.INTERFACE_TYPE_RKP_MAC_KEY:
         return KMHmacKey.getBackupObjectCount();
       default:
