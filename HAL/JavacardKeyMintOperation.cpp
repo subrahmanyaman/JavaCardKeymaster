@@ -32,7 +32,7 @@ using secureclock::TimeStampToken;
 
 JavacardKeyMintOperation::~JavacardKeyMintOperation() {
     if (opHandle_ != 0) {
-        abort();
+        JavacardKeyMintOperation::abort();
     }
 }
 

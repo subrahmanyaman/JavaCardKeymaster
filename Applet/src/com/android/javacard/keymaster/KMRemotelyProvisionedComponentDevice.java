@@ -15,8 +15,8 @@
  */
 package com.android.javacard.keymaster;
 
-import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
+import com.android.javacard.seprovider.KMKey;
 import com.android.javacard.seprovider.KMOperation;
 import com.android.javacard.seprovider.KMSEProvider;
 import javacard.framework.APDU;
@@ -26,13 +26,13 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /**
- * This class handles the remote key provisioning. Generates an RKP key and generates a certificate
- * signing request(CSR). The generation of CSR is divided amoung multiple functions to the save the
+ * This class handles remote key provisioning. Generates an RKP key and generates a certificate
+ * signing request(CSR). The generation of CSR is divided among multiple functions to the save the
  * memory inside the Applet. The set of functions to be called sequentially in the order to complete
  * the process of generating the CSR are processBeginSendData, processUpdateKey,
- * processUpdateEekChain, processUpdateChallenge, processFinishSendData and getResponse.
- * ProcessUpdateKey is called Ntimes, where N is the number of keys. Similarly getResponse is called
- * is multiple times till the client receives the response completely.
+ * processUpdateEekChain, processUpdateChallenge, processFinishSendData, and getResponse.
+ * ProcessUpdateKey is called Ntimes, where N is the number of keys. Similarly, getResponse is
+ * called multiple times till the client receives the response completely.
  */
 public class KMRemotelyProvisionedComponentDevice {
 
@@ -159,7 +159,7 @@ public class KMRemotelyProvisionedComponentDevice {
   private static final byte PROCESSING_DICE_CERTS_COMPLETE = 0x04;
   private static final byte PROCESSING_UDS_CERTS_IN_PROGRESS = 0x08;
   private static final byte PROCESSING_UDS_CERTS_COMPLETE = 0x0A;
-  // data table
+  // The data table size.
   private static final short DATA_SIZE = 512;
   // Number of entries in the data table.
   private static final byte DATA_INDEX_SIZE = 6;
@@ -526,7 +526,6 @@ public class KMRemotelyProvisionedComponentDevice {
       short length =
           KMKeymasterApplet.encodeToApduBuffer(
               coseKey, scratchPad, (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-
       // Do ecSign update with input as encoded CoseKey.
       ((KMOperation) operation[0]).update(scratchPad, (short) 0, length);
       short encodedCoseKey = KMByteBlob.instance(scratchPad, (short) 0, length);
@@ -1047,7 +1046,7 @@ public class KMRemotelyProvisionedComponentDevice {
 
   // ----------------------------------------------------------------------------
   private void initECDSAOperation() {
-    KMDeviceUniqueKeyPair deviceUniqueKeyPair = storeDataInst.getRkpDeviceUniqueKeyPair();
+    KMKey deviceUniqueKeyPair = storeDataInst.getRkpDeviceUniqueKeyPair();
     operation[0] =
         seProvider.getRkpOperation(
             KMType.SIGN,

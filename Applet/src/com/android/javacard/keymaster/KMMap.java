@@ -21,10 +21,10 @@ import javacard.framework.ISOException;
 import javacard.framework.Util;
 
 /**
- * KMMap represents an array of KMType key and KMType value. Map is the sequence of pairs. Each pair
- * is of one or more sub types of KMType. The KMMap instance maps to the CBOR type map. KMMap is a
- * KMType and it further extends the value field in TLV_HEADER as MAP_HEADER struct{short
- * subType;short length;} followed by sequence of pairs. Each pair contains a key and a value as
+ * KMMap represents an array of a KMType key and a KMType value. Map is the sequence of pairs. Each
+ * pair is one or more sub-types of KMType. The KMMap instance maps to the CBOR type map. KMMap is a
+ * KMType and it further extends the value field in TLV_HEADER as MAP_HEADER struct{ short
+ * subType;short length;} followed by a sequence of pairs. Each pair contains a key and a value as
  * short pointers to KMType instances.
  */
 public class KMMap extends KMType {
