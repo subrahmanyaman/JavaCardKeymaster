@@ -5,8 +5,8 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /**
- * This is a utility class helps in parsing the PKCS8 encoded RSA and EC keys, Certificate subject,
- * subject public key info and ECDSA signatures.
+ * This is a utility class that helps in parsing the PKCS8 encoded RSA and EC keys, certificate
+ * subject, subjectPublicKey info and ECDSA signatures.
  */
 public class KMAsn1Parser {
 

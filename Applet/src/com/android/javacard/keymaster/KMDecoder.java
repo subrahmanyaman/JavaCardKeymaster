@@ -23,9 +23,9 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /**
- * This class decodes the CBOR format data into a KMType structures. It interprets the input CBOR
+ * This class decodes the CBOR format data into a KMType structure. It interprets the input CBOR
  * format using the input expression provided. Validation of KeyMint tags and tag types happens in
- * the process of decoding, while constructing the subtype of KMType structure.
+ * the process of decoding, while constructing the subtype of a KMType structure.
  */
 public class KMDecoder {
 

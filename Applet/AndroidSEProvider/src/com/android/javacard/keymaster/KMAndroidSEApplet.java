@@ -29,8 +29,8 @@ import org.globalplatform.upgrade.UpgradeManager;
 
 /**
  * This class extends from KMKeymasterApplet which is main entry point to receive apdu commands. All
- * the provision commands are processed here and after the data is handed over to KMDataStore class,
- * which stores the data in flash.
+ * the provision commands are processed here and later the data is handed over to the KMDataStore
+ * class which stores the data in the flash memory.
  */
 public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeListener {
   // Magic number version stored along with provisioned data. This is used to differentiate
@@ -98,6 +98,29 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
   }
 
   @Override
+  public void updateApduStatusFlags(short apduIns) {  
+	apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] = 0;
+    switch (apduIns) {
+      case INS_GET_PROVISION_STATUS_CMD:
+      case INS_SE_FACTORY_PROVISIONING_LOCK_CMD:
+    	apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
+    	break;
+      case INS_PROVISION_ATTEST_IDS_CMD:
+      case INS_PROVISION_PRESHARED_SECRET_CMD:
+      case INS_PROVISION_RKP_DEVICE_UNIQUE_KEYPAIR_CMD:	  
+      case INS_PROVISION_RKP_UDS_CERT_CHAIN_CMD:    	  
+      case INS_PROVISION_OEM_ROOT_PUBLIC_KEY_CMD:
+      case INS_OEM_LOCK_PROVISIONING_CMD:
+      case INS_OEM_UNLOCK_PROVISIONING_CMD: 	  
+      case INS_PROVISION_SECURE_BOOT_MODE_CMD:
+    	apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 1;
+        break;
+      default:
+        super.updateApduStatusFlags(apduIns);    
+    }
+  }
+
+  @Override
   public void process(APDU apdu) {
     try {
       handleDeviceBooted();
@@ -111,6 +134,7 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
       if (apduIns == KMType.INVALID_VALUE) {
         return;
       }
+      updateApduStatusFlags(apduIns);
       if (((KMAndroidSEProvider) seProvider).isPowerReset()) {
         super.powerReset();
       }
@@ -412,6 +436,7 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
     // required here.
     byte[] srcBuffer = apdu.getBuffer();
     short recvLen = apdu.setIncomingAndReceive();
+    apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] = 1;
     short srcOffset = apdu.getOffsetCdata();
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);

@@ -42,7 +42,7 @@ import org.globalplatform.upgrade.UpgradeManager;
  * This class implements KMSEProvider and provides all the necessary crypto operations required to
  * support the KeyMint specification. This class supports AES, 3DES, HMAC, RSA, ECDSA, ECDH
  * algorithms additionally it also supports ECDSA_NO_DIGEST, RSA_NO_DIGEST and RSA_OAEP_MGF1_SHA1
- * and RSA_OAEP_MGF1_SHA256 algorithms. This class respects the model of Init-Update-Final for the
+ * and RSA_OAEP_MGF1_SHA256 algorithms. This class follows the pattern of Init-Update-Final for the
  * crypto operations.
  */
 public class KMAndroidSEProvider implements KMSEProvider {
@@ -158,6 +158,9 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   public AESKey createAESKey(short keysize) {
     try {
+      if (keysize > TMP_ARRAY_SIZE) {
+        KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
+      }
       newRandomNumber(tmpArray, (short) 0, (short) (keysize / 8));
       return createAESKey(tmpArray, (short) 0, (short) (keysize / 8));
     } finally {
@@ -174,6 +177,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
     } else if (keysize == 256) {
       key = (AESKey) aesKeys[KEYSIZE_256_OFFSET];
       key.setKey(buf, (short) startOff);
+    } else {
+      KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
     return key;
   }
@@ -193,6 +198,10 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   public HMACKey createHMACKey(short keysize) {
+    // As per the KeyMint2.0 specification
+    // The minimum supported HMAC key size is 64 bits
+    // The maximum supported HMAC key size is 512 bits
+    // The keysize should be a multiple of 8.
     if ((keysize % 8 != 0) || !(keysize >= 64 && keysize <= 512)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
     }
@@ -485,7 +494,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   public HMACKey cmacKdf(
-      KMPreSharedKey preSharedKey,
+      KMKey preSharedKey,
       byte[] label,
       short labelStart,
       short labelLen,
@@ -574,7 +583,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   @Override
   public short hmacKDF(
-      KMMasterKey masterkey,
+      KMKey masterkey,
       byte[] data,
       short dataStart,
       short dataLength,
@@ -593,7 +602,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   @Override
   public boolean hmacVerify(
-      KMComputedHmacKey key,
+      KMKey key,
       byte[] data,
       short dataStart,
       short dataLength,
@@ -819,7 +828,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
       byte digest,
       byte padding,
       byte blockMode,
-      KMDeviceUniqueKeyPair keyPair,
+      KMKey keyPair,
       byte[] ivBuf,
       short ivStart,
       short ivLength,
@@ -833,7 +842,6 @@ public class KMAndroidSEProvider implements KMSEProvider {
         short ecPrivKeyLen = ecPrivKey.getS(tmpArray, (short) 0);
         opr = createEcSigner(digest, tmpArray, (short) 0, ecPrivKeyLen, true /* isRKP */);
         break;
-
       default:
         CryptoException.throwIt(CryptoException.NO_SUCH_ALGORITHM);
         break;
@@ -936,7 +944,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public KMOperation initTrustedConfirmationSymmetricOperation(KMComputedHmacKey computedHmacKey) {
+  public KMOperation initTrustedConfirmationSymmetricOperation(KMKey computedHmacKey) {
     KMHmacKey key = (KMHmacKey) computedHmacKey;
     return createHmacSignerVerifier(KMType.VERIFY, KMType.SHA2_256, key.hmacKey, true);
   }
@@ -1114,7 +1122,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   @Override
   public short cmacKDF(
-      KMPreSharedKey pSharedKey,
+      KMKey pSharedKey,
       byte[] label,
       short labelStart,
       short labelLen,
@@ -1134,7 +1142,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public KMMasterKey createMasterKey(KMMasterKey masterKey, short keySizeBits) {
+  public KMKey createMasterKey(KMKey masterKey, short keySizeBits) {
     try {
       if (masterKey == null) {
         AESKey key = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, keySizeBits, false);
@@ -1143,15 +1151,14 @@ public class KMAndroidSEProvider implements KMSEProvider {
         getTrueRandomNumber(tmpArray, (short) 0, keyLen);
         ((KMAESKey) masterKey).aesKey.setKey(tmpArray, (short) 0);
       }
-      return (KMMasterKey) masterKey;
+      return (KMKey) masterKey;
     } finally {
       clean();
     }
   }
 
   @Override
-  public KMPreSharedKey createPreSharedKey(
-      KMPreSharedKey preSharedKey, byte[] keyData, short offset, short length) {
+  public KMKey createPreSharedKey(KMKey preSharedKey, byte[] keyData, short offset, short length) {
     short lengthInBits = (short) (length * 8);
     if ((lengthInBits % 8 != 0) || !(lengthInBits >= 64 && lengthInBits <= 512)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
@@ -1161,12 +1168,12 @@ public class KMAndroidSEProvider implements KMSEProvider {
       preSharedKey = new KMHmacKey(key);
     }
     ((KMHmacKey) preSharedKey).hmacKey.setKey(keyData, offset, length);
-    return (KMPreSharedKey) preSharedKey;
+    return (KMKey) preSharedKey;
   }
 
   @Override
-  public KMComputedHmacKey createComputedHmacKey(
-      KMComputedHmacKey computedHmacKey, byte[] keyData, short offset, short length) {
+  public KMKey createComputedHmacKey(
+      KMKey computedHmacKey, byte[] keyData, short offset, short length) {
     if (length != COMPUTED_HMAC_KEY_SIZE) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
     }
@@ -1176,7 +1183,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
       computedHmacKey = new KMHmacKey(key);
     }
     ((KMHmacKey) computedHmacKey).hmacKey.setKey(keyData, offset, length);
-    return (KMComputedHmacKey) computedHmacKey;
+    return (KMKey) computedHmacKey;
   }
 
   @Override
@@ -1200,30 +1207,6 @@ public class KMAndroidSEProvider implements KMSEProvider {
           Signature.OneShot.open(
               MessageDigest.ALG_SHA_256, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL);
       signer.init(key, Signature.MODE_SIGN);
-      return signer.sign(
-          inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
-    } finally {
-      if (signer != null) {
-        signer.close();
-      }
-    }
-  }
-
-  @Override
-  public short ecSign256(
-      KMAttestationKey ecPrivKey,
-      byte[] inputDataBuf,
-      short inputDataStart,
-      short inputDataLength,
-      byte[] outputDataBuf,
-      short outputDataStart) {
-    Signature.OneShot signer = null;
-    try {
-
-      signer =
-          Signature.OneShot.open(
-              MessageDigest.ALG_SHA_256, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL);
-      signer.init(((KMECPrivateKey) ecPrivKey).ecKeyPair.getPrivate(), Signature.MODE_SIGN);
       return signer.sign(
           inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
     } finally {
@@ -1400,8 +1383,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public short ecSign256(
-      KMDeviceUniqueKeyPair ecPrivKey,
+  public short signWithDeviceUniqueKey(
+      KMKey ecPrivKey,
       byte[] inputDataBuf,
       short inputDataStart,
       short inputDataLength,
@@ -1423,8 +1406,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public KMDeviceUniqueKeyPair createRkpDeviceUniqueKeyPair(
-      KMDeviceUniqueKeyPair key,
+  public KMKey createRkpDeviceUniqueKeyPair(
+      KMKey key,
       byte[] pubKey,
       short pubKeyOff,
       short pubKeyLen,
@@ -1440,12 +1423,11 @@ public class KMAndroidSEProvider implements KMSEProvider {
     ECPublicKey ecPublicKey = (ECPublicKey) ((KMECDeviceUniqueKey) key).ecKeyPair.getPublic();
     ecKeyPair.setS(privKey, privKeyOff, privKeyLen);
     ecPublicKey.setW(pubKey, pubKeyOff, pubKeyLen);
-    return (KMDeviceUniqueKeyPair) key;
+    return (KMKey) key;
   }
 
   @Override
-  public KMRkpMacKey createRkpMacKey(
-      KMRkpMacKey rkpMacKey, byte[] keyData, short offset, short length) {
+  public KMKey createRkpMacKey(KMKey rkpMacKey, byte[] keyData, short offset, short length) {
     if (rkpMacKey == null) {
       HMACKey key =
           (HMACKey) KeyBuilder.buildKey(KeyBuilder.TYPE_HMAC, (short) (length * 8), false);
