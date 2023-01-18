@@ -18,13 +18,13 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #include <memory>
 #include <vector>
 
 #include <aidl/android/hardware/security/keymint/ErrorCode.h>
 #include <android-base/logging.h>
-#include <sys/socket.h>
 
 #include "ITransport.h"
 
