@@ -770,7 +770,6 @@ public class KMRemotelyProvisionedComponentDevice {
             KMCose.COSE_KEY_TYPE_EC2,
             KMType.INVALID_VALUE,
             KMCose.COSE_ALG_ES256,
-            KMType.INVALID_VALUE,
             KMCose.COSE_ECCURVE_256)) {
       KMException.throwIt(KMError.STATUS_FAILED);
     }
@@ -1387,7 +1386,6 @@ public class KMRemotelyProvisionedComponentDevice {
             KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
             KMType.INVALID_VALUE,
             KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-            KMType.INVALID_VALUE,
             KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
             data,
             pubKeyIndex,
@@ -1548,7 +1546,6 @@ public class KMRemotelyProvisionedComponentDevice {
             KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
             KMType.INVALID_VALUE,
             KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-            KMType.INVALID_VALUE,
             KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
             KMByteBlob.cast(pubKey).getBuffer(),
             KMByteBlob.cast(pubKey).getStartOff(),
