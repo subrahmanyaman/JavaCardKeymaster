@@ -402,7 +402,6 @@ int processDeviceUniqueKey() {
                                           .add(CoseKey::KEY_TYPE, EC2)
                                           .add(CoseKey::ALGORITHM, ES256)
                                           .add(CoseKey::CURVE, P256)
-                                          .add(CoseKey::KEY_OPS, SIGN)
                                           .add(CoseKey::PUBKEY_X, x_coord)
                                           .add(CoseKey::PUBKEY_Y, y_coord)
                                           .add(CoseKey::PRIVATE_KEY, privateKey);

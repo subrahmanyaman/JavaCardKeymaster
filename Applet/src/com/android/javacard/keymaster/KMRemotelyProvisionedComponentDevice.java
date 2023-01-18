@@ -291,7 +291,8 @@ public class KMRemotelyProvisionedComponentDevice {
         (short) 2,
         KMByteBlob.instance(
             KMKeymasterApplet.Google, (short) 0, (short) KMKeymasterApplet.Google.length));
-    resp.add((short) 3, KMInteger.uint_8(KMType.RKP_CURVE_P256));
+    // This field is no longer used in version 3
+    resp.add((short) 3, KMInteger.uint_8(KMType.RKP_CURVE_NONE));
     resp.add((short) 4, KMByteBlob.instance(uniqueId, (short) 0, (short) uniqueId.length));
     resp.add((short) 5, KMInteger.uint_16(MIN_SUPPORTED_NUM_KEYS_IN_CSR));
     KMKeymasterApplet.sendOutgoing(apdu, respPtr);
@@ -348,7 +349,7 @@ public class KMRemotelyProvisionedComponentDevice {
     short certTypeLen = encoder.getEncodedLength(certTypePtr);
     // Calculate the challenge length
     short challengeLen = (short) KMByteBlob.cast(challengeByteBlob).length();
-    if (challengeLen < 32 || challengeLen > 64) {
+    if (challengeLen < 16 || challengeLen > 64) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
     // Calculate the challenge byte header length
@@ -769,7 +770,6 @@ public class KMRemotelyProvisionedComponentDevice {
             KMCose.COSE_KEY_TYPE_EC2,
             KMType.INVALID_VALUE,
             KMCose.COSE_ALG_ES256,
-            KMType.INVALID_VALUE,
             KMCose.COSE_ECCURVE_256)) {
       KMException.throwIt(KMError.STATUS_FAILED);
     }
@@ -1141,7 +1141,6 @@ public class KMRemotelyProvisionedComponentDevice {
             KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
             KMType.INVALID_VALUE,
             KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-            KMType.INVALID_VALUE,
             KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
             KMByteBlob.cast(pubKey).getBuffer(),
             KMByteBlob.cast(pubKey).getStartOff(),

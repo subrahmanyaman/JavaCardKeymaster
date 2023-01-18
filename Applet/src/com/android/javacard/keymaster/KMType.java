@@ -308,7 +308,7 @@ public abstract class KMType {
 
   public static final byte NO_VALUE = (byte) 0xff;
   // Support Curves for Eek Chain validation.
-  public static final byte RKP_CURVE_P256 = 1;
+  public static final byte RKP_CURVE_NONE = 0;
   // Type offsets.
   public static final byte KM_TYPE_BASE_OFFSET = 0;
   public static final byte KM_ARRAY_OFFSET = KM_TYPE_BASE_OFFSET;

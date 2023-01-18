@@ -383,9 +383,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
      * be invoked prior to calling setOutgoing(). Otherwise, erroneous
      * behavior may result
      * */
-    if(apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] == 1
-      && apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] == 0
-      && APDU.getProtocol() == APDU.PROTOCOL_T0) {
+    if (apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] == 1
+        && apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] == 0
+        && APDU.getProtocol() == APDU.PROTOCOL_T0) {
       apdu.setIncomingAndReceive();
     }
     // Send data
@@ -1068,7 +1068,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
               KMCose.COSE_KEY_TYPE_EC2,
               KMType.INVALID_VALUE,
               alg,
-              KMType.INVALID_VALUE,
               KMCose.COSE_ECCURVE_256)) {
         KMException.throwIt(KMError.STATUS_FAILED);
       }
@@ -1148,7 +1147,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
             KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
             KMType.INVALID_VALUE,
             KMNInteger.uint_8(KMCose.COSE_ALG_ES256),
-            KMInteger.uint_8(KMCose.COSE_KEY_OP_VERIFY),
             KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
             scratchPad,
             (short) 0,
@@ -1362,8 +1360,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case INS_FINISH_SEND_DATA_CMD:
       case INS_GET_UDS_CERTS_CMD:
       case INS_GET_DICE_CERT_CHAIN_CMD:
-    	  apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
-    	  break;
+        apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
+        break;
 
       case INS_INIT_STRONGBOX_CMD:
       case INS_GENERATE_KEY_CMD:
@@ -1384,11 +1382,11 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case INS_BEGIN_SEND_DATA_CMD:
       case INS_UPDATE_KEY_CMD:
       case INS_SEND_ROT_DATA_CMD:
-    	apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 1;
+        apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 1;
         break;
 
       default:
-          ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
     }
   }
 
@@ -1834,13 +1832,13 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     Util.setShort(buffer, bufferStartOffset, (short) 0x8400);
 
     short bufferLength = (short) (KMRepository.HEAP_SIZE - bufferStartOffset);
-  /* In T=0 protocol, On a case 4 command, setIncomingAndReceive() must
+    /* In T=0 protocol, On a case 4 command, setIncomingAndReceive() must
      * be invoked prior to calling setOutgoing(). Otherwise, erroneous
      * behavior may result
      * */
-    if(apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] == 1
+    if (apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] == 1
         && apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] == 0
-    	&& APDU.getProtocol() == APDU.PROTOCOL_T0) {
+        && APDU.getProtocol() == APDU.PROTOCOL_T0) {
       apdu.setIncomingAndReceive();
     }
     // Send data
