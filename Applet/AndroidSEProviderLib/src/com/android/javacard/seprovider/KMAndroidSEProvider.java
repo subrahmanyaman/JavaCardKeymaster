@@ -199,8 +199,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
 
   public HMACKey createHMACKey(short keysize) {
     // As per the KeyMint2.0 specification
-    // 64 is the minimum supported HMAC key size in bits.
-    // 512 is the maximum supported HMAC key size in bits.
+    // The minimum supported HMAC key size is 64 bits
+    // The maximum supported HMAC key size is 512 bits
     // The keysize should be a multiple of 8.
     if ((keysize % 8 != 0) || !(keysize >= 64 && keysize <= 512)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
