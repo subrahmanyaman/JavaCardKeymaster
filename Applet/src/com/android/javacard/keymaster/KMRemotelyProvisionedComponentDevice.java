@@ -613,7 +613,7 @@ public class KMRemotelyProvisionedComponentDevice {
    * Response:
    *   OK
    *   protectedHeader - CoseEncrypt protected header
-   *   SignedDataSigStruct
+   *   Signature of SignedDataSigStruct
    *   Version - The AuthenticatedRequest CDDL Schema version.
    *   Flag to represent there is more data to retrieve.
    * @param apdu Input apdu.
