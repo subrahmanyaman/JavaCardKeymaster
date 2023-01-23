@@ -1,43 +1,227 @@
-From 873f771fec1e60fb45d5ccab449cdc859c656910 Mon Sep 17 00:00:00 2001
-From: subrahmanyaman <subrahmanyaman@google.com>
-Date: Mon, 21 Mar 2022 23:01:00 +0000
-Subject: [PATCH] javacard strongbox keymint
+From fea719fca660200ba8e9f57736ab8b425ba0e08c Mon Sep 17 00:00:00 2001
+From: Subrahmanyaman <subrahmanyaman@google.com>
+Date: Sun, 22 Jan 2023 20:23:22 +0000
+Subject: [PATCH] javacard_keymint_300
 
-Change-Id: Ic6b0dac4b5078fdfdbfa2b13e3260c62acf628cf
+Change-Id: I23c34cef329e332df33eae66ec4870c9f9541fd3
 ---
- shared/device.mk                                |  3 +++
- shared/sepolicy/vendor/file_contexts            |  1 +
- shared/sepolicy/vendor/hal_keymint_strongbox.te | 16 ++++++++++++++++
- shared/sepolicy/vendor/service_contexts         |  3 +++
- 4 files changed, 23 insertions(+)
+ host/commands/secure_env/Android.bp           |  1 +
+ .../secure_env/tpm_keymaster_enforcement.cpp  | 99 ++++++++++++++++++-
+ .../secure_env/tpm_keymaster_enforcement.h    |  3 +
+ shared/device.mk                              |  5 +-
+ shared/sepolicy/vendor/file_contexts          |  1 +
+ .../sepolicy/vendor/hal_keymint_strongbox.te  | 16 +++
+ shared/sepolicy/vendor/service_contexts       |  3 +
+ 7 files changed, 125 insertions(+), 3 deletions(-)
  create mode 100644 shared/sepolicy/vendor/hal_keymint_strongbox.te
 
+diff --git a/host/commands/secure_env/Android.bp b/host/commands/secure_env/Android.bp
+index b52d27bbf..735f826ad 100644
+--- a/host/commands/secure_env/Android.bp
++++ b/host/commands/secure_env/Android.bp
+@@ -52,6 +52,7 @@ cc_defaults {
+     ],
+     cflags: [
+         "-fno-rtti", // Required for libkeymaster_portable
++	"-DSW_KM_ENFORCEMENT"
+     ],
+ }
+ 
+diff --git a/host/commands/secure_env/tpm_keymaster_enforcement.cpp b/host/commands/secure_env/tpm_keymaster_enforcement.cpp
+index dbdb88e86..33b3b8441 100644
+--- a/host/commands/secure_env/tpm_keymaster_enforcement.cpp
++++ b/host/commands/secure_env/tpm_keymaster_enforcement.cpp
+@@ -17,7 +17,14 @@
+ 
+ #include <android-base/endian.h>
+ #include <android-base/logging.h>
+-
++#ifdef SW_KM_ENFORCEMENT
++#include <openssl/hmac.h>
++
++#include <keymaster/UniquePtr.h>
++#include <keymaster/km_openssl/ckdf.h>
++#include <keymaster/km_openssl/openssl_err.h>
++#include <keymaster/km_openssl/openssl_utils.h>
++#endif
+ #include "host/commands/secure_env/primary_key_builder.h"
+ #include "host/commands/secure_env/tpm_hmac.h"
+ #include "host/commands/secure_env/tpm_key_blob_maker.h"
+@@ -32,8 +39,52 @@ using keymaster::KeymasterEnforcement;
+ using keymaster::km_id_t;
+ using keymaster::VerifyAuthorizationRequest;
+ using keymaster::VerifyAuthorizationResponse;
+-
++#ifdef SW_KM_ENFORCEMENT
++using keymaster::OpenSslObjectDeleter;
++using keymaster::TranslateLastOpenSslError;
++using keymaster::UniquePtr;
++using keymaster::KeymasterKeyBlob;
++#endif
++
++#ifdef SW_KM_ENFORCEMENT
++constexpr uint8_t kFakeKeyAgreementKey[32] = {};
++constexpr const char* kSharedHmacLabel = "KeymasterSharedMac";
++constexpr const char* kMacVerificationString = "Keymaster HMAC Verification";
++#endif
+ namespace {
++#ifdef SW_KM_ENFORCEMENT
++DEFINE_OPENSSL_OBJECT_POINTER(HMAC_CTX);
++
++keymaster_error_t hmacSha256(const keymaster_key_blob_t& key, const keymaster_blob_t data_chunks[],
++                             size_t data_chunk_count, KeymasterBlob* output) {
++    if (!output) return KM_ERROR_UNEXPECTED_NULL_POINTER;
++
++    unsigned digest_len = SHA256_DIGEST_LENGTH;
++    if (!output->Reset(digest_len)) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
++
++    HMAC_CTX_Ptr ctx(HMAC_CTX_new());
++    if (!HMAC_Init_ex(ctx.get(), key.key_material, key.key_material_size, EVP_sha256(),
++                      nullptr /* engine*/)) {
++        return TranslateLastOpenSslError();
++    }
++
++    for (size_t i = 0; i < data_chunk_count; i++) {
++        auto& chunk = data_chunks[i];
++        if (!HMAC_Update(ctx.get(), chunk.data, chunk.data_length)) {
++            return TranslateLastOpenSslError();
++        }
++    }
++
++    if (!HMAC_Final(ctx.get(), output->writable_data(), &digest_len)) {
++        return TranslateLastOpenSslError();
++    }
++
++    if (digest_len != output->data_length) return KM_ERROR_UNKNOWN_ERROR;
++
++    return KM_ERROR_OK;
++}
++#endif
++
+ inline bool operator==(const keymaster_blob_t& a, const keymaster_blob_t& b) {
+   if (!a.data_length && !b.data_length) return true;
+   if (!(a.data && b.data)) return a.data == b.data;
+@@ -176,6 +227,38 @@ keymaster_error_t TpmKeymasterEnforcement::GetHmacSharingParameters(
+ 
+ keymaster_error_t TpmKeymasterEnforcement::ComputeSharedHmac(
+     const HmacSharingParametersArray& hmac_array, KeymasterBlob* sharingCheck) {
++#ifdef SW_KM_ENFORCEMENT
++  size_t num_chunks = hmac_array.num_params * 2;
++  UniquePtr<keymaster_blob_t[]> context_chunks(new (std::nothrow) keymaster_blob_t[num_chunks]);
++  if (!context_chunks.get()) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
++  bool found_mine = false;
++  auto context_chunks_pos = context_chunks.get();
++  for (auto& params :
++       array_range(hmac_array.params_array, hmac_array.num_params)) {
++    *context_chunks_pos++ = params.seed;
++    *context_chunks_pos++ = {params.nonce, sizeof(params.nonce)};
++    found_mine = found_mine || params == saved_params_;
++  }
++  assert(context_chunks_pos - num_chunks == context_chunks.get());
++
++  if (!found_mine) return KM_ERROR_INVALID_ARGUMENT;
++
++  if (!hmac_key_.Reset(SHA256_DIGEST_LENGTH))
++    return KM_ERROR_MEMORY_ALLOCATION_FAILED;
++  keymaster_error_t error =
++      ckdf(KeymasterKeyBlob(kFakeKeyAgreementKey, sizeof(kFakeKeyAgreementKey)),
++           KeymasterBlob(reinterpret_cast<const uint8_t*>(kSharedHmacLabel),
++                         strlen(kSharedHmacLabel)),
++           context_chunks.get(), num_chunks,
++           &hmac_key_);
++  if (error != KM_ERROR_OK) return error;
++
++  keymaster_blob_t data = {
++      reinterpret_cast<const uint8_t*>(kMacVerificationString),
++      strlen(kMacVerificationString)};
++  keymaster_blob_t data_chunks[] = {data};
++  return hmacSha256(hmac_key_, data_chunks, 1, sharingCheck);
++#else
+   std::set<HmacSharingParameters, CompareHmacSharingParams> sorted_hmac_inputs;
+   bool found_mine = false;
+   for (int i = 0; i < hmac_array.num_params; i++) {
+@@ -216,6 +299,7 @@ keymaster_error_t TpmKeymasterEnforcement::ComputeSharedHmac(
+   *sharingCheck = KeymasterBlob(hmac->buffer, hmac->size);
+ 
+   return KM_ERROR_OK;
++#endif
+ }
+ 
+ VerifyAuthorizationResponse TpmKeymasterEnforcement::VerifyAuthorization(
+@@ -282,6 +366,16 @@ keymaster::KmErrorOr<std::array<uint8_t, 32>>
+ TpmKeymasterEnforcement::ComputeHmac(
+     const std::vector<uint8_t>& data_to_mac) const {
+   std::array<uint8_t, 32> result;
++#ifdef SW_KM_ENFORCEMENT
++  keymaster_blob_t data = {data_to_mac.data(), data_to_mac.size()};
++  keymaster_blob_t data_chunks[] = {data};
++  KeymasterBlob signature;
++  auto error = hmacSha256(hmac_key_, data_chunks, 1, &signature);
++  if (error != KM_ERROR_OK) {
++    return error;
++  }
++  std::copy(signature.begin(), signature.end(), result.begin());
++#else
+ 
+   const uint8_t* auth_token_key = nullptr;
+   uint32_t auth_token_key_len = 0;
+@@ -293,6 +387,7 @@ TpmKeymasterEnforcement::ComputeHmac(
+   gatekeeper_.ComputeSignature(result.data(), result.size(), auth_token_key,
+                                auth_token_key_len, data_to_mac.data(),
+                                data_to_mac.size());
++#endif
+   return result;
+ }
+ 
+diff --git a/host/commands/secure_env/tpm_keymaster_enforcement.h b/host/commands/secure_env/tpm_keymaster_enforcement.h
+index 1178932b5..6e85426e8 100644
+--- a/host/commands/secure_env/tpm_keymaster_enforcement.h
++++ b/host/commands/secure_env/tpm_keymaster_enforcement.h
+@@ -65,6 +65,9 @@ class TpmKeymasterEnforcement : public keymaster::KeymasterEnforcement {
+   TpmGatekeeper& gatekeeper_;
+   bool have_saved_params_ = false;
+   keymaster::HmacSharingParameters saved_params_;
++#ifdef SW_KM_ENFORCEMENT
++  keymaster::KeymasterKeyBlob hmac_key_;
++#endif
+ };
+ 
+ }  // namespace cuttlefish
 diff --git a/shared/device.mk b/shared/device.mk
-index 904ddd6ca..3e48f3ac1 100644
+index eff5f1da5..3c6229dd9 100644
 --- a/shared/device.mk
 +++ b/shared/device.mk
-@@ -623,6 +623,9 @@ endif
-  PRODUCT_PACKAGES += \
-     $(LOCAL_KEYMINT_PRODUCT_PACKAGE)
+@@ -472,7 +472,7 @@ PRODUCT_PACKAGES += \
+ # KeyMint HAL
+ #
+ ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),)
+-    LOCAL_KEYMINT_PRODUCT_PACKAGE := android.hardware.security.keymint-service.rust
++    LOCAL_KEYMINT_PRODUCT_PACKAGE := android.hardware.security.keymint-service.remote
+ endif
+ 
+ ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),android.hardware.security.keymint-service.rust)
+@@ -481,6 +481,9 @@ ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),android.hardware.security.keymint-service
+     $(call soong_config_set,secure_env,keymint_impl,rust)
+ endif
  
 +PRODUCT_PACKAGES += \
 +    android.hardware.security.keymint-service.strongbox \
 +
- # Keymint configuration
- ifneq ($(LOCAL_PREFER_VENDOR_APEX),true)
- PRODUCT_COPY_FILES += \
+ PRODUCT_PACKAGES += \
+     $(LOCAL_KEYMINT_PRODUCT_PACKAGE) \
+     RemoteProvisioner
 diff --git a/shared/sepolicy/vendor/file_contexts b/shared/sepolicy/vendor/file_contexts
-index 6c471b8b8..cc223bdc4 100644
+index f7f55261c..d1d7a7f21 100644
 --- a/shared/sepolicy/vendor/file_contexts
 +++ b/shared/sepolicy/vendor/file_contexts
-@@ -93,6 +93,7 @@
- /vendor/bin/hw/android\.hardware\.thermal@2\.0-service\.mock  u:object_r:hal_thermal_default_exec:s0
+@@ -94,6 +94,7 @@
  /vendor/bin/hw/android\.hardware\.identity-service\.remote  u:object_r:hal_identity_remote_exec:s0
  /vendor/bin/hw/android\.hardware\.security\.keymint-service\.remote  u:object_r:hal_keymint_remote_exec:s0
+ /vendor/bin/hw/android\.hardware\.security\.keymint-service\.rust  u:object_r:hal_keymint_remote_exec:s0
 +/vendor/bin/hw/android\.hardware\.security\.keymint-service\.strongbox  u:object_r:hal_keymint_strongbox_exec:s0
  /vendor/bin/hw/android\.hardware\.keymaster@4\.1-service.remote  u:object_r:hal_keymaster_remote_exec:s0
- /vendor/bin/hw/android\.hardware\.gatekeeper@1\.0-service.remote  u:object_r:hal_gatekeeper_remote_exec:s0
- /vendor/bin/hw/android\.hardware\.confirmationui@1\.0-service.cuttlefish  u:object_r:hal_confirmationui_cuttlefish_exec:s0
+ /vendor/bin/hw/android\.hardware\.gatekeeper-service.remote  u:object_r:hal_gatekeeper_remote_exec:s0
+ /vendor/bin/hw/android\.hardware\.confirmationui-service.cuttlefish  u:object_r:hal_confirmationui_cuttlefish_exec:s0
 diff --git a/shared/sepolicy/vendor/hal_keymint_strongbox.te b/shared/sepolicy/vendor/hal_keymint_strongbox.te
 new file mode 100644
 index 000000000..4073d0790
@@ -61,11 +245,11 @@ index 000000000..4073d0790
 +allow hal_keymint_strongbox port:tcp_socket { name_connect };
 +allow hal_keymint_strongbox vendor_data_file:file { open read getattr };
 diff --git a/shared/sepolicy/vendor/service_contexts b/shared/sepolicy/vendor/service_contexts
-index c41503e3b..acd78e1ce 100644
+index 6aaa86b56..54b819a4e 100644
 --- a/shared/sepolicy/vendor/service_contexts
 +++ b/shared/sepolicy/vendor/service_contexts
-@@ -5,6 +5,9 @@ android.hardware.neuralnetworks.IDevice/nnapi-sample_float_slow u:object_r:hal_n
- android.hardware.neuralnetworks.IDevice/nnapi-sample_minimal    u:object_r:hal_neuralnetworks_service:s0
+@@ -2,6 +2,9 @@ android.hardware.drm.IDrmFactory/widevine    u:object_r:hal_drm_service:s0
+ android.hardware.neuralnetworks.IDevice/nnapi-sample_all u:object_r:hal_neuralnetworks_service:s0
  android.hardware.neuralnetworks.IDevice/nnapi-sample_quant    u:object_r:hal_neuralnetworks_service:s0
  android.hardware.neuralnetworks.IDevice/nnapi-sample_sl_shim  u:object_r:hal_neuralnetworks_service:s0
 +android.hardware.security.keymint.IKeyMintDevice/strongbox      u:object_r:hal_keymint_service:s0
@@ -75,5 +259,5 @@ index c41503e3b..acd78e1ce 100644
  # Binder service mappings
  gce                                       u:object_r:gce_service:s0
 -- 
-2.35.1.894.gb6a874cedc-goog
+2.39.0.246.g2a6d74b583-goog
 

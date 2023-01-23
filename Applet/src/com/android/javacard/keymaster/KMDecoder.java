@@ -241,10 +241,8 @@ public class KMDecoder {
     byte[] buffer = (byte[]) bufferRef[0];
     short startOff = scratchBuf[START_OFFSET];
     // This decoder is confined to support only key and value types which are required for remote
-    // key
-    // provisioning. So keys of type (int / uint) and values of type (int / uint / simple / bstr /
-    // tstr / Cosekey) only
-    // are supported.
+    // key provisioning. So keys of type (int / uint) and values of type (int / uint / simple / bstr /
+    // tstr / Cosekey) only are supported.
     if ((buffer[startOff] & MAJOR_TYPE_MASK) != UINT_TYPE
         && (buffer[startOff] & MAJOR_TYPE_MASK) != NEG_INT_TYPE) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
