@@ -447,6 +447,28 @@ public class KMRemotelyProvisionedComponentDevice {
     repository.reclaimMemory(MAX_ENCODED_BUF_SIZE);
   }
 
+  /**
+   * This is the first command of the generateCSR.
+   * Input:
+   *   1) Number of RKP keys.
+   *   2) Total size of the encoded CoseKeys (Each RKP key is represented in CoseKey)
+   *   3) Challenge
+   * Process:
+   *   1) creates device info, initializes version and cert type.
+   *   2) Initialize the ECDSA operation with the deviceUniqueKeyPair and do partial sign of the
+   *      CsrPayload with the initial input data received. A Multipart update on ECDSA is
+   *      called on each updateKey command in the second stage.
+   *   3) Store the number of RKP keys in the temporary data buffer.
+   *   4) Update the phase of the generateCSR function to BEGIN.
+   *   5) generates RKP device info
+   * Response:
+   *   1) Send OK response.
+   *   2) Encoded device info
+   *   3) CSR payload CDDL schema version
+   *   4) Cert type
+   *
+   * @param apdu Input apdu
+   */
   public void processBeginSendData(APDU apdu) throws Exception {
     try {
       initializeDataTable();
@@ -503,6 +525,23 @@ public class KMRemotelyProvisionedComponentDevice {
     }
   }
 
+  /**
+   * This is the second command of the generateCSR. This command will be called in a loop
+   * for the number of keys.
+   * Input:
+   *   CoseMac0 containing the RKP Key
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be either BEGIN or UPDATE.
+   *   2) Validate the number of RKP Keys received against the value received in the first command.
+   *   3) Validate the CoseMac0 structure and extract the RKP Key.
+   *   4) Do Multipart ECDSA update operation with the input as RKP key.
+   *   5) Update the number of keys received count into the data buffer.
+   *   6) Update the phase of the generateCSR function to UPDATE.
+   * Response:
+   *   1) Send OK response.
+   *   2) encoded Cose Key
+   * @param apdu Input apdu
+   */
   public void processUpdateKey(APDU apdu) throws Exception {
     try {
       // The prior state can be BEGIN or UPDATE
@@ -553,7 +592,32 @@ public class KMRemotelyProvisionedComponentDevice {
     }
   }
 
-  // This function returns protected Data, Signature and version
+  /**
+   * This is the third command of generateCSR.
+   * Input:
+   *   No input data.
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be UPDATE.
+   *   2) Check if all the RKP keys are received, if not, throw exception.
+   *   3) Finalize the ECDSA operation and get the signature, signature of SignedDataSigStruct
+   *   where SignedDataSigStruct is
+   *     [context: "Signature1",
+   *       protected: bstr .cbor {1 : AlgorithmEdDSA / AlgorithmES256},
+   *       external_aad: bstr .size 0,
+   *       payload: bstr .cbor [challenge,
+   *                            bstr .cbor CsrPayload = [version, CertificateType, DeviceInfo, KeysToSign]
+   *                           ]
+   *    ]
+   *   4) Construct protected header data.
+   *   5) Update the phase of the generateCSR function to FINISH.
+   * Response:
+   *   OK
+   *   protectedHeader - CoseEncrypt protected header
+   *   Signature of SignedDataSigStruct
+   *   Version - The AuthenticatedRequest CDDL Schema version.
+   *   Flag to represent there is more data to retrieve.
+   * @param apdu Input apdu.
+   */
   public void processFinishSendData(APDU apdu) throws Exception {
     try {
       // The prior state should be UPDATE.
@@ -603,46 +667,23 @@ public class KMRemotelyProvisionedComponentDevice {
     }
   }
 
-  public void processGetDiceCertChain(APDU apdu) throws Exception {
-    try {
-      // The prior state should be FINISH.
-      validateState((byte) (GET_UDS_CERTS_RESPONSE));
-      byte[] scratchPad = apdu.getBuffer();
-      short len = 0;
-      len = processDiceCertChain(scratchPad);
-      byte moreData = MORE_DATA;
-      byte state = getCurrentOutputProcessingState();
-      switch (state) {
-        case PROCESSING_DICE_CERTS_IN_PROGRESS:
-          moreData = MORE_DATA;
-          break;
-        case PROCESSING_DICE_CERTS_COMPLETE:
-          moreData = NO_DATA;
-          clearDataTable();
-          break;
-        default:
-          KMException.throwIt(KMError.INVALID_STATE);
-      }
-      short data = KMByteBlob.instance(scratchPad, (short) 0, len);
-      short arr = KMArray.instance((short) 3);
-      KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
-      KMArray.cast(arr).add((short) 1, data);
-      // represents there is more output to retrieve
-      KMArray.cast(arr).add((short) 2, KMInteger.uint_8(moreData));
-      KMKeymasterApplet.sendOutgoing(apdu, arr);
-    } catch (Exception e) {
-      clearDataTable();
-      throw e;
-    }
-  }
-
-  private boolean isUdsCertsChainPresent() {
-    if (!IS_UDS_SUPPORTED_IN_RKP_SERVER || (storeDataInst.getUdsCertChainLength() == 0)) {
-      return false;
-    }
-    return true;
-  }
-
+  /**
+   * This is the fourth command of generateCSR. This command is called multiple times by the
+   * HAL until complete UdsCerts are received. On each call, a chunk of 512 bytes data is sent.
+   * Input:
+   *   No input data.
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be FINISH.
+   *   2) checks if Uds cert is present and sends the certs in chunks of 512 bytes.
+   *   3) Update the phase of the generateCSR function to GET_UDS_CERTS_RESPONSE. In-case of
+   *     a) No Uds certs present and
+   *     b) When last chunk of Uds cert is sent
+   * Response:
+   *   OK
+   *   Uds cert data
+   *   Flag to represent there is more data to retrieve.
+   * @param apdu Input apdu.
+   */
   public void processGetUdsCerts(APDU apdu) throws Exception {
     try {
       // The prior state should be FINISH.
@@ -683,6 +724,64 @@ public class KMRemotelyProvisionedComponentDevice {
       clearDataTable();
       throw e;
     }
+  }
+
+  /**
+   * This is the fifth command of generateCSR. This command is called multiple times by the
+   * HAL until complete Dice cert chain is received. On each call, a chunk of 512 bytes data is sent.
+   * Input:
+   *   No input data.
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be GET_UDS_CERTS_RESPONSE.
+   *   2) Sends the Dice cert chain data in chunks of 512 bytes.
+   *
+   *   After receiving a complete dice cert chain in HAL, Hal constructs the final CSR using the output data
+   *   returned from all the 5 generateCSR commands in Applet.
+   *
+   * Response:
+   *   OK
+   *   Dice cert chain data
+   *   Flag to represent there is more data to retrieve.
+   * @param apdu Input apdu.
+   */
+  public void processGetDiceCertChain(APDU apdu) throws Exception {
+    try {
+      // The prior state should be GET_UDS_CERTS_RESPONSE.
+      validateState((byte) (GET_UDS_CERTS_RESPONSE));
+      byte[] scratchPad = apdu.getBuffer();
+      short len = 0;
+      len = processDiceCertChain(scratchPad);
+      byte moreData = MORE_DATA;
+      byte state = getCurrentOutputProcessingState();
+      switch (state) {
+        case PROCESSING_DICE_CERTS_IN_PROGRESS:
+          moreData = MORE_DATA;
+          break;
+        case PROCESSING_DICE_CERTS_COMPLETE:
+          moreData = NO_DATA;
+          clearDataTable();
+          break;
+        default:
+          KMException.throwIt(KMError.INVALID_STATE);
+      }
+      short data = KMByteBlob.instance(scratchPad, (short) 0, len);
+      short arr = KMArray.instance((short) 3);
+      KMArray.cast(arr).add((short) 0, KMInteger.uint_16(KMError.OK));
+      KMArray.cast(arr).add((short) 1, data);
+      // represents there is more output to retrieve
+      KMArray.cast(arr).add((short) 2, KMInteger.uint_8(moreData));
+      KMKeymasterApplet.sendOutgoing(apdu, arr);
+    } catch (Exception e) {
+      clearDataTable();
+      throw e;
+    }
+  }
+
+  private boolean isUdsCertsChainPresent() {
+    if (!IS_UDS_SUPPORTED_IN_RKP_SERVER || (storeDataInst.getUdsCertChainLength() == 0)) {
+      return false;
+    }
+    return true;
   }
 
   public void process(short ins, APDU apdu) throws Exception {
