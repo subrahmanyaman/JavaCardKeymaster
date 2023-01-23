@@ -79,7 +79,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     0x65, 0x6E
   };
   // The maximum buffer size for the encoded COSE structures.
-  public static final short MAX_COSE_BUF_SIZE = (short) 1024;
+  public static final short MAX_COSE_BUF_SIZE = (short) 512;
   // Maximum allowed buffer size for to encode the key parameters
   // which is used while creating mac for key parameters.
   public static final short MAX_KEY_PARAMS_BUF_SIZE = (short) 3072; // 3K
