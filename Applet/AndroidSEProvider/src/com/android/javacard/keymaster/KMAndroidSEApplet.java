@@ -37,7 +37,7 @@ public class KMAndroidSEApplet extends KMKeymasterApplet implements OnUpgradeLis
   // between data before and after the magic number is used.
   private static final byte KM_MAGIC_NUMBER = (byte) 0x82;
   // MSB byte is for Major version and LSB byte is for Minor version.
-  public static final short KM_APPLET_PACKAGE_VERSION = 0x0300;
+  public static final short KM_APPLET_PACKAGE_VERSION = 0x0301;
   // This flag is used to know if card reset happened.
   private static final short POWER_RESET_MASK_FLAG = (short) 0x4000;
 
