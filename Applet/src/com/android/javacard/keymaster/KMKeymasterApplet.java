@@ -329,7 +329,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // The transportKey is retrieved and stored in this buffer at stage 1) and is later used in
   // stage 2).
   protected static byte[] wrappingKey;
-
+  // Transient byte array used to store the flags if APDU command type is of case 4 and if
+  // APDU setIncomingAndReceive() function is called or not.
   protected static byte[] apduStatusFlags;
 
   /** Registers this applet. */
@@ -1256,33 +1257,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case INS_GET_RESPONSE_CMD:
         apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
         break;
-
-      case INS_INIT_STRONGBOX_CMD:
-      case INS_GENERATE_KEY_CMD:
-      case INS_IMPORT_KEY_CMD:
-      case INS_BEGIN_IMPORT_WRAPPED_KEY_CMD:
-      case INS_FINISH_IMPORT_WRAPPED_KEY_CMD:
-      case INS_UPGRADE_KEY_CMD:
-      case INS_ADD_RNG_ENTROPY_CMD:
-      case INS_COMPUTE_SHARED_HMAC_CMD:
-      case INS_GET_KEY_CHARACTERISTICS_CMD:
-      case INS_BEGIN_OPERATION_CMD:
-      case INS_UPDATE_OPERATION_CMD:
-      case INS_FINISH_OPERATION_CMD:
-      case INS_ABORT_OPERATION_CMD:
-      case INS_DEVICE_LOCKED_CMD:
-      case INS_UPDATE_AAD_OPERATION_CMD:
-      case INS_GENERATE_RKP_KEY_CMD:
-      case INS_BEGIN_SEND_DATA_CMD:
-      case INS_UPDATE_CHALLENGE_CMD:
-      case INS_UPDATE_EEK_CHAIN_CMD:
-      case INS_UPDATE_KEY_CMD:
-      case INS_SEND_ROT_DATA_CMD:
-        apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 1;
-        break;
-
       default:
-        ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        // By default the instruction is set to case 4 command instruction.
+        break;
     }
   }
 
