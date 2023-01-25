@@ -35,6 +35,8 @@ public class KMEcdsa256NoDigestSignature extends Signature {
 
   public KMEcdsa256NoDigestSignature(byte alg) {
     algorithm = alg;
+    // There is no constant for no digest so ALG_ECDSA_SHA_256 is used. However,
+    // signPreComputedHash is used for signing which is equivalent to no digest sign.
     inst = Signature.getInstance(Signature.ALG_ECDSA_SHA_256, false);
   }
 

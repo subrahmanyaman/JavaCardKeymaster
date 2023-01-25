@@ -473,8 +473,20 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         kmDataStore.getMasterKey());
   }
 
+  private static void validateRSAKey(byte[] scratchPad) {
+    // Read key size
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    }
+    if (!KMTag.isValidPublicExponent(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.INVALID_ARGUMENT);
+    }
+  }
+
   // Generate key handlers
   private static void generateRSAKey(byte[] scratchPad) {
+    // Validate RSA Key
+    validateRSAKey(scratchPad);
     // Now generate 2048 bit RSA keypair for the given exponent
     short[] lengths = tmpVariables;
     data[PUB_KEY] = KMByteBlob.instance((short) 256);
@@ -493,7 +505,40 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PUB_KEY, data[PUB_KEY]);
   }
 
+  private static void validateAESKey() {
+    // Read key size
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    }
+    // Read Block mode - array of byte values
+    if (KMTag.isPresent(data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.BLOCK_MODE)) {
+      short blockModes =
+          KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG, KMType.BLOCK_MODE, data[KEY_PARAMETERS]);
+      // If it is a GCM mode
+      if (KMEnumArrayTag.cast(blockModes).contains(KMType.GCM)) {
+        // Min mac length must be present
+        KMTag.assertPresence(
+            data[KEY_PARAMETERS],
+            KMType.UINT_TAG,
+            KMType.MIN_MAC_LENGTH,
+            KMError.MISSING_MIN_MAC_LENGTH);
+        short macLength =
+            KMKeyParameters.findTag(KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[KEY_PARAMETERS]);
+        macLength = KMIntegerTag.cast(macLength).getValue();
+        // Validate the MIN_MAC_LENGTH for AES - should be multiple of 8, less then 128 bits
+        // and greater the 96 bits
+        if (KMInteger.cast(macLength).getSignificantShort() != 0
+            || KMInteger.cast(macLength).getShort() > 128
+            || KMInteger.cast(macLength).getShort() < 96
+            || (KMInteger.cast(macLength).getShort() % 8) != 0) {
+          KMException.throwIt(KMError.UNSUPPORTED_MIN_MAC_LENGTH);
+        }
+      }
+    }
+  }
+
   private static void generateAESKey(byte[] scratchPad) {
+    validateAESKey();
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     short len = seProvider.createSymmetricKey(KMType.AES, keysize, scratchPad, (short) 0);
@@ -501,7 +546,23 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     data[KEY_BLOB] = createKeyBlobInstance(SYM_KEY_TYPE);
   }
 
+  private static void validateECKeys() {
+    // Read key size
+    short ecCurve = KMEnumTag.getValue(KMType.ECCURVE, data[KEY_PARAMETERS]);
+    /* In KeyMint 2.0, If EC_CURVE not provided, generateKey
+     * must return ErrorCode::UNSUPPORTED_KEY_SIZE or ErrorCode::UNSUPPORTED_EC_CURVE.
+     */
+    if (ecCurve != KMType.P_256) {
+      KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    }
+    short ecKeySize = KMEnumTag.getValue(KMType.KEYSIZE, data[KEY_PARAMETERS]);
+    if ((ecKeySize != KMType.INVALID_VALUE) && !KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    }
+  }
+
   private static void generateECKeys(byte[] scratchPad) {
+    validateECKeys();
     short[] lengths = tmpVariables;
     seProvider.createAsymmetricKey(
         KMType.EC,
@@ -518,13 +579,54 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PUB_KEY, data[PUB_KEY]);
   }
 
+  private static void validateTDESKey() {
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    }
+    // Read Minimum Mac length - it must not be present
+    KMTag.assertAbsence(
+        data[KEY_PARAMETERS], KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, KMError.INVALID_TAG);
+  }
+
   private static void generateTDESKey(byte[] scratchPad) {
+    validateTDESKey();
     short len = seProvider.createSymmetricKey(KMType.DES, (short) 168, scratchPad, (short) 0);
     data[SECRET] = KMByteBlob.instance(scratchPad, (short) 0, len);
     data[KEY_BLOB] = createKeyBlobInstance(SYM_KEY_TYPE);
   }
 
+  private static void validateHmacKey() {
+    // If params does not contain any digest throw unsupported digest error.
+    KMTag.assertPresence(
+        data[KEY_PARAMETERS], KMType.ENUM_ARRAY_TAG, KMType.DIGEST, KMError.UNSUPPORTED_DIGEST);
+
+    // check whether digest sizes are greater then or equal to min mac length.
+    // Only SHA256 digest must be supported.
+    if (!KMEnumArrayTag.contains(KMType.DIGEST, KMType.SHA2_256, data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_DIGEST);
+    }
+    // Read Minimum Mac length
+    KMTag.assertPresence(
+        data[KEY_PARAMETERS],
+        KMType.UINT_TAG,
+        KMType.MIN_MAC_LENGTH,
+        KMError.MISSING_MIN_MAC_LENGTH);
+    short minMacLength =
+        KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.MIN_MAC_LENGTH, data[KEY_PARAMETERS]);
+
+    if (((short) (minMacLength % 8) != 0)
+        || minMacLength < MIN_HMAC_LENGTH_BITS
+        || minMacLength > SHA256_DIGEST_LEN_BITS) {
+      KMException.throwIt(KMError.UNSUPPORTED_MIN_MAC_LENGTH);
+    }
+    // Read Keysize
+    if (!KMTag.isValidKeySize(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_KEY_SIZE);
+    }
+  }
+
   private static void generateHmacKey(byte[] scratchPad) {
+    validateHmacKey();
     short keysize =
         KMIntegerTag.getShortValue(KMType.UINT_TAG, KMType.KEYSIZE, data[KEY_PARAMETERS]);
     // generate HMAC Key
@@ -2226,6 +2328,31 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     sendResponse(apdu, KMError.OK);
   }
 
+  private short aesGCMEncrypt(
+      short aesSecret, short input, short nonce, short authData, short authTag, byte[] scratchPad) {
+    Util.arrayFillNonAtomic(scratchPad, (short) 0, KMByteBlob.cast(input).length(), (byte) 0);
+    short len =
+        seProvider.aesGCMEncrypt(
+            KMByteBlob.cast(aesSecret).getBuffer(),
+            KMByteBlob.cast(aesSecret).getStartOff(),
+            KMByteBlob.cast(aesSecret).length(),
+            KMByteBlob.cast(input).getBuffer(),
+            KMByteBlob.cast(input).getStartOff(),
+            KMByteBlob.cast(input).length(),
+            scratchPad,
+            (short) 0,
+            KMByteBlob.cast(nonce).getBuffer(),
+            KMByteBlob.cast(nonce).getStartOff(),
+            KMByteBlob.cast(nonce).length(),
+            KMByteBlob.cast(authData).getBuffer(),
+            KMByteBlob.cast(authData).getStartOff(),
+            KMByteBlob.cast(authData).length(),
+            KMByteBlob.cast(authTag).getBuffer(),
+            KMByteBlob.cast(authTag).getStartOff(),
+            KMByteBlob.cast(authTag).length());
+    return KMByteBlob.instance(scratchPad, (short) 0, len);
+  }
+
   private short aesGCMDecrypt(
       short aesSecret, short input, short nonce, short authData, short authTag, byte[] scratchPad) {
     Util.arrayFillNonAtomic(scratchPad, (short) 0, KMByteBlob.cast(input).length(), (byte) 0);
@@ -2272,6 +2399,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     short keyParameters = KMArray.cast(cmd).get((short) 0);
     short keyFmt = KMArray.cast(cmd).get((short) 1);
     keyFmt = KMEnum.cast(keyFmt).getVal();
+    validateImportKey(keyParameters, keyFmt);
     byte[] scratchPad = apdu.getBuffer();
     // Step 4 - AES-GCM decrypt the wrapped key
     data[INPUT_DATA] = KMArray.cast(cmd).get((short) 2);
@@ -3287,6 +3415,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     sendOutgoing(apdu, resp);
   }
 
+  private void authorizeAlgorithm(KMOperationState op) {
+    short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[HW_PARAMETERS]);
+    if (alg == KMType.INVALID_VALUE) {
+      KMException.throwIt(KMError.UNSUPPORTED_ALGORITHM);
+    }
+    op.setAlgorithm((byte) alg);
+  }
+
   private void authorizePurpose(KMOperationState op) {
     switch (op.getAlgorithm()) {
       case KMType.AES:
@@ -4043,18 +4179,41 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     importKey(apdu, keyFmt, scratchPad);
   }
 
-  private void importKey(APDU apdu, short keyFmt, byte[] scratchPad) {
+  private void validateImportKey(short params, short keyFmt) {
+    short attKeyPurpose = KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG, KMType.PURPOSE, params);
+    // ATTEST_KEY cannot be combined with any other purpose.
+    if (attKeyPurpose != KMType.INVALID_VALUE
+        && KMEnumArrayTag.cast(attKeyPurpose).contains(KMType.ATTEST_KEY)
+        && KMEnumArrayTag.cast(attKeyPurpose).length() > 1) {
+      KMException.throwIt(KMError.INCOMPATIBLE_PURPOSE);
+    }
     // Rollback protection not supported
     KMTag.assertAbsence(
-        data[KEY_PARAMETERS],
+        params,
         KMType.BOOL_TAG,
         KMType.ROLLBACK_RESISTANCE,
         KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
     // As per specification, Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
     // provided to IKeyMintDevice::importKey
-    KMTag.assertAbsence(
-        data[KEY_PARAMETERS], KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, KMError.EARLY_BOOT_ENDED);
+    KMTag.assertAbsence(params, KMType.BOOL_TAG, KMType.EARLY_BOOT_ONLY, KMError.EARLY_BOOT_ENDED);
+    // Check if the tags are supported.
+    if (KMKeyParameters.hasUnsupportedTags(params)) {
+      KMException.throwIt(KMError.UNSUPPORTED_TAG);
+    }
+    // Algorithm must be present
+    KMTag.assertPresence(params, KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
+    short alg = KMEnumTag.getValue(KMType.ALGORITHM, params);
+    // key format must be raw if aes, des or hmac and pkcs8 for rsa and ec.
+    if ((alg == KMType.AES || alg == KMType.DES || alg == KMType.HMAC) && keyFmt != KMType.RAW) {
+      KMException.throwIt(KMError.UNIMPLEMENTED);
+    }
+    if ((alg == KMType.RSA || alg == KMType.EC) && keyFmt != KMType.PKCS8) {
+      KMException.throwIt(KMError.UNIMPLEMENTED);
+    }
+  }
 
+  private void importKey(APDU apdu, short keyFmt, byte[] scratchPad) {
+    validateImportKey(data[KEY_PARAMETERS], keyFmt);
     // Check algorithm and dispatch to appropriate handler.
     short alg = KMEnumTag.getValue(KMType.ALGORITHM, data[KEY_PARAMETERS]);
     switch (alg) {
@@ -4188,6 +4347,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
     // update the key parameters list
     updateKeyParameters(scratchPad, index);
+    // validate HMAC Key parameters
+    validateHmacKey();
     data[KEY_BLOB] = createKeyBlobInstance(SYM_KEY_TYPE);
   }
 
@@ -4269,6 +4430,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
     // update the key parameters list
     updateKeyParameters(scratchPad, index);
+    // validate AES Key parameters
+    validateAESKey();
     data[KEY_BLOB] = createKeyBlobInstance(SYM_KEY_TYPE);
   }
 
@@ -4347,6 +4510,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
     // update the key parameters list
     updateKeyParameters(scratchPad, index);
+    // validate RSA Key parameters
+    validateRSAKey(scratchPad);
     data[KEY_BLOB] = createKeyBlobInstance(ASYM_KEY_TYPE);
     KMArray.cast(data[KEY_BLOB]).add(KEY_BLOB_PUB_KEY, data[PUB_KEY]);
   }
@@ -4479,6 +4644,14 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         KMType.ROLLBACK_RESISTANCE,
         KMError.ROLLBACK_RESISTANCE_UNAVAILABLE);
 
+    // Algorithm must be present
+    KMTag.assertPresence(
+        data[KEY_PARAMETERS], KMType.ENUM_TAG, KMType.ALGORITHM, KMError.INVALID_ARGUMENT);
+
+    // Check if the tags are supported.
+    if (KMKeyParameters.hasUnsupportedTags(data[KEY_PARAMETERS])) {
+      KMException.throwIt(KMError.UNSUPPORTED_TAG);
+    }
     short attKeyPurpose =
         KMKeyParameters.findTag(KMType.ENUM_ARRAY_TAG, KMType.PURPOSE, data[KEY_PARAMETERS]);
     // ATTEST_KEY cannot be combined with any other purpose.

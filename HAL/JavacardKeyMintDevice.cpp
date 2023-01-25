@@ -37,12 +37,6 @@
 #include "JavacardKeyMintOperation.h"
 #include "JavacardSharedSecret.h"
 
-constexpr int minGcmMinMacLength = 96;
-constexpr int maxGcmMinMacLength = 128;
-constexpr int minHmacLengthBits = 64;
-constexpr int sha256DigestLengthBits = 256;
-constexpr int rsaPublicExponent = 65537;
-
 namespace aidl::android::hardware::security::keymint {
 using cppbor::Bstr;
 using cppbor::EncodedItem;
@@ -88,186 +82,9 @@ ScopedAStatus JavacardKeyMintDevice::getHardwareInfo(KeyMintHardwareInfo* info) 
     return ScopedAStatus::ok();
 }
 
-keymaster_error_t validateKeySize(keymaster_algorithm_t& algo, uint32_t& key_size) {
-    switch (algo) {
-        case KM_ALGORITHM_RSA:
-            if (key_size != 2048) {
-                LOG(ERROR) << "Invalid key size specified for RSA key generation";
-                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-            }
-            break;
-
-        case KM_ALGORITHM_EC:
-            if (key_size != 256) {
-                LOG(ERROR) << "Invalid key size specified for EC key generation";
-                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-            }
-            break;
-
-        case KM_ALGORITHM_AES:
-            if (!(key_size == 128 || key_size == 256)) {
-                LOG(ERROR) << "Invalid key size specified for AES key generation";
-                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-            }
-            break;
-
-        case KM_ALGORITHM_TRIPLE_DES:
-            if (key_size != 168) {
-                LOG(ERROR) << "Invalid key size specified for TDES key generation";
-                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-            }
-            break;
-
-        case KM_ALGORITHM_HMAC:
-            if (!((key_size % 8 == 0)
-                && key_size >= 64
-                && key_size <= 512)) {
-                 LOG(ERROR) << "Invalid key size specified for HMAC key generation";
-                return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-            }
-            break;
-
-        default :
-            return KM_ERROR_UNSUPPORTED_ALGORITHM;
-    }
-    return KM_ERROR_OK;
-}
-
-keymaster_error_t validateRSAKeyParam(AuthorizationSet& keyParams){
-    uint64_t public_exponent;
-    if (!keyParams.GetTagValue(keymaster::TAG_RSA_PUBLIC_EXPONENT, &public_exponent)) {
-        LOG(ERROR) << "No public exponent specified for RSA key generation";
-        return KM_ERROR_INVALID_ARGUMENT;
-    }
-    if (public_exponent != rsaPublicExponent) {
-        LOG(ERROR) << "Invalid public exponent specified for RSA key generation";
-        return KM_ERROR_INVALID_ARGUMENT;
-    }
-    return KM_ERROR_OK;
-}
-
-keymaster_error_t validateECKeyParam(AuthorizationSet& keyParams){
-    keymaster_ec_curve_t curve;
-    if (!keyParams.GetTagValue(keymaster::TAG_EC_CURVE, &curve)) {
-        LOG(ERROR) << "Invalid EC curve";
-        return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-    }
-    if(curve !=  KM_EC_CURVE_P_256) {
-        LOG(ERROR) << "Invalid EC curve";
-        return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-    }
-    return KM_ERROR_OK; 
-}
-
-keymaster_error_t validateAESKeyParam(AuthorizationSet& keyParams){
-    if (keyParams.Contains(keymaster::TAG_BLOCK_MODE, KM_MODE_GCM)) {
-        uint32_t min_tag_length;
-        if (!keyParams.GetTagValue(keymaster::TAG_MIN_MAC_LENGTH, &min_tag_length))
-            return KM_ERROR_MISSING_MIN_MAC_LENGTH;
-
-        if ((min_tag_length % 8 != 0)
-            || min_tag_length < minGcmMinMacLength
-            || min_tag_length > maxGcmMinMacLength) {
-                return KM_ERROR_UNSUPPORTED_MIN_MAC_LENGTH;
-        }
-    } else {
-        // Not GCM
-        if (keyParams.find(keymaster::TAG_MIN_MAC_LENGTH) != -1) {
-            LOG(ERROR) << "KM_TAG_MIN_MAC_LENGTH found for non AES-GCM key";
-            return KM_ERROR_INVALID_TAG;
-        }
-    }
-    return KM_ERROR_OK;
-}
-
-keymaster_error_t validateTDESKeyParam(AuthorizationSet& keyParams){
-    // Read Minimum Mac length - it must not be present
-    if (keyParams.Contains(keymaster::TAG_MIN_MAC_LENGTH)) {
-        return KM_ERROR_INVALID_TAG;
-    }
-    return KM_ERROR_OK;
-}
-
-keymaster_error_t validateHMACKeyParam(AuthorizationSet& keyParams) {
-    // If params does not contain any digest throw unsupported digest error.
-    keymaster_digest_t digest;
-    if (!keyParams.GetTagValue(keymaster::TAG_DIGEST, &digest)) {
-        return KM_ERROR_UNSUPPORTED_DIGEST;
-    }
-    if(digest != KM_DIGEST_SHA_2_256) {
-        return KM_ERROR_UNSUPPORTED_DIGEST;
-    }
-    uint32_t min_mac_length_bits;
-    if (!keyParams.GetTagValue(keymaster::TAG_MIN_MAC_LENGTH, &min_mac_length_bits)) {
-        return KM_ERROR_MISSING_MIN_MAC_LENGTH;
-    }
-    if ((min_mac_length_bits % 8 != 0)
-        || min_mac_length_bits < minHmacLengthBits
-        || min_mac_length_bits > sha256DigestLengthBits) {
-        return KM_ERROR_UNSUPPORTED_MIN_MAC_LENGTH;
-    }
-    return KM_ERROR_OK;
-}
-
-keymaster_error_t validateGenerateKeyParams(AuthorizationSet& keyParams) {
-    keymaster_algorithm_t algo;
-    // Check for unsupported tags.
-    if (keyParams.Contains(KM_TAG_TRUSTED_USER_PRESENCE_REQUIRED) ||
-            keyParams.Contains(KM_TAG_MIN_SECONDS_BETWEEN_OPS)) {
-        return KM_ERROR_UNSUPPORTED_TAG;
-    }
-    if (keyParams.Contains(keymaster::TAG_PURPOSE, KM_PURPOSE_ATTEST_KEY) &&
-        keyParams.GetTagCount(keymaster::TAG_PURPOSE) > 1) {
-        // ATTEST_KEY cannot be combined with any other purpose.
-        return KM_ERROR_INCOMPATIBLE_PURPOSE;
-    }
-    // Algorithm must be present
-    if (!keyParams.GetTagValue(keymaster::TAG_ALGORITHM, &algo)) {
-        return KM_ERROR_INVALID_ARGUMENT;
-    }
-    uint32_t key_size;
-    if (keyParams.GetTagValue(keymaster::TAG_KEY_SIZE, &key_size)) {
-        auto error =  validateKeySize(algo, key_size);
-        if (error != KM_ERROR_OK) {
-            return error;
-        }
-    } else {
-        if(algo != KM_ALGORITHM_EC) {
-            return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-        }
-    }
-    switch (algo) {
-        case KM_ALGORITHM_RSA:
-            return validateRSAKeyParam(keyParams);
-
-        case KM_ALGORITHM_EC:
-            return validateECKeyParam(keyParams);
-
-        case KM_ALGORITHM_AES:
-            return validateAESKeyParam(keyParams);
-
-        case KM_ALGORITHM_TRIPLE_DES:
-            return validateTDESKeyParam(keyParams);
-
-        case KM_ALGORITHM_HMAC:
-            return validateHMACKeyParam(keyParams);
-
-        default :
-            return KM_ERROR_UNSUPPORTED_ALGORITHM;
-    }
-    return KM_ERROR_OK;
-}
-
 ScopedAStatus JavacardKeyMintDevice::generateKey(const vector<KeyParameter>& keyParams,
                                                  const optional<AttestationKey>& attestationKey,
                                                  KeyCreationResult* creationResult) {
-    AuthorizationSet key_parameters;
-    key_parameters.Reinitialize(km_utils::KmParamSet(keyParams));
-    auto error = validateGenerateKeyParams(key_parameters);
-    if (error != KM_ERROR_OK) {
-        LOG(ERROR) << "Error while validating generatekey key parameters.";
-        return km_utils::kmError2ScopedAStatus(error);
-    }
     cppbor::Array array;
     // add key params
     cbor_.addKeyparameters(array, keyParams);
@@ -303,65 +120,11 @@ ScopedAStatus JavacardKeyMintDevice::addRngEntropy(const vector<uint8_t>& data) 
     return ScopedAStatus::ok();
 }
 
-keymaster_error_t validateImportKeyParams(AuthorizationSet& keyParams, KeyFormat& keyFormat) {
-    if (keyParams.Contains(keymaster::TAG_PURPOSE, KM_PURPOSE_ATTEST_KEY) &&
-        keyParams.GetTagCount(keymaster::TAG_PURPOSE) > 1) {
-        // ATTEST_KEY cannot be combined with any other purpose.
-        return KM_ERROR_INCOMPATIBLE_PURPOSE;
-    }
-    // Check for unsupported tags.
-    if (keyParams.Contains(KM_TAG_TRUSTED_USER_PRESENCE_REQUIRED) ||
-            keyParams.Contains(KM_TAG_MIN_SECONDS_BETWEEN_OPS)) {
-        return KM_ERROR_UNSUPPORTED_TAG;
-    }
-    keymaster_algorithm_t algo;
-    // Algorithm must be present
-    if (!keyParams.GetTagValue(keymaster::TAG_ALGORITHM, &algo)) {
-        return KM_ERROR_INVALID_ARGUMENT;
-    }
-    // key format must be raw if aes, des or hmac and pkcs8 for rsa and ec.
-    if ((algo == KM_ALGORITHM_AES || algo == KM_ALGORITHM_TRIPLE_DES || algo == KM_ALGORITHM_HMAC) && keyFormat != KeyFormat::RAW) {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    if ((algo == KM_ALGORITHM_RSA || algo == KM_ALGORITHM_EC) && keyFormat != KeyFormat::PKCS8) {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    uint32_t key_size;
-    if (keyParams.GetTagValue(keymaster::TAG_KEY_SIZE, &key_size)) {
-        auto error = validateKeySize(algo, key_size);
-        if(error != KM_ERROR_OK) {
-            return error;
-        }
-    }
-    switch (algo) {
-        case KM_ALGORITHM_RSA:
-        case KM_ALGORITHM_EC:
-        case KM_ALGORITHM_TRIPLE_DES:
-            break;
-
-        case KM_ALGORITHM_AES:
-            return validateAESKeyParam(keyParams);
-
-        case KM_ALGORITHM_HMAC:
-            return validateHMACKeyParam(keyParams);
-
-        default :
-            return KM_ERROR_UNSUPPORTED_ALGORITHM;
-    }
-    return KM_ERROR_OK;
-}
-
 ScopedAStatus JavacardKeyMintDevice::importKey(const vector<KeyParameter>& keyParams,
                                                KeyFormat keyFormat, const vector<uint8_t>& keyData,
                                                const optional<AttestationKey>& attestationKey,
                                                KeyCreationResult* creationResult) {
-    AuthorizationSet key_parameters;
-    key_parameters.Reinitialize(km_utils::KmParamSet(keyParams));
-    auto error = validateImportKeyParams(key_parameters, keyFormat);
-    if (error != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in Importkey";
-        return km_utils::kmError2ScopedAStatus(error);
-    }
+
     cppbor::Array request;
     // add key params
     cbor_.addKeyparameters(request, keyParams);
@@ -422,13 +185,6 @@ ScopedAStatus JavacardKeyMintDevice::importWrappedKey(const vector<uint8_t>& wra
     if (errorCode != KM_ERROR_OK) {
         LOG(ERROR) << "Error in send begin import wrapped key in importWrappedKey.";
         return km_utils::kmError2ScopedAStatus(errorCode);
-    }
-    AuthorizationSet key_parameters;
-    key_parameters.Reinitialize(km_utils::KmParamSet(authList));
-    auto error = validateImportKeyParams(key_parameters, keyFormat);
-    if (error != KM_ERROR_OK) {
-        LOG(ERROR) << "Error in importWrappedKey.";
-        return km_utils::kmError2ScopedAStatus(error);
     }
     // Finish the import
     std::tie(item, errorCode) = sendFinishImportWrappedKeyCmd(

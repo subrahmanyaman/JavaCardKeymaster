@@ -1164,8 +1164,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public KMKey createPreSharedKey(
-      KMKey preSharedKey, byte[] keyData, short offset, short length) {
+  public KMKey createPreSharedKey(KMKey preSharedKey, byte[] keyData, short offset, short length) {
     short lengthInBits = (short) (length * 8);
     if ((lengthInBits % 8 != 0) || !(lengthInBits >= 64 && lengthInBits <= 512)) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
@@ -1402,7 +1401,8 @@ public class KMAndroidSEProvider implements KMSEProvider {
       signer =
           Signature.OneShot.open(
               MessageDigest.ALG_SHA_256, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL);
-      signer.init(((KMECDeviceUniqueKeyPair) ecPrivKey).ecKeyPair.getPrivate(), Signature.MODE_SIGN);
+      signer.init(
+          ((KMECDeviceUniqueKeyPair) ecPrivKey).ecKeyPair.getPrivate(), Signature.MODE_SIGN);
       return signer.sign(
           inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
     } finally {
@@ -1434,8 +1434,7 @@ public class KMAndroidSEProvider implements KMSEProvider {
   }
 
   @Override
-  public KMKey createRkpMacKey(
-      KMKey rkpMacKey, byte[] keyData, short offset, short length) {
+  public KMKey createRkpMacKey(KMKey rkpMacKey, byte[] keyData, short offset, short length) {
     if (rkpMacKey == null) {
       HMACKey key =
           (HMACKey) KeyBuilder.buildKey(KeyBuilder.TYPE_HMAC, (short) (length * 8), false);

@@ -340,15 +340,21 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   /**
-   * This is the first command of the generateCSR. Input: 1) Number of RKP keys. 2) Total length of
-   * the encoded CoseKeys (Each RKP key is represented in CoseKey) 3) Flag which represents Test
-   * mode or Production mode. Process: 1) Generate Ephemeral mac key and store in the temporary data
-   * buffer. This key is used to sign Mac_Structure, which contains array of encoded RKP keys, 2)
-   * Initialize the HMAC operation with the ephemeral mac key and do partial sign of the
-   * Mac_Structure with the input initial data received. A Multipart update on HMAC is called on
-   * each updateKey command in the second stage. 3) Store the number of RKP keys and the test mode
-   * flag in the temporary data buffer. 4) Update the phase of the generateCSR function to BEGIN.
-   * Response: Send OK response.
+   * This is the first command of the generateCSR.
+   * Input:
+   *   1) Number of RKP keys.
+   *   2) Total length of the encoded CoseKeys (Each RKP key is represented in CoseKey)
+   *   3) Flag which represents Test mode or Production mode.
+   * Process:
+   *   1) Generate Ephemeral mac key and store in the temporary data buffer. This key is
+   *      used to sign Mac_Structure, which contains array of encoded RKP keys,
+   *   2) Initialize the HMAC operation with the ephemeral mac key and do partial sign of the
+   *      Mac_Structure with the input initial data received. A Multipart update on HMAC is
+   *      called on each updateKey command in the second stage.
+   *   3) Store the number of RKP keys and the test mode flag in the temporary data buffer.
+   *   4) Update the phase of the generateCSR function to BEGIN.
+   * Response:
+   *   Send OK response.
    *
    * @param apdu Input apdu
    */
@@ -395,13 +401,18 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   /**
-   * This is the second command of the generateCSR. Input: CoseMac0 containing the RKP Key Process:
-   * 1) Validate the phase of generateCSR. Prior state should be either BEGIN or UPDATE. 2) Validate
-   * the number of RKP Keys received against the value received in first command. 3) Validate the
-   * CoseMac0 structure and extract the RKP Key. 4) Do Multipart HMAC update operation with the
-   * input as RKP key. 5) Update the number of keys received count into the data buffer. 6) Update
-   * the phase of the generateCSR function to UPDATE. Response: Send OK response.
-   *
+   * This is the second command of the generateCSR.
+   * Input:
+   *   CoseMac0 containing the RKP Key
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be either BEGIN or UPDATE.
+   *   2) Validate the number of RKP Keys received against the value received in first command.
+   *   3) Validate the CoseMac0 structure and extract the RKP Key.
+   *   4) Do Multipart HMAC update operation with the input as RKP key.
+   *   5) Update the number of keys received count into the data buffer.
+   *   6) Update the phase of the generateCSR function to UPDATE.
+   * Response:
+   *   Send OK response.
    * @param apdu Input apdu
    */
   public void processUpdateKey(APDU apdu) throws Exception {
@@ -449,12 +460,16 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   /**
-   * This is the third command of generateCSR. Input: EEK chain ordered from Root to Leaf in
-   * CoseSign1 format. Process: 1) Validate the phase of generateCSR. Prior state should be UPDATE.
-   * 2) Validate the EEK chain and extract the Leaf EEK 3) Retrieve the EEK Id and Public key of
-   * Leaf EEK and store in the data buffer. 4) Update the phase of the generateCSR function to
-   * UPDATE. Response: Send OK response.
-   *
+   * This is the third command of generateCSR.
+   * Input:
+   *   EEK chain ordered from Root to Leaf in CoseSign1 format.
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be UPDATE.
+   *   2) Validate the EEK chain and extract the Leaf EEK
+   *   3) Retrieve the EEK Id and Public key of Leaf EEK and store in the data buffer.
+   *   4) Update the phase of the generateCSR function to UPDATE.
+   * Response:
+   *   Send OK response.
    * @param apdu Input apdu.
    */
   public void processUpdateEekChain(APDU apdu) throws Exception {
@@ -500,10 +515,15 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   /**
-   * This is the fourth command of generateCSR. Input: Challenge Process: 1) Validate the phase of
-   * generateCSR. Prior state should be either UPDATE or BEGIN. 2) Store the challenge in the data
-   * buffer. 3) Update the phase of the generateCSR function to UPDATE. Response: Send OK response.
-   *
+   * This is the fourth command of generateCSR.
+   * Input:
+   *   Challenge
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be either UPDATE or BEGIN.
+   *   2) Store the challenge in the data buffer.
+   *   3) Update the phase of the generateCSR function to UPDATE.
+   * Response:
+   *   Send OK response.
    * @param apdu Input apdu.
    */
   public void processUpdateChallenge(APDU apdu) throws Exception {
@@ -537,20 +557,30 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   /**
-   * This is the fifth command of generateCSR. Input: No input data. Process: 1) Validate the phase
-   * of generateCSR. Prior state should be UPDATE. 2) Check if all the RKP keys are received if not
-   * throw exception. 3) Finalize the HMAC operation and get the signed Mac_Structure which is
-   * called as pubKeysToSignMac. 4) Start constructing the partial protected data. Create a random
-   * nonce, initialize the AESGCM operation with the session key derived from
-   * HKDF(ECDH(EPHEMERAL_EC_KEY, EEK_KEY), KdfContext) 5) Construct Encrypt_Structure which acts as
-   * AAD for AES-GCM operation. 6) The payload for the Protected Data is [SignedMac, BCC, ACC].
-   * Construct partial SignedMac structure. 7) Note that the HAL has to construct the CoseEncrypt
-   * structure by collecting all the pieces returned from Applet. Response: OK pubKeysToSignMac -
-   * Containes the maced RKP public keys. deviceInfo - CBOR encoded device info protectedHeader -
-   * CoseEncrypt protected header unProtectedHeader - CoseEncrypt unprotected header.
-   * ParitalCipherText - partial encrypted payload of CoseEncrypt structure. Flag to represent there
-   * is more data to retrieve.
-   *
+   * This is the fifth command of generateCSR.
+   * Input:
+   *   No input data.
+   * Process:
+   *   1) Validate the phase of generateCSR. Prior state should be UPDATE.
+   *   2) Check if all the RKP keys are received if not throw exception.
+   *   3) Finalize the HMAC operation and get the signed Mac_Structure which is called as
+   *      pubKeysToSignMac.
+   *   4) Start constructing the partial protected data. Create a random
+   *      nonce, initialize the AESGCM operation with the session key derived from
+   *      HKDF(ECDH(EPHEMERAL_EC_KEY, EEK_KEY), KdfContext)
+   *   5) Construct Encrypt_Structure which acts as AAD for AES-GCM operation.
+   *   6) The payload for the Protected Data is [SignedMac, BCC, ACC]. Construct partial
+   *      SignedMac structure.
+   *   7) Note that the HAL has to construct the CoseEncrypt structure by collecting all
+   *      the pieces returned from Applet.
+   * Response:
+   *   OK
+   *   pubKeysToSignMac - Containes the maced RKP public keys.
+   *   deviceInfo - CBOR encoded device info
+   *   protectedHeader - CoseEncrypt protected header
+   *   unProtectedHeader - CoseEncrypt unprotected header.
+   *   ParitalCipherText - partial encrypted payload of CoseEncrypt structure.
+   *   Flag to represent there is more data to retrieve.
    * @param apdu Input apdu.
    */
   public void processFinishSendData(APDU apdu) throws Exception {
@@ -606,17 +636,23 @@ public class KMRemotelyProvisionedComponentDevice {
   }
 
   /**
-   * This is the sixth and the last command of generateCSR. This command is called multiple times by
-   * the HAL until all the cipher data and receipient structure is received. Input: No input data.
-   * Process: First the BootCertificateChain is processed: Encrypt the boot certificate chain and
-   * return the BCC. Mark the state as PROCESSING_BCC_COMPLETE. Next the AdditionalCertificateChain
-   * is processed: Incrementally encrypt ACC and send back a chunks of data. Each chunk is 512
-   * bytes. if the processing of ACC is still in progress mark the state as
-   * PROCESSING_ACC_IN_PROGRESS otherwise mark the state as PROCESSING_ACC_COMPLETE. Finally
-   * construct and return the CoseReceipient structure. Response: OK cipher text: It can be either
-   * encrypted bcc or encrypted acc Receipient structure: This will be empty will returning the
-   * encrypted acc or bcc. Flag to represent there is more data to retrieve.
-   *
+   * This is the sixth and the last command of generateCSR. This command is called multiple
+   * times by the HAL until all the cipher data and receipient structure is received.
+   * Input:
+   *   No input data.
+   * Process:
+   *   First the BootCertificateChain is processed: Encrypt the boot certificate chain and return
+   *   the BCC. Mark the state as PROCESSING_BCC_COMPLETE.
+   *   Next the AdditionalCertificateChain is processed: Incrementally encrypt ACC and send back
+   *   a chunks of data. Each chunk is 512 bytes. if the processing of ACC is still in progress
+   *   mark the state as PROCESSING_ACC_IN_PROGRESS otherwise mark the state as
+   *   PROCESSING_ACC_COMPLETE.
+   *   Finally construct and return the CoseReceipient structure.
+   * Response:
+   *   OK
+   *   cipher text: It can be either encrypted bcc or encrypted acc
+   *   Receipient structure: This will be empty will returning the encrypted acc or bcc.
+   *   Flag to represent there is more data to retrieve.
    * @param apdu Input apdu.
    */
   public void processGetResponse(APDU apdu) throws Exception {
