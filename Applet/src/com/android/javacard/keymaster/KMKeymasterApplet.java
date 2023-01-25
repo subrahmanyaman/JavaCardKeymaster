@@ -358,6 +358,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
     KMType.initialize();
     if (!isUpgrading) {
+      kmDataStore.setKmUpgrade200To300(false);
       kmDataStore.createMasterKey(MASTER_KEY_SIZE);
     }
     // initialize default values
@@ -1363,30 +1364,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
         break;
 
-      case INS_INIT_STRONGBOX_CMD:
-      case INS_GENERATE_KEY_CMD:
-      case INS_IMPORT_KEY_CMD:
-      case INS_BEGIN_IMPORT_WRAPPED_KEY_CMD:
-      case INS_FINISH_IMPORT_WRAPPED_KEY_CMD:
-      case INS_UPGRADE_KEY_CMD:
-      case INS_ADD_RNG_ENTROPY_CMD:
-      case INS_COMPUTE_SHARED_HMAC_CMD:
-      case INS_GET_KEY_CHARACTERISTICS_CMD:
-      case INS_BEGIN_OPERATION_CMD:
-      case INS_UPDATE_OPERATION_CMD:
-      case INS_FINISH_OPERATION_CMD:
-      case INS_ABORT_OPERATION_CMD:
-      case INS_DEVICE_LOCKED_CMD:
-      case INS_UPDATE_AAD_OPERATION_CMD:
-      case INS_GENERATE_RKP_KEY_CMD:
-      case INS_BEGIN_SEND_DATA_CMD:
-      case INS_UPDATE_KEY_CMD:
-      case INS_SEND_ROT_DATA_CMD:
-        apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 1;
-        break;
-
       default:
-        ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        // By default the instruction is set to case 4 command instruction.
     }
   }
 
@@ -2672,21 +2651,27 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         // Return CANNOT_ATTEST_IDS if Attestation IDs are not provisioned or
         // Attestation IDs are deleted.
         if (storedAttIdLen == 0) {
-          KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
+          /* Ignore second IMEI for the applet upgraded from KeyMint200 to Keymint300
+          as second IMEI is not provisioned in keyMint200 */
+          if (!(kmDataStore.isKmUpgraded200To300()
+              && attTags[index] == KMType.ATTESTATION_ID_SECOND_IMEI)) {
+            KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
+          }
+        } else {
+          // Return INVALID_TAG if Attestation IDs does not match.
+          if ((storedAttIdLen != KMByteBlob.cast(attIdTagValue).length())
+              || (0
+                  != Util.arrayCompare(
+                      scratchPad,
+                      (short) 0,
+                      KMByteBlob.cast(attIdTagValue).getBuffer(),
+                      KMByteBlob.cast(attIdTagValue).getStartOff(),
+                      storedAttIdLen))) {
+            KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
+          }
+          short blob = KMByteBlob.instance(scratchPad, (short) 0, storedAttIdLen);
+          cert.extensionTag(KMByteTag.instance(attTags[index], blob), true);
         }
-        // Return INVALID_TAG if Attestation IDs does not match.
-        if ((storedAttIdLen != KMByteBlob.cast(attIdTagValue).length())
-            || (0
-                != Util.arrayCompare(
-                    scratchPad,
-                    (short) 0,
-                    KMByteBlob.cast(attIdTagValue).getBuffer(),
-                    KMByteBlob.cast(attIdTagValue).getStartOff(),
-                    storedAttIdLen))) {
-          KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
-        }
-        short blob = KMByteBlob.instance(scratchPad, (short) 0, storedAttIdLen);
-        cert.extensionTag(KMByteTag.instance(attTags[index], blob), true);
       }
       index++;
     }
