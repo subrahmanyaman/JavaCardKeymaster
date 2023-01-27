@@ -22,7 +22,7 @@ public class KMKeymintDataStore implements KMUpgradable {
   // Data table configuration
   public static final short KM_APPLET_PACKAGE_VERSION_1 = 0x0100;
   public static final short KM_APPLET_PACKAGE_VERSION_2 = 0x0200;
-  // public static final short KM_APPLET_PACKAGE_VERSION_3 = 0x0300;
+  public static final short KM_APPLET_PACKAGE_VERSION_3 = 0x0300;
   public static final short KM_APPLET_PACKAGE_VERSION_4 = 0x0400;
   public static final byte DATA_INDEX_SIZE = 17;
   public static final byte DATA_INDEX_ENTRY_SIZE = 4;
@@ -93,8 +93,8 @@ public class KMKeymintDataStore implements KMUpgradable {
   private byte[] challenge;
   // Secure Boot Mode
   public byte secureBootMode;
-  // Flag to store KeyMint upgrade from 2-3
-  public boolean kmUpgrade200To300;
+  // Flag to store KeyMint upgrade to 3.
+  public boolean isKmHalUpgradedTo3;
   private short dataIndex;
   private byte[] dataTable;
   private KMSEProvider seProvider;
@@ -660,7 +660,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     if (attestId == null) {
       /* Ignore second IMEI for the applet upgraded from KeyMint200 to Keymint300
       as second IMEI is not provisioned in keyMint200 */
-      if (kmDataStore.isKmUpgraded200To300() && tag == KMType.ATTESTATION_ID_SECOND_IMEI) {
+      if (kmDataStore.isKmHalVersionUpgradedTo3() && tag == KMType.ATTESTATION_ID_SECOND_IMEI) {
         return (short) 0;
       }
       KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
@@ -878,12 +878,12 @@ public class KMKeymintDataStore implements KMUpgradable {
     return oemRootPublicKey;
   }
 
-  public void setKmUpgrade200To300(boolean val) {
-    kmUpgrade200To300 = val;
+  public void setKmHalVersionUpgrade(boolean val) {
+    isKmHalUpgradedTo3 = val;
   }
 
-  public boolean isKmUpgraded200To300() {
-    return kmUpgrade200To300;
+  public boolean isKmHalVersionUpgradedTo3() {
+    return isKmHalUpgradedTo3;
   }
 
   @Override
@@ -891,7 +891,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     // Prmitives
     element.write(provisionStatus);
     element.write(secureBootMode);
-    element.write(kmUpgrade200To300);
+    element.write(isKmHalUpgradedTo3);
     // Objects
     element.write(attIdBrand);
     element.write(attIdDevice);
@@ -917,13 +917,13 @@ public class KMKeymintDataStore implements KMUpgradable {
   @Override
   public void onRestore(Element element, short oldVersion, short currentVersion) {
     if (oldVersion <= KM_APPLET_PACKAGE_VERSION_1) {
-      // 1.0 to 3.0 Upgrade happens here.
+      // 1.0 to 4.0 Upgrade happens here.
       handlePreviousVersionUpgrade(element);
       return;
     } else if (oldVersion == KM_APPLET_PACKAGE_VERSION_2) {
       handleUpgrade(element, oldVersion);
       JCSystem.beginTransaction();
-      // While upgrading Secure Boot Mode flag from 2.0 to 3.0, implementations
+      // While upgrading Secure Boot Mode flag from 2.0 to 4.0, implementations
       // have to update the secureBootMode with the correct input.
       secureBootMode = 0;
       provisionStatus |= KMKeymasterApplet.PROVISION_STATUS_SECURE_BOOT_MODE;
@@ -934,6 +934,8 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   private void handlePreviousVersionUpgrade(Element element) {
+    // set KeyMint Hal version upgraded to 4 from previous version(1).
+    isKmHalUpgradedTo3 = true;
     // Read Primitives
     // restore old data table index
     short oldDataIndex = element.readShort();
@@ -968,17 +970,17 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   private void handleUpgrade(Element element, short oldVersion) {
-    // check if KeyMint upgrading from KM200 to KM300
-    if (oldVersion < KM_APPLET_PACKAGE_VERSION_4) {
-      kmUpgrade200To300 = true;
-    }
+
     // Read Primitives
     provisionStatus = element.readShort();
-    if (oldVersion >= KM_APPLET_PACKAGE_VERSION_4) {
+    if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
       secureBootMode = element.readByte();
     }
-    if (oldVersion >= KM_APPLET_PACKAGE_VERSION_4) {
-      kmUpgrade200To300 = element.readBoolean();
+    // check if KeyMint upgrading from KM200 to KM300
+    if (oldVersion < KM_APPLET_PACKAGE_VERSION_4) {
+      isKmHalUpgradedTo3 = true;
+    } else {
+      isKmHalUpgradedTo3 = element.readBoolean();
     }
     // Read Objects
     attIdBrand = (byte[]) element.readObject();
