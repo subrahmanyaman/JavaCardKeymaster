@@ -15,7 +15,6 @@
  */
 package com.android.javacard.keymaster;
 
-import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import javacard.framework.APDU;
@@ -84,9 +83,22 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
   }
 
   @Override
+  public void updateApduStatusFlags(short apduIns) {
+    apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] = 0;
+    apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 1;
+    switch (apduIns) {
+      case INS_GET_PROVISION_STATUS_CMD:
+      case INS_SE_FACTORY_PROVISIONING_LOCK_CMD:
+        apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
+        break;
+      default:
+        super.updateApduStatusFlags(apduIns);
+    }
+  }
+
+  @Override
   public void process(APDU apdu) {
     try {
-      receiveLen[0] = apdu.setIncomingAndReceive();
       handleDeviceBooted();
       // If this is select applet apdu which is selecting this applet then return
       if (apdu.isISOInterindustryCLA()) {
@@ -98,6 +110,7 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
       if (apduIns == KMType.INVALID_VALUE) {
           return;
       }
+      updateApduStatusFlags(apduIns);
       if (((KMJCardSimulator)seProvider).isPowerReset()) {
         super.powerReset();
       }
@@ -131,7 +144,7 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
           case INS_PROVISION_RKP_ADDITIONAL_CERT_CHAIN_CMD:
             processProvisionRkpAdditionalCertChain(apdu);
             break;
-          
+
           case INS_SE_FACTORY_PROVISIONING_LOCK_CMD:
             kmDataStore.setProvisionStatus(PROVISION_STATUS_SE_LOCKED);
             sendResponse(apdu, KMError.OK);
@@ -146,7 +159,7 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
           case INS_OEM_LOCK_PROVISIONING_CMD:
             processOEMLockProvisionCmd(apdu);
             break;
-        
+
           case INS_OEM_UNLOCK_PROVISIONING_CMD:
             processOEMUnlockProvisionCmd(apdu);
             break;
@@ -154,13 +167,13 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
           case INS_PROVISION_SECURE_BOOT_MODE_CMD:
             processSecureBootCmd(apdu);
             break;
-        
+
           default:
             super.process(apdu);
             break;
         }
       } else {
-    	ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
+        ISOException.throwIt(ISO7816.SW_COMMAND_NOT_ALLOWED);
       }
     } catch (KMException exception) {
       sendResponse(apdu, KMException.reason());
@@ -405,7 +418,8 @@ public class KMJCardSimApplet extends KMKeymasterApplet {
     // Store the cbor encoded UdsCerts as it is in the persistent memory so cbor decoding is
     // required here.
     byte[] srcBuffer = apdu.getBuffer();
-    short recvLen = receiveLen[0];
+    short recvLen = apdu.setIncomingAndReceive();
+    apduStatusFlags[APDU_INCOMING_AND_RECEIVE_STATUS_INDEX] = 1;
     short srcOffset = apdu.getOffsetCdata();
     short bufferLength = apdu.getIncomingLength();
     short bufferStartOffset = repository.allocReclaimableMemory(bufferLength);

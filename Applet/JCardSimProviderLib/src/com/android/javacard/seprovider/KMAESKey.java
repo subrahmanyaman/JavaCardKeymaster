@@ -16,24 +16,38 @@
 package com.android.javacard.seprovider;
 
 import javacard.security.AESKey;
+import org.globalplatform.upgrade.Element;
 
-public class KMAESKey implements KMMasterKey {
+/** This is a wrapper class for AESKey. */
+public class KMAESKey implements KMKey {
 
-  private AESKey aesKey;
+  public AESKey aesKey;
 
   public KMAESKey(AESKey key) {
     aesKey = key;
   }
 
-  public void setKey(byte[] keyData, short kOff) {
-    aesKey.setKey(keyData, kOff);
+  public static void onSave(Element element, KMAESKey kmKey) {
+    element.write(kmKey.aesKey);
   }
 
-  public byte getKey(byte[] keyData, short kOff) {
-    return aesKey.getKey(keyData, kOff);
+  public static KMAESKey onRestore(AESKey aesKey) {
+    if (aesKey == null) {
+      return null;
+    }
+    return new KMAESKey(aesKey);
   }
 
-  public short getKeySizeBits() {
-    return aesKey.getSize();
+  public static short getBackupPrimitiveByteCount() {
+    return (short) 0;
+  }
+
+  public static short getBackupObjectCount() {
+    return (short) 1;
+  }
+
+  @Override
+  public short getPublicKey(byte[] buf, short offset) {
+    return (short) 0;
   }
 }

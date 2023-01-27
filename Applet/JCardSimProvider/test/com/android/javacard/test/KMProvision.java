@@ -23,7 +23,6 @@ import com.android.javacard.keymaster.KMSemanticTag;
 import com.android.javacard.keymaster.KMSimpleValue;
 import com.android.javacard.keymaster.KMTextString;
 import com.android.javacard.keymaster.KMType;
-import com.android.javacard.seprovider.KMECDeviceUniqueKey;
 import com.android.javacard.seprovider.KMSEProvider;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import javacard.framework.Util;

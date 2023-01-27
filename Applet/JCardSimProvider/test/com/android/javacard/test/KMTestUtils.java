@@ -22,8 +22,7 @@ import com.android.javacard.keymaster.KMSemanticTag;
 import com.android.javacard.keymaster.KMSimpleValue;
 import com.android.javacard.keymaster.KMTextString;
 import com.android.javacard.keymaster.KMType;
-import com.android.javacard.seprovider.KMDeviceUniqueKeyPair;
-import com.android.javacard.seprovider.KMECPrivateKey;
+import com.android.javacard.seprovider.KMECDeviceUniqueKeyPair;
 import com.android.javacard.seprovider.KMException;
 import com.android.javacard.seprovider.KMSEProvider;
 import java.io.ByteArrayInputStream;
@@ -293,7 +292,6 @@ public class KMTestUtils {
               KMInteger.uint_8(KMCose.COSE_KEY_TYPE_EC2),
               keyId,
               alg,
-              KMType.INVALID_VALUE,
               KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
               xPtr,
               yPtr,
@@ -328,9 +326,9 @@ public class KMTestUtils {
           (short) 0, (short) 200);
 
       // Sign the Sign_structure with signingKey.
-      KMECPrivateKey privateKey = new KMECPrivateKey(signingKey);
+      KMECDeviceUniqueKeyPair privateKey = new KMECDeviceUniqueKeyPair(signingKey);
       short signLen =
-          cryptoProvider.ecSign256(privateKey,
+          cryptoProvider.signWithDeviceUniqueKey(privateKey,
               coseSignStructureEncoded, (short) 0, coseSignStructureEncodedLen, scratchpad,
               (short) 0);
       short signPtr = KMByteBlob.instance(scratchpad, (short) 0, signLen);
@@ -804,11 +802,11 @@ public class KMTestUtils {
   public static short constructCoseSign1(KMSEProvider cryptoProvider, KMEncoder encoder,
       short protectedHeader, short unProtectedHeader, short payload,
       short aad,
-      KMDeviceUniqueKeyPair signingKey) {
+      KMECDeviceUniqueKeyPair signingKey) {
     byte[] scratchpad = new byte[500];
     short signStructure = KMCose.constructCoseSignStructure(protectedHeader, aad, payload);
     signStructure = encoder.encode(signStructure, scratchpad, (short) 0, (short) 500);
-    short len = cryptoProvider.ecSign256(signingKey, scratchpad, (short) 0, signStructure,
+    short len = cryptoProvider.signWithDeviceUniqueKey(signingKey, scratchpad, (short) 0, signStructure,
         scratchpad, signStructure);
     signStructure = KMByteBlob.instance(scratchpad, signStructure, len);
     KMAsn1Parser asn1Parser = KMAsn1Parser.instance();
@@ -830,7 +828,7 @@ public class KMTestUtils {
     short yPtr = KMByteBlob.instance(pubKey, (short) (pubKeyOff + pubKeyLen), pubKeyLen);
     short privPtr = KMByteBlob.instance(priv, privKeyOff, privKeyLen);
     short[] scratchpad = new short[20];
-    short coseKey = KMCose.constructCoseKey(scratchpad, keyType, keyId, keyAlg, keyOps, curve, xPtr,
+    short coseKey = KMCose.constructCoseKey(scratchpad, keyType, keyId, keyAlg, curve, xPtr,
         yPtr, privPtr, testMode);
     KMCoseKey.cast(coseKey).canonicalize();
     return coseKey;
@@ -878,9 +876,10 @@ public class KMTestUtils {
     short[] scratchBuffer = new short[20];
     Assert.assertTrue(
         KMCoseKey.cast(coseKey)
-            .isDataValid(scratchBuffer, KMCose.COSE_KEY_TYPE_EC2, KMType.INVALID_VALUE,
+            .isDataValid(scratchBuffer, KMCose.COSE_KEY_TYPE_EC2,
+                KMType.INVALID_VALUE,
                 KMCose.COSE_ALG_ES256,
-                KMType.INVALID_VALUE, KMCose.COSE_ECCURVE_256));
+                KMCose.COSE_ECCURVE_256));
     //--------------------------------------------
     // Validate the EEK Key id.
     //--------------------------------------------

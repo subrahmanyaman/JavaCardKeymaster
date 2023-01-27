@@ -522,15 +522,15 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public short cmacKDF(KMPreSharedKey pSharedKey, byte[] label,
+  public short cmacKDF(KMKey pSharedKey, byte[] label,
       short labelStart, short labelLen, byte[] context, short contextStart, short contextLength,
       byte[] keyBuf, short keyStart) {
     KMHmacKey key = (KMHmacKey) pSharedKey;
-    short keyMaterialLen = key.getKeySizeBits();
+    short keyMaterialLen = key.hmacKey.getSize();
     keyMaterialLen = (short) (keyMaterialLen / 8);
     short keyMaterialStart = 0;
     byte[] keyMaterial = new byte[keyMaterialLen];
-    key.getKey(keyMaterial, keyMaterialStart);
+    key.hmacKey.getKey(keyMaterial, keyMaterialStart);
     HMACKey hmacKey = cmacKdf(keyMaterial, keyMaterialStart, keyMaterialLen, label, labelStart,
         labelLen, context, contextStart, contextLength);
     return hmacKey.getKey(keyBuf, keyStart);
@@ -544,12 +544,12 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public short hmacKDF(KMMasterKey masterkey, byte[] data, short dataStart,
+  public short hmacKDF(KMKey masterkey, byte[] data, short dataStart,
       short dataLength, byte[] signature, short signatureStart) {
     KMAESKey aesKey = (KMAESKey) masterkey;
-    short keyLen = (short) (aesKey.getKeySizeBits() / 8);
+    short keyLen = (short) (aesKey.aesKey.getSize() / 8);
     byte[] keyData = new byte[keyLen];
-    aesKey.getKey(keyData, (short) 0);
+    aesKey.aesKey.getKey(keyData, (short) 0);
     return hmacSign(keyData, (short) 0, keyLen, data, dataStart, dataLength,
         signature, signatureStart);
   }
@@ -623,14 +623,14 @@ public class KMJCardSimulator implements KMSEProvider {
       KMException.throwIt(KMError.INVALID_ARGUMENT);
     }
     KMHmacKey hmacKey = (KMHmacKey) key;
-    return hmacSign(hmacKey.getKey(), data, dataStart, dataLength, signature, signatureStart);
+    return hmacSign(hmacKey.hmacKey, data, dataStart, dataLength, signature, signatureStart);
   }
 
   @Override
-  public boolean hmacVerify(KMComputedHmacKey key, byte[] data, short dataStart, 
+  public boolean hmacVerify(KMKey key, byte[] data, short dataStart,
     short dataLength, byte[] mac, short macStart, short macLength) {
     KMHmacKey hmacKey = (KMHmacKey) key;
-    hmacSignature.init(hmacKey.getKey(), Signature.MODE_VERIFY);
+    hmacSignature.init(hmacKey.hmacKey, Signature.MODE_VERIFY);
     return hmacSignature.verify(data, dataStart, dataLength, mac, macStart, macLength);
   }
 
@@ -685,9 +685,9 @@ public class KMJCardSimulator implements KMSEProvider {
     switch (interfaceType) {
       case KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY:
         KMAESKey aesKey = (KMAESKey) key;
-    	keyLen = (short) (aesKey.getKeySizeBits() / 8);
+    	keyLen = (short) (aesKey.aesKey.getSize() / 8);
         keyData = new byte[keyLen];
-        aesKey.getKey(keyData, (short) 0);
+        aesKey.aesKey.getKey(keyData, (short) 0);
         break;
 
       default:
@@ -708,10 +708,11 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public KMOperation initTrustedConfirmationSymmetricOperation(KMComputedHmacKey computedHmacKey) {
+  public KMOperation initTrustedConfirmationSymmetricOperation(KMKey computedHmacKey) {
     KMOperationImpl opr = null;
     KMHmacKey key = (KMHmacKey) computedHmacKey;
-    Signature signerVerifier = createHmacSignerVerifier(KMType.VERIFY, KMType.SHA2_256, key.getKey());
+    Signature signerVerifier = createHmacSignerVerifier(KMType.VERIFY, KMType.SHA2_256,
+        key.hmacKey);
     return new KMOperationImpl(signerVerifier);
   }
   
@@ -1298,16 +1299,18 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public KMDeviceUniqueKeyPair createRkpDeviceUniqueKeyPair(
-      KMDeviceUniqueKeyPair key, byte[] pubKey, short pubKeyOff,
+  public KMKey createRkpDeviceUniqueKeyPair(
+      KMKey key, byte[] pubKey, short pubKeyOff,
       short pubKeyLen, byte[] privKey, short privKeyOff, short privKeyLen) {
     if (key == null) {
       KeyPair ecKeyPair = new KeyPair(KeyPair.ALG_EC_FP, KeyBuilder.LENGTH_EC_FP_256);
-      key = new KMECDeviceUniqueKey(ecKeyPair);
+      key = new KMECDeviceUniqueKeyPair(ecKeyPair);
     }
-    ((KMECDeviceUniqueKey) key).setS(privKey, privKeyOff, privKeyLen);
-    ((KMECDeviceUniqueKey) key).setW(pubKey, pubKeyOff, pubKeyLen);
-    return (KMDeviceUniqueKeyPair) key;
+    ECPrivateKey ecKeyPair = (ECPrivateKey) ((KMECDeviceUniqueKeyPair) key).ecKeyPair.getPrivate();
+    ECPublicKey ecPublicKey = (ECPublicKey) ((KMECDeviceUniqueKeyPair) key).ecKeyPair.getPublic();
+    ecKeyPair.setS(privKey, privKeyOff, privKeyLen);
+    ecPublicKey.setW(pubKey, pubKeyOff, pubKeyLen);
+    return (KMKey) key;
   }
 
   @Override
@@ -1337,24 +1340,10 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public short ecSign256(KMAttestationKey attestationKey,
-      byte[] inputDataBuf, short inputDataStart, short inputDataLength,
-      byte[] outputDataBuf, short outputDataStart) {
-
-    ECPrivateKey key = ((KMECPrivateKey) attestationKey).getPrivateKey();
-
-    Signature signer = Signature
-        .getInstance(Signature.ALG_ECDSA_SHA_256, false);
-    signer.init(key, Signature.MODE_SIGN);
-    return signer.sign(inputDataBuf, inputDataStart, inputDataLength,
-        outputDataBuf, outputDataStart);
-  }
-
-
-  @Override
-  public short ecSign256(KMDeviceUniqueKeyPair deviceUniqueKey, byte[] inputDataBuf, short inputDataStart,
+  public short signWithDeviceUniqueKey(KMKey deviceUniqueKey, byte[] inputDataBuf, short inputDataStart,
                          short inputDataLength, byte[] outputDataBuf, short outputDataStart) {
-    ECPrivateKey key = ((KMECDeviceUniqueKey) deviceUniqueKey).getPrivateKey();
+    ECPrivateKey key = (ECPrivateKey)
+        ((KMECDeviceUniqueKeyPair) deviceUniqueKey).ecKeyPair.getPrivate();
     Signature signer = Signature
         .getInstance(Signature.ALG_ECDSA_SHA_256, false);
     signer.init(key, Signature.MODE_SIGN);
@@ -1384,8 +1373,8 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public KMComputedHmacKey createComputedHmacKey(
-      KMComputedHmacKey computedHmacKey, byte[] keyData,
+  public KMKey createComputedHmacKey(
+      KMKey computedHmacKey, byte[] keyData,
       short offset, short length) {
     if (length != COMPUTED_HMAC_KEY_SIZE) {
       CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
@@ -1395,13 +1384,13 @@ public class KMJCardSimulator implements KMSEProvider {
           false);
       computedHmacKey = new KMHmacKey(key);
     }
-   ((KMHmacKey) computedHmacKey).setKey(keyData, offset, length);
-    return (KMComputedHmacKey) computedHmacKey;
+    ((KMHmacKey) computedHmacKey).hmacKey.setKey(keyData, offset, length);
+    return (KMKey) computedHmacKey;
   }
 
   @Override
-  public com.android.javacard.seprovider.KMMasterKey createMasterKey(
-      com.android.javacard.seprovider.KMMasterKey masterKey, short keySizeBits) {
+  public KMKey createMasterKey(
+      KMKey masterKey, short keySizeBits) {
     if (masterKey == null) {
       AESKey key = (AESKey) KeyBuilder.buildKey(
           KeyBuilder.TYPE_AES, keySizeBits, false);
@@ -1409,9 +1398,9 @@ public class KMJCardSimulator implements KMSEProvider {
       short keyLen = (short) (keySizeBits / 8);
       byte[] keyData = new byte[keyLen];
       getTrueRandomNumber(keyData, (short) 0, keyLen);
-      ((KMAESKey)masterKey).setKey(keyData, (short) 0);
+      ((KMAESKey) masterKey).aesKey.setKey(keyData, (short) 0);
     }
-    return (KMMasterKey) masterKey;
+    return (KMKey) masterKey;
   }
 
   @Override
@@ -1463,20 +1452,20 @@ public class KMJCardSimulator implements KMSEProvider {
   }
 
   @Override
-  public KMRkpMacKey createRkpMacKey(KMRkpMacKey rkpMacKey, byte[] keyData,
+  public KMKey createRkpMacKey(KMKey rkpMacKey, byte[] keyData,
       short offset, short length) {
     if (rkpMacKey == null) {
       HMACKey key = (HMACKey) KeyBuilder.buildKey(KeyBuilder.TYPE_HMAC, (short) (length * 8),
           false);
       rkpMacKey = new KMHmacKey(key);
     }
-    ((KMHmacKey) rkpMacKey).setKey(keyData, offset, length);
+    ((KMHmacKey) rkpMacKey).hmacKey.setKey(keyData, offset, length);
     return rkpMacKey;
   }
 
   @Override
-  public com.android.javacard.seprovider.KMPreSharedKey createPreSharedKey(
-      com.android.javacard.seprovider.KMPreSharedKey presharedKey, byte[] keyData, short offset,
+  public KMKey createPreSharedKey(
+      KMKey presharedKey, byte[] keyData, short offset,
       short length) {
     short lengthInBits = (short) (length * 8);
     if ((lengthInBits % 8 != 0) || !(lengthInBits >= 64 && lengthInBits <= 512)) {
@@ -1487,8 +1476,8 @@ public class KMJCardSimulator implements KMSEProvider {
           false);
       preSharedKey = new KMHmacKey(key);
     }
-    ((KMHmacKey)preSharedKey).setKey(keyData, offset, length);
-    return (KMPreSharedKey) preSharedKey;
+    ((KMHmacKey)preSharedKey).hmacKey.setKey(keyData, offset, length);
+    return (KMKey) preSharedKey;
   }
 
 

@@ -27,29 +27,20 @@ public class KMException extends RuntimeException {
   private static short[] reason;
   private static KMException exception;
 
-  private KMException() {
-  }
-  public static short reason(){
+  private KMException() {}
+
+  public static short reason() {
     return reason[0];
   }
+
   public static void throwIt(short e) {
-    if(reason == null) {
-      reason = JCSystem.makeTransientShortArray((short)1,JCSystem.CLEAR_ON_DESELECT);
+    if (reason == null) {
+      reason = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
     }
-    if(exception == null){
+    if (exception == null) {
       exception = new KMException();
     }
     reason[0] = e;
     throw exception;
   }
-/*
-  public static KMException instance() {
-    if (exception == null) {
-      exception = new KMException();
-    }
-    return exception;
-  }
-*/
 }
-
-

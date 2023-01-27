@@ -14,40 +14,42 @@
  * limitations under the License.
  */
 package com.android.javacard.seprovider;
-import javacard.security.ECPrivateKey;
+
 import javacard.security.ECPublicKey;
 import javacard.security.KeyPair;
+import org.globalplatform.upgrade.Element;
 
-public class KMECDeviceUniqueKey implements KMDeviceUniqueKeyPair {
+/** This is a wrapper class for KeyPair. */
+public class KMECDeviceUniqueKeyPair implements KMKey {
 
-  private KeyPair ecKeyPair;
+  public KeyPair ecKeyPair;
 
   @Override
   public short getPublicKey(byte[] buf, short offset) {
-    ECPublicKey publicKey = getPublicKey();
+    ECPublicKey publicKey = (ECPublicKey) ecKeyPair.getPublic();
     return publicKey.getW(buf, offset);
   }
 
-  public KMECDeviceUniqueKey(KeyPair ecPair) {
+  public KMECDeviceUniqueKeyPair(KeyPair ecPair) {
     ecKeyPair = ecPair;
   }
 
-  public void setS(byte[] buffer, short offset, short length) {
-    ECPrivateKey ecPriv = (ECPrivateKey) ecKeyPair.getPrivate();
-    ecPriv.setS(buffer, offset, length);
+  public static void onSave(Element element, KMECDeviceUniqueKeyPair kmKey) {
+    element.write(kmKey.ecKeyPair);
   }
 
-  public void setW(byte[] buffer, short offset, short length) {
-    ECPublicKey ecPublicKey = (ECPublicKey) ecKeyPair.getPublic();
-    ecPublicKey.setW(buffer, offset, length);
+  public static KMECDeviceUniqueKeyPair onRestore(KeyPair ecKey) {
+    if (ecKey == null) {
+      return null;
+    }
+    return new KMECDeviceUniqueKeyPair(ecKey);
   }
 
-  public ECPrivateKey getPrivateKey() {
-    return (ECPrivateKey) ecKeyPair.getPrivate();
+  public static short getBackupPrimitiveByteCount() {
+    return (short) 0;
   }
 
-  public ECPublicKey getPublicKey() {
-    return (ECPublicKey) ecKeyPair.getPublic();
+  public static short getBackupObjectCount() {
+    return (short) 1;
   }
-
 }

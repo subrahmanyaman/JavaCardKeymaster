@@ -16,42 +16,53 @@
 package com.android.javacard.keymaster;
 
 import com.android.javacard.seprovider.KMException;
-
 import javacard.framework.Util;
 
+/**
+ * This is a utility class which helps in converting date to UTC format and doing some arithmetic
+ * Operations.
+ */
 public class KMUtils {
 
   // 64 bit unsigned calculations for time
-  public static final byte[] oneSecMsec = {
-      0, 0, 0, 0, 0, 0, 0x03, (byte) 0xE8}; // 1000 msec
-  public static final byte[] oneMinMsec = {
-      0, 0, 0, 0, 0, 0, (byte) 0xEA, 0x60}; // 60000 msec
+  public static final byte[] oneSecMsec = {0, 0, 0, 0, 0, 0, 0x03, (byte) 0xE8}; // 1000 msec
+  public static final byte[] oneMinMsec = {0, 0, 0, 0, 0, 0, (byte) 0xEA, 0x60}; // 60000 msec
   public static final byte[] oneHourMsec = {
-      0, 0, 0, 0, 0, 0x36, (byte) 0xEE, (byte) 0x80}; // 3600000 msec
-  public static final byte[] oneDayMsec = {
-      0, 0, 0, 0, 0x05, 0x26, 0x5C, 0x00}; // 86400000 msec
+    0, 0, 0, 0, 0, 0x36, (byte) 0xEE, (byte) 0x80
+  }; // 3600000 msec
+  public static final byte[] oneDayMsec = {0, 0, 0, 0, 0x05, 0x26, 0x5C, 0x00}; // 86400000 msec
   public static final byte[] oneMonthMsec = {
-      0, 0, 0, 0, (byte) 0x9C, (byte) 0xBE, (byte) 0xBD, 0x50}; // 2629746000 msec
+    0, 0, 0, 0, (byte) 0x9C, (byte) 0xBE, (byte) 0xBD, 0x50
+  }; // 2629746000 msec
   public static final byte[] leapYearMsec = {
-      0, 0, 0, 0x07, (byte) 0x5C, (byte) 0xD7, (byte) 0x88, 0x00}; //31622400000;
+    0, 0, 0, 0x07, (byte) 0x5C, (byte) 0xD7, (byte) 0x88, 0x00
+  }; // 31622400000;
   public static final byte[] yearMsec = {
-      0, 0, 0, 0x07, 0x57, (byte) 0xB1, 0x2C, 0x00}; //31536000000
-  //Leap year(366) + 3 * 365
+    0, 0, 0, 0x07, 0x57, (byte) 0xB1, 0x2C, 0x00
+  }; // 31536000000
+  // Leap year(366) + 3 * 365
   public static final byte[] fourYrsMsec = {
-      0, 0, 0, 0x1D, 0x63, (byte) 0xEB, 0x0C, 0x00};//126230400000
+    0, 0, 0, 0x1D, 0x63, (byte) 0xEB, 0x0C, 0x00
+  }; // 126230400000
   public static final byte[] firstJan2020 = {
-      0, 0, 0x01, 0x6F, 0x5E, 0x66, (byte) 0xE8, 0x00}; // 1577836800000 msec
+    0, 0, 0x01, 0x6F, 0x5E, 0x66, (byte) 0xE8, 0x00
+  }; // 1577836800000 msec
   public static final byte[] firstJan2050 = {
-	        0, 0, 0x02, 0x4b, (byte) 0xCE, 0x5C, (byte)0xF0, 0x00}; //2524608000000 
+    0, 0, 0x02, 0x4b, (byte) 0xCE, 0x5C, (byte) 0xF0, 0x00
+  }; // 2524608000000
   // msec
   public static final byte[] febMonthLeapMSec = {
-      0, 0, 0, 0, (byte) 0x95, 0x58, 0x6C, 0x00}; //2505600000
+    0, 0, 0, 0, (byte) 0x95, 0x58, 0x6C, 0x00
+  }; // 2505600000
   public static final byte[] febMonthMsec = {
-      0, 0, 0, 0, (byte) 0x90, 0x32, 0x10, 0x00}; //2419200000
+    0, 0, 0, 0, (byte) 0x90, 0x32, 0x10, 0x00
+  }; // 2419200000
   public static final byte[] ThirtyOneDaysMonthMsec = {
-      0, 0, 0, 0, (byte) 0x9F, (byte) 0xA5, 0x24, 0x00};//2678400000
+    0, 0, 0, 0, (byte) 0x9F, (byte) 0xA5, 0x24, 0x00
+  }; // 2678400000
   public static final byte[] ThirtDaysMonthMsec = {
-      0, 0, 0, 0, (byte) 0x9A, 0x7E, (byte) 0xC8, 0x00};//2592000000
+    0, 0, 0, 0, (byte) 0x9A, 0x7E, (byte) 0xC8, 0x00
+  }; // 2592000000
   public static final short year2051 = 2051;
   public static final short year2020 = 2020;
   // Convert to milliseconds constants
@@ -391,6 +402,7 @@ public class KMUtils {
   public static short countTemporalCount(byte[] bufTime, short timeOff,
       short timeLen, byte[] scratchPad, short offset) {
     Util.arrayFillNonAtomic(scratchPad, (short) offset, (short) 24, (byte) 0);
+    Util.arrayCopyNonAtomic(bufTime, timeOff, scratchPad, (short) (offset + 8 - timeLen), timeLen);
     Util.arrayCopyNonAtomic(
         bufTime,
         timeOff,
