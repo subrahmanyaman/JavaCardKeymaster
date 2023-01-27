@@ -358,7 +358,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
     }
     KMType.initialize();
     if (!isUpgrading) {
-      kmDataStore.setKmHalVersionUpgrade(false);
+      // For keyMint 3.0 and above installation, set ignore second Imei flag to false.
+      kmDataStore.ignoreSecondImei = false;
       kmDataStore.createMasterKey(MASTER_KEY_SIZE);
     }
     // initialize default values
@@ -2651,9 +2652,10 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         // Return CANNOT_ATTEST_IDS if Attestation IDs are not provisioned or
         // Attestation IDs are deleted.
         if (storedAttIdLen == 0) {
-          /* Ignore second IMEI for the applet upgraded from KeyMint200 to Keymint300
-          as second IMEI is not provisioned in keyMint200 */
-          if (!(kmDataStore.isKmHalVersionUpgradedTo3()
+          /* Ignore the SECOND_IMEI tag if the previous Applet's KeyMint version is less than 3.0 and
+           * no SECOND_IMEI is provisioned.
+           */
+          if (!(kmDataStore.ignoreSecondImei
               && attTags[index] == KMType.ATTESTATION_ID_SECOND_IMEI)) {
             KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
           }

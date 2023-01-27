@@ -93,8 +93,12 @@ public class KMKeymintDataStore implements KMUpgradable {
   private byte[] challenge;
   // Secure Boot Mode
   public byte secureBootMode;
-  // Flag to store KeyMint upgrade to 3.
-  public boolean isKmHalUpgradedTo3;
+  /*
+   * Applets upgrading to KeyMint3.0 may not have the second imei provisioned.
+   * So this flag is used to ignore the SECOND_IMEI tag if the previous Applet's
+   * KeyMint version is less than 3.0.
+   */
+  public boolean ignoreSecondImei;
   private short dataIndex;
   private byte[] dataTable;
   private KMSEProvider seProvider;
@@ -658,9 +662,10 @@ public class KMKeymintDataStore implements KMUpgradable {
         break;
     }
     if (attestId == null) {
-      /* Ignore second IMEI for the applet upgraded from KeyMint200 to Keymint300
-      as second IMEI is not provisioned in keyMint200 */
-      if (kmDataStore.isKmHalVersionUpgradedTo3() && tag == KMType.ATTESTATION_ID_SECOND_IMEI) {
+      /* Ignore the SECOND_IMEI tag if the previous Applet's KeyMint version is less than 3.0 and
+       * no SECOND_IMEI is provisioned.
+       */
+      if (kmDataStore.ignoreSecondImei && tag == KMType.ATTESTATION_ID_SECOND_IMEI) {
         return (short) 0;
       }
       KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
@@ -878,20 +883,12 @@ public class KMKeymintDataStore implements KMUpgradable {
     return oemRootPublicKey;
   }
 
-  public void setKmHalVersionUpgrade(boolean val) {
-    isKmHalUpgradedTo3 = val;
-  }
-
-  public boolean isKmHalVersionUpgradedTo3() {
-    return isKmHalUpgradedTo3;
-  }
-
   @Override
   public void onSave(Element element) {
     // Prmitives
     element.write(provisionStatus);
     element.write(secureBootMode);
-    element.write(isKmHalUpgradedTo3);
+    element.write(ignoreSecondImei);
     // Objects
     element.write(attIdBrand);
     element.write(attIdDevice);
@@ -934,8 +931,8 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   private void handlePreviousVersionUpgrade(Element element) {
-    // set KeyMint Hal version upgraded to 4 from previous version(1).
-    isKmHalUpgradedTo3 = true;
+    // set ignore Imei flag to true.
+    ignoreSecondImei = true;
     // Read Primitives
     // restore old data table index
     short oldDataIndex = element.readShort();
@@ -976,11 +973,13 @@ public class KMKeymintDataStore implements KMUpgradable {
     if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
       secureBootMode = element.readByte();
     }
-    // check if KeyMint upgrading from KM200 to KM300
+    /* check if KeyMint is upgrading from older HAL version to KM300
+     * and set the ignore second Imei flag
+     */
     if (oldVersion < KM_APPLET_PACKAGE_VERSION_4) {
-      isKmHalUpgradedTo3 = true;
+      ignoreSecondImei = true;
     } else {
-      isKmHalUpgradedTo3 = element.readBoolean();
+      ignoreSecondImei = element.readBoolean();
     }
     // Read Objects
     attIdBrand = (byte[]) element.readObject();
@@ -1033,7 +1032,7 @@ public class KMKeymintDataStore implements KMUpgradable {
   public short getBackupPrimitiveByteCount() {
     // provisionStatus - 2 bytes
     // secureBootMode - 1 byte
-    // Flag for KeyMint2 to KeyMint3 upgrade- 1 byte
+    // Flag for ignore second Imei- 1 byte
     return (short)
         (4
             + seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY)
