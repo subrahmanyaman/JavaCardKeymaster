@@ -23,6 +23,7 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final short KM_APPLET_PACKAGE_VERSION_1 = 0x0100;
   public static final short KM_APPLET_PACKAGE_VERSION_2 = 0x0200;
   public static final short KM_APPLET_PACKAGE_VERSION_3 = 0x0300;
+  public static final short KM_APPLET_PACKAGE_VERSION_4 = 0x0400;
   public static final byte DATA_INDEX_SIZE = 17;
   public static final byte DATA_INDEX_ENTRY_SIZE = 4;
   public static final byte DATA_INDEX_ENTRY_LENGTH = 0;
@@ -92,6 +93,12 @@ public class KMKeymintDataStore implements KMUpgradable {
   private byte[] challenge;
   // Secure Boot Mode
   public byte secureBootMode;
+  /*
+   * Applets upgrading to KeyMint3.0 may not have the second imei provisioned.
+   * So this flag is used to ignore the SECOND_IMEI tag if the previous Applet's
+   * KeyMint version is less than 3.0.
+   */
+  public boolean ignoreSecondImei;
   private short dataIndex;
   private byte[] dataTable;
   private KMSEProvider seProvider;
@@ -655,6 +662,12 @@ public class KMKeymintDataStore implements KMUpgradable {
         break;
     }
     if (attestId == null) {
+      /* Ignore the SECOND_IMEI tag if the previous Applet's KeyMint version is less than 3.0 and
+       * no SECOND_IMEI is provisioned.
+       */
+      if (kmDataStore.ignoreSecondImei && tag == KMType.ATTESTATION_ID_SECOND_IMEI) {
+        return (short) 0;
+      }
       KMException.throwIt(KMError.CANNOT_ATTEST_IDS);
     }
     Util.arrayCopyNonAtomic(attestId, (short) 0, buffer, start, (short) attestId.length);
@@ -875,6 +888,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     // Prmitives
     element.write(provisionStatus);
     element.write(secureBootMode);
+    element.write(ignoreSecondImei);
     // Objects
     element.write(attIdBrand);
     element.write(attIdDevice);
@@ -900,13 +914,13 @@ public class KMKeymintDataStore implements KMUpgradable {
   @Override
   public void onRestore(Element element, short oldVersion, short currentVersion) {
     if (oldVersion <= KM_APPLET_PACKAGE_VERSION_1) {
-      // 1.0 to 3.0 Upgrade happens here.
+      // 1.0 to 4.0 Upgrade happens here.
       handlePreviousVersionUpgrade(element);
       return;
     } else if (oldVersion == KM_APPLET_PACKAGE_VERSION_2) {
       handleUpgrade(element, oldVersion);
       JCSystem.beginTransaction();
-      // While upgrading Secure Boot Mode flag from 2.0 to 3.0, implementations
+      // While upgrading Secure Boot Mode flag from 2.0 to 4.0, implementations
       // have to update the secureBootMode with the correct input.
       secureBootMode = 0;
       provisionStatus |= KMKeymasterApplet.PROVISION_STATUS_SECURE_BOOT_MODE;
@@ -917,6 +931,8 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   private void handlePreviousVersionUpgrade(Element element) {
+    // set ignore Imei flag to true.
+    ignoreSecondImei = true;
     // Read Primitives
     // restore old data table index
     short oldDataIndex = element.readShort();
@@ -951,10 +967,19 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   private void handleUpgrade(Element element, short oldVersion) {
+
     // Read Primitives
     provisionStatus = element.readShort();
     if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
       secureBootMode = element.readByte();
+    }
+    /* check if KeyMint is upgrading from older HAL version to KM300
+     * and set the ignore second Imei flag
+     */
+    if (oldVersion < KM_APPLET_PACKAGE_VERSION_4) {
+      ignoreSecondImei = true;
+    } else {
+      ignoreSecondImei = element.readBoolean();
     }
     // Read Objects
     attIdBrand = (byte[]) element.readObject();
@@ -962,7 +987,7 @@ public class KMKeymintDataStore implements KMUpgradable {
     attIdProduct = (byte[]) element.readObject();
     attIdSerial = (byte[]) element.readObject();
     attIdImei = (byte[]) element.readObject();
-    if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
+    if (oldVersion >= KM_APPLET_PACKAGE_VERSION_4) {
       attIdSecondImei = (byte[]) element.readObject();
     }
     attIdMeId = (byte[]) element.readObject();
@@ -1007,8 +1032,9 @@ public class KMKeymintDataStore implements KMUpgradable {
   public short getBackupPrimitiveByteCount() {
     // provisionStatus - 2 bytes
     // secureBootMode - 1 byte
+    // Flag for ignore second Imei- 1 byte
     return (short)
-        (3
+        (4
             + seProvider.getBackupPrimitiveByteCount(KMDataStoreConstants.INTERFACE_TYPE_MASTER_KEY)
             + seProvider.getBackupPrimitiveByteCount(
                 KMDataStoreConstants.INTERFACE_TYPE_PRE_SHARED_KEY)
