@@ -59,7 +59,7 @@ public class KMEcdsa256NoDigestSignature extends Signature {
         for (short i = 0; i < keyLength; i++) {
           privKey[i] = key[keyStart + i];
         }
-        BigInteger bI = new BigInteger(privKey);
+        BigInteger bI = new BigInteger(1, privKey);
         ECPrivateKeySpec prikeyspec = new ECPrivateKeySpec(bI, ecParameters);
         ECPrivateKey privkey = (ECPrivateKey) kf.generatePrivate(prikeyspec);
         sunSigner.initSign(privkey);
