@@ -404,13 +404,7 @@ public class KMUtils {
     Util.arrayFillNonAtomic(scratchPad, (short) offset, (short) 24, (byte) 0);
     Util.arrayCopyNonAtomic(bufTime, timeOff, scratchPad, (short) (offset + 8 - timeLen), timeLen);
     Util.arrayCopyNonAtomic(
-        bufTime,
-        timeOff,
-        scratchPad,
-        (short) (offset + 8 - timeLen),
-        timeLen);
-    Util.arrayCopyNonAtomic(ThirtDaysMonthMsec, (short) 0, scratchPad, (short) (offset + 8),
-        (short) 8);
+        ThirtDaysMonthMsec, (short) 0, scratchPad, (short) (offset + 8), (short) 8);
     return divide(scratchPad, (short) 0, (short) 8, (short) 16);
   }
 
