@@ -18,7 +18,7 @@ package com.android.javacard.seprovider;
 import javacard.security.ECPublicKey;
 import javacard.security.KeyPair;
 
-public class KMECDeviceUniqueKey implements KMDeviceUniqueKeyPair {
+public class KMECDeviceUniqueKey implements KMKey {
 
   public KeyPair ecKeyPair;
 

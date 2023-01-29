@@ -29,5 +29,5 @@ public class KMError {
   public static final short VERIFICATION_FAILED = 30;
   public static final short TOO_MANY_OPERATIONS = 31;
   public static final short INVALID_ARGUMENT = 38;
-  public static final short UNKNOWN_ERROR = 1000;  
+  public static final short UNKNOWN_ERROR = 1000;
 }

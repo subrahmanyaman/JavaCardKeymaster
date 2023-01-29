@@ -23,7 +23,6 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.ShortBufferException;
 
-
 public class KMCipherImpl extends KMCipher {
 
   private Cipher cipher;
@@ -84,7 +83,8 @@ public class KMCipherImpl extends KMCipher {
         CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
       }
     } else {
-      if ((cipherAlg == KMType.DES || cipherAlg == KMType.AES) && padding == KMType.PKCS7
+      if ((cipherAlg == KMType.DES || cipherAlg == KMType.AES)
+          && padding == KMType.PKCS7
           && mode == KMType.ENCRYPT) {
         byte blkSize = 16;
         byte paddingBytes;
@@ -112,7 +112,9 @@ public class KMCipherImpl extends KMCipher {
       }
       short len = cipher.doFinal(buffer, startOff, length, scratchPad, i);
       // JCard Sim removes leading zeros during decryption in case of no padding - so add that back.
-      if (cipherAlg == KMType.RSA && padding == KMType.PADDING_NONE && mode == KMType.DECRYPT
+      if (cipherAlg == KMType.RSA
+          && padding == KMType.PADDING_NONE
+          && mode == KMType.DECRYPT
           && len < 256) {
         byte[] tempBuf = new byte[256];
         Util.arrayFillNonAtomic(tempBuf, (short) 0, (short) 256, (byte) 0);
@@ -127,11 +129,10 @@ public class KMCipherImpl extends KMCipher {
           blkSize = 8;
         }
         if (len > 0) {
-          //verify if padding is corrupted.
+          // verify if padding is corrupted.
           byte paddingByte = scratchPad[i + len - 1];
-          //padding byte always should be <= block size
-          if ((short) paddingByte > blkSize ||
-              (short) paddingByte <= 0) {
+          // padding byte always should be <= block size
+          if ((short) paddingByte > blkSize || (short) paddingByte <= 0) {
             KMException.throwIt(KMError.INVALID_ARGUMENT);
           }
 
@@ -140,7 +141,7 @@ public class KMCipherImpl extends KMCipher {
               KMException.throwIt(KMError.INVALID_ARGUMENT);
             }
           }
-          len = (short) (len - (short) paddingByte);// remove the padding bytes
+          len = (short) (len - (short) paddingByte); // remove the padding bytes
         }
       }
       return len;
@@ -235,5 +236,4 @@ public class KMCipherImpl extends KMCipher {
       }
     }
   }
-
 }

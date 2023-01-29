@@ -181,7 +181,7 @@ public class KMRKPFunctionalTest {
     // Validate the author and Eek Curve
     byte[] google = {0x47, 0x6F, 0x6F, 0x67, 0x6C, 0x65};
     Assert.assertArrayEquals(google, authorName);
-    Assert.assertEquals(KMType.RKP_CURVE_P256,
+    Assert.assertEquals(KMType.RKP_CURVE_NONE,
         KMInteger.cast(KMArray.cast(arrPtr).get((short) 3)).getShort());
     Assert.assertEquals(3, KMInteger.cast(KMArray.cast(arrPtr).get((short) 1)).getShort());
     if(KMInteger.cast(KMArray.cast(arrPtr).get((short) 5)).getShort() < 20) {

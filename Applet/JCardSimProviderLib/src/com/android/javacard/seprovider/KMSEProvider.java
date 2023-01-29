@@ -52,8 +52,7 @@ public interface KMSEProvider {
    * should throw a CryptoException.
    *
    * @param alg will be KMType.AES, KMType.DES or KMType.HMAC.
-   * @param keysize will be 128 or 256 for AES or DES. It can be 64 to 512 (multiple of 8) for
-   * HMAC.
+   * @param keysize will be 128 or 256 for AES or DES. It can be 64 to 512 (multiple of 8) for HMAC.
    * @param buf is the buffer in which key has to be returned
    * @param startOff is the start offset.
    * @return length of the data in the buf. This should match the keysize (in bytes).
@@ -67,15 +66,15 @@ public interface KMSEProvider {
    *
    * @param alg will be KMType.RSA or KMType.EC.
    * @param privKeyBuf is the buffer to return the private key exponent in case of RSA or private
-   * key in case of EC.
+   *     key in case of EC.
    * @param privKeyStart is the start offset.
    * @param privKeyMaxLength is the maximum length of this private key buffer.
    * @param pubModBuf is the buffer to return the modulus in case of RSA or public key in case of
-   * EC.
+   *     EC.
    * @param pubModStart is the start of offset.
    * @param pubModMaxLength is the maximum length of this public key buffer.
    * @param lengths is the actual length of the key pair - lengths[0] should be private key and
-   * lengths[1] should be public key.
+   *     lengths[1] should be public key.
    */
   void createAsymmetricKey(
       byte alg,
@@ -93,15 +92,14 @@ public interface KMSEProvider {
    * @param computedHmacKey Instance of the computed Hmac key.
    * @return instance of KMOperation.
    */
-  KMOperation initTrustedConfirmationSymmetricOperation(KMComputedHmacKey computedHmacKey);
+  KMOperation initTrustedConfirmationSymmetricOperation(KMKey computedHmacKey);
 
   /**
    * Verify that the imported key is valid. If the algorithm and/or keysize are not supported then
    * it should throw a CryptoException.
    *
    * @param alg will be KMType.AES, KMType.DES or KMType.HMAC.
-   * @param keysize will be 128 or 256 for AES or DES. It can be 64 to 512 (multiple of 8) for
-   * HMAC.
+   * @param keysize will be 128 or 256 for AES or DES. It can be 64 to 512 (multiple of 8) for HMAC.
    * @param buf is the buffer that contains the symmetric key.
    * @param startOff is the start offset.
    * @param length of the data in the buf. This should match the keysize (in bytes).
@@ -117,11 +115,11 @@ public interface KMSEProvider {
    *
    * @param alg will be KMType.RSA or KMType.EC.
    * @param privKeyBuf is the buffer that contains the private key exponent in case of RSA or
-   * private key in case of EC.
+   *     private key in case of EC.
    * @param privKeyStart is the start offset.
    * @param privKeyLength is the length of this private key buffer.
    * @param pubModBuf is the buffer that contains the modulus in case of RSA or public key in case
-   * of EC.
+   *     of EC.
    * @param pubModStart is the start of offset.
    * @param pubModLength is the length of this public key buffer.
    * @return true if the key pair is supported and valid.
@@ -265,7 +263,7 @@ public interface KMSEProvider {
    * @return length of the derived key buffer in bytes.
    */
   short cmacKDF(
-      KMPreSharedKey hmacKey,
+      KMKey hmacKey,
       byte[] label,
       short labelStart,
       short labelLen,
@@ -330,7 +328,7 @@ public interface KMSEProvider {
    * @return length of the signature buffer in bytes.
    */
   short hmacKDF(
-      KMMasterKey masterkey,
+      KMKey masterkey,
       byte[] data,
       short dataStart,
       short dataLength,
@@ -350,7 +348,7 @@ public interface KMSEProvider {
    * @return true if the signature matches.
    */
   boolean hmacVerify(
-      KMComputedHmacKey hmacKey,
+      KMKey hmacKey,
       byte[] data,
       short dataStart,
       short dataLength,
@@ -383,25 +381,6 @@ public interface KMSEProvider {
       byte[] modBuffer,
       short modOff,
       short modLength,
-      byte[] inputDataBuf,
-      short inputDataStart,
-      short inputDataLength,
-      byte[] outputDataBuf,
-      short outputDataStart);
-
-  /**
-   * This is a oneshot operation that signs the data using EC private key.
-   *
-   * @param ecPrivKey of KMAttestationKey.
-   * @param inputDataBuf is the buffer of the input data.
-   * @param inputDataStart is the start of the input data buffer.
-   * @param inputDataLength is the length of the inpur data buffer in bytes.
-   * @param outputDataBuf is the output buffer that contains the signature.
-   * @param outputDataStart is the start of the output data buffer.
-   * @return length of the decrypted data.
-   */
-  short ecSign256(
-      KMAttestationKey ecPrivKey,
       byte[] inputDataBuf,
       short inputDataStart,
       short inputDataLength,
@@ -498,17 +477,23 @@ public interface KMSEProvider {
    * @param outputDataStart is the start of the output data buffer.
    * @return length of the decrypted data.
    */
-  short ecSign256(
-      KMDeviceUniqueKeyPair ecPrivKey,
+  short signWithDeviceUniqueKey(
+      KMKey deviceUniqueKey,
       byte[] inputDataBuf,
       short inputDataStart,
       short inputDataLength,
       byte[] outputDataBuf,
       short outputDataStart);
 
-  short ecSign256(byte[] secret, short secretStart, short secretLength,
-      byte[] inputDataBuf, short inputDataStart, short inputDataLength,
-      byte[] outputDataBuf, short outputDataStart);
+  short ecSign256(
+      byte[] secret,
+      short secretStart,
+      short secretLength,
+      byte[] inputDataBuf,
+      short inputDataStart,
+      short inputDataLength,
+      byte[] outputDataBuf,
+      short outputDataStart);
 
   short rsaSign256Pkcs1(
       byte[] secret,
@@ -530,19 +515,19 @@ public interface KMSEProvider {
    * aborted. It throws CryptoException if algorithm is not supported.
    *
    * @param purpose is KMType.ENCRYPT or KMType.DECRYPT for AES and DES algorithm. It will be
-   * KMType.SIGN and KMType.VERIFY for HMAC algorithm
+   *     KMType.SIGN and KMType.VERIFY for HMAC algorithm
    * @param alg is KMType.HMAC, KMType.AES or KMType.DES.
    * @param digest is KMType.SHA2_256 in case of HMAC else it will be KMType.DIGEST_NONE.
    * @param padding is KMType.PADDING_NONE or KMType.PKCS7 (in case of AES and DES).
    * @param blockMode is KMType.CTR, KMType.GCM. KMType.CBC or KMType.ECB for AES or DES else it is
-   * 0.
+   *     0.
    * @param keyBuf is aes, des or hmac key buffer.
    * @param keyStart is the start of the key buffer.
    * @param keyLength is the length of the key buffer.
    * @param ivBuf is the iv buffer (in case on AES and DES algorithm without ECB mode)
    * @param ivStart is the start of the iv buffer.
    * @param ivLength is the length of the iv buffer. It will be zero in case of HMAC and AES/DES
-   * with ECB mode.
+   *     with ECB mode.
    * @param macLength is the mac length in case of signing operation for hmac algorithm.
    * @return KMOperation instance.
    */
@@ -567,18 +552,18 @@ public interface KMSEProvider {
    * aborted. It throws CryptoException if algorithm is not supported.
    *
    * @param purpose is KMType.ENCRYPT or KMType.DECRYPT for AES and DES algorithm. It will be
-   * KMType.SIGN and KMType.VERIFY for HMAC algorithm
+   *     KMType.SIGN and KMType.VERIFY for HMAC algorithm
    * @param alg is KMType.HMAC, KMType.AES or KMType.DES.
    * @param digest is KMType.SHA2_256 in case of HMAC else it will be KMType.DIGEST_NONE.
    * @param padding is KMType.PADDING_NONE or KMType.PKCS7 (in case of AES and DES).
    * @param blockMode is KMType.CTR, KMType.GCM. KMType.CBC or KMType.ECB for AES or DES else it is
-   * 0.
+   *     0.
    * @param key is a key object.
    * @param interfaceType defines the type of key in the key object.
    * @param ivBuf is the iv buffer (in case on AES and DES algorithm without ECB mode)
    * @param ivStart is the start of the iv buffer.
    * @param ivLength is the length of the iv buffer. It will be zero in case of HMAC and AES/DES
-   * with ECB mode.
+   *     with ECB mode.
    * @param macLength is the mac length in case of signing operation for hmac algorithm.
    * @param oneShot if true, creates oneshot operation.
    * @return KMOperation instance.
@@ -601,28 +586,29 @@ public interface KMSEProvider {
    * This function creates an Operation instance only for RKP module.
    *
    * @param purpose is KMType.ENCRYPT or KMType.DECRYPT for AES and DES algorithm. It will be
-   * KMType.SIGN and KMType.VERIFY for HMAC algorithm
+   *     KMType.SIGN and KMType.VERIFY for HMAC algorithm
    * @param alg is KMType.HMAC, KMType.AES or KMType.DES.
    * @param digest is KMType.SHA2_256 in case of HMAC else it will be KMType.DIGEST_NONE.
    * @param padding is KMType.PADDING_NONE or KMType.PKCS7 (in case of AES and DES).
    * @param blockMode is KMType.CTR, KMType.GCM. KMType.CBC or KMType.ECB for AES or DES else it is
-   * 0.
+   *     0.
    * @param keyBuf is aes, des or hmac key buffer.
    * @param keyStart is the start of the key buffer.
    * @param keyLength is the length of the key buffer.
    * @param ivBuf is the iv buffer (in case on AES and DES algorithm without ECB mode)
    * @param ivStart is the start of the iv buffer.
    * @param ivLength is the length of the iv buffer. It will be zero in case of HMAC and AES/DES
-   * with ECB mode.
+   *     with ECB mode.
    * @param macLength is the mac length in case of signing operation for hmac algorithm.
    * @return KMOperation instance.
    */
-  KMOperation getRkpOperation(byte purpose,
+  KMOperation getRkpOperation(
+      byte purpose,
       byte alg,
       byte digest,
       byte padding,
       byte blockMode,
-      KMDeviceUniqueKeyPair ecPrivKey,
+      KMKey ecPrivKey,
       byte[] ivBuf,
       short ivStart,
       short ivLength,
@@ -636,10 +622,10 @@ public interface KMSEProvider {
    * if algorithm is not supported.
    *
    * @param purpose is KMType.ENCRYPT or KMType.DECRYPT for RSA. It will be * KMType.SIGN and
-   * KMType.VERIFY for RSA and EC algorithms.
+   *     KMType.VERIFY for RSA and EC algorithms.
    * @param alg is KMType.RSA or KMType.EC algorithms.
    * @param padding is KMType.PADDING_NONE or KMType.RSA_OAEP, KMType.RSA_PKCS1_1_5_ENCRYPT,
-   * KMType.RSA_PKCS1_1_5_SIGN or KMType.RSA_PSS.
+   *     KMType.RSA_PKCS1_1_5_SIGN or KMType.RSA_PSS.
    * @param digest is KMType.DIGEST_NONE or KMType.SHA2_256.
    * @param mgfDigest is the MGF digest.
    * @param privKeyBuf is the private key in case of EC or private key exponent is case of RSA.
@@ -679,7 +665,7 @@ public interface KMSEProvider {
    * @param keySizeBits key size in bits.
    * @return An instance of KMMasterKey.
    */
-  KMMasterKey createMasterKey(KMMasterKey masterKey, short keySizeBits);
+  KMKey createMasterKey(KMKey masterKey, short keySizeBits);
 
   /**
    * This function creates an HMACKey and initializes the key with the provided input key data.
@@ -689,12 +675,9 @@ public interface KMSEProvider {
    * @param length length of the buffer.
    * @return An instance of the KMComputedHmacKey.
    */
-  KMComputedHmacKey createComputedHmacKey(KMComputedHmacKey computedHmacKey, byte[] keyData,
-      short offset, short length);
+  KMKey createComputedHmacKey(KMKey computedHmacKey, byte[] keyData, short offset, short length);
 
-  /**
-   * Returns true if factory provisioned attestation key is supported.
-   */
+  /** Returns true if factory provisioned attestation key is supported. */
   boolean isAttestationKeyProvisioned();
 
   /**
@@ -715,9 +698,14 @@ public interface KMSEProvider {
    * @param privKeyLen private key buffer length.
    * @return instance of KMDeviceUniqueKey.
    */
-  KMDeviceUniqueKeyPair createRkpDeviceUniqueKeyPair(KMDeviceUniqueKeyPair key,
-      byte[] pubKey, short pubKeyOff, short pubKeyLen,
-      byte[] privKey, short privKeyOff, short privKeyLen);
+  KMKey createRkpDeviceUniqueKeyPair(
+      KMKey key,
+      byte[] pubKey,
+      short pubKeyOff,
+      short pubKeyLen,
+      byte[] privKey,
+      short privKeyOff,
+      short privKeyLen);
 
   /**
    * This is a one-shot operation the does digest of the input mesage.
@@ -729,8 +717,8 @@ public interface KMSEProvider {
    * @param outOffset start offset of the digested output buffer.
    * @return length of the digested data.
    */
-  short messageDigest256(byte[] inBuff, short inOffset, short inLength, byte[] outBuff,
-      short outOffset);
+  short messageDigest256(
+      byte[] inBuff, short inOffset, short inLength, byte[] outBuff, short outOffset);
 
   /**
    * This function generates a HMAC key from the provided key buffers.
@@ -741,8 +729,7 @@ public interface KMSEProvider {
    * @param length is the length of the key.
    * @return instance of KMPresharedKey.
    */
-  KMPreSharedKey createPreSharedKey(KMPreSharedKey presharedKey, byte[] key, short offset,
-      short length);
+  KMKey createPreSharedKey(KMKey presharedKey, byte[] key, short offset, short length);
 
   /**
    * This function saves the key objects while upgrade.
@@ -787,7 +774,5 @@ public interface KMSEProvider {
    * @param length length of the buffer.
    * @return An instance of the KMRkpMacKey.
    */
-  KMRkpMacKey createRkpMacKey(KMRkpMacKey createComputedHmacKey, byte[] keyData,
-      short offset, short length);
-
+  KMKey createRkpMacKey(KMKey createComputedHmacKey, byte[] keyData, short offset, short length);
 }

@@ -43,10 +43,14 @@ public class KMOperationImpl implements KMOperation {
   }
 
   @Override
-  public short update(byte[] inputDataBuf, short inputDataStart, short inputDataLength,
-      byte[] outputDataBuf, short outputDataStart) {
-    return cipher
-        .update(inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
+  public short update(
+      byte[] inputDataBuf,
+      short inputDataStart,
+      short inputDataLength,
+      byte[] outputDataBuf,
+      short outputDataStart) {
+    return cipher.update(
+        inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
   }
 
   @Override
@@ -56,14 +60,18 @@ public class KMOperationImpl implements KMOperation {
   }
 
   @Override
-  public short finish(byte[] inputDataBuf, short inputDataStart, short inputDataLength,
-      byte[] outputDataBuf, short outputDataStart) {
+  public short finish(
+      byte[] inputDataBuf,
+      short inputDataStart,
+      short inputDataLength,
+      byte[] outputDataBuf,
+      short outputDataStart) {
     if (cipher != null) {
-      return cipher
-          .doFinal(inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
+      return cipher.doFinal(
+          inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
     } else if (keyAgreement != null) {
-     return keyAgreement.generateSecret(inputDataBuf, inputDataStart, inputDataLength,
-         outputDataBuf, outputDataStart);
+      return keyAgreement.generateSecret(
+          inputDataBuf, inputDataStart, inputDataLength, outputDataBuf, outputDataStart);
     } else {
       KMException.throwIt(KMError.UNKNOWN_ERROR);
     }
@@ -71,16 +79,25 @@ public class KMOperationImpl implements KMOperation {
   }
 
   @Override
-  public short sign(byte[] inputDataBuf, short inputDataStart, short inputDataLength,
-      byte[] signBuf, short signStart) {
+  public short sign(
+      byte[] inputDataBuf,
+      short inputDataStart,
+      short inputDataLength,
+      byte[] signBuf,
+      short signStart) {
     return signature.sign(inputDataBuf, inputDataStart, inputDataLength, signBuf, signStart);
   }
 
   @Override
-  public boolean verify(byte[] inputDataBuf, short inputDataStart, short inputDataLength,
-      byte[] signBuf, short signStart, short signLength) {
-    return signature
-        .verify(inputDataBuf, inputDataStart, inputDataLength, signBuf, signStart, signLength);
+  public boolean verify(
+      byte[] inputDataBuf,
+      short inputDataStart,
+      short inputDataLength,
+      byte[] signBuf,
+      short signStart,
+      short signLength) {
+    return signature.verify(
+        inputDataBuf, inputDataStart, inputDataLength, signBuf, signStart, signLength);
   }
 
   @Override

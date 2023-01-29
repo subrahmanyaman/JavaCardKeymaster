@@ -23,19 +23,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SignatureException;
 import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
 import java.security.spec.ECPrivateKeySpec;
+import java.security.spec.ECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
-import java.security.interfaces.ECPublicKey;
-import java.security.spec.ECPoint;
-import java.security.spec.ECPublicKeySpec;
 import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.Key;
 import javacard.security.Signature;
-
 
 public class KMEcdsa256NoDigestSignature extends Signature {
 
@@ -47,7 +46,7 @@ public class KMEcdsa256NoDigestSignature extends Signature {
       sunSigner = java.security.Signature.getInstance("NONEwithECDSA", "SunEC");
       kf = KeyFactory.getInstance("EC");
       AlgorithmParameters parameters = AlgorithmParameters.getInstance("EC", "SunEC");
-      //Supported curve secp256r1
+      // Supported curve secp256r1
       parameters.init(new ECGenParameterSpec("secp256r1"));
       ECParameterSpec ecParameters = parameters.getParameterSpec(ECParameterSpec.class);
       if (mode == Signature.MODE_SIGN) {
@@ -55,14 +54,14 @@ public class KMEcdsa256NoDigestSignature extends Signature {
         for (short i = 0; i < keyLength; i++) {
           privKey[i] = key[keyStart + i];
         }
-        BigInteger bI = new BigInteger(privKey);
+        BigInteger bI = new BigInteger(1, privKey);
         ECPrivateKeySpec prikeyspec = new ECPrivateKeySpec(bI, ecParameters);
         ECPrivateKey privkey = (ECPrivateKey) kf.generatePrivate(prikeyspec);
         sunSigner.initSign(privkey);
       } else {
-        //Check if  the first byte is 04 and remove it.
+        // Check if  the first byte is 04 and remove it.
         if (key[keyStart] == 0x04) {
-          //uncompressed format.
+          // uncompressed format.
           keyStart++;
           keyLength--;
         }
@@ -96,20 +95,14 @@ public class KMEcdsa256NoDigestSignature extends Signature {
   }
 
   @Override
-  public void init(Key key, byte b) throws CryptoException {
-
-  }
+  public void init(Key key, byte b) throws CryptoException {}
 
   @Override
-  public void init(Key key, byte b, byte[] bytes, short i, short i1) throws CryptoException {
-
-  }
+  public void init(Key key, byte b, byte[] bytes, short i, short i1) throws CryptoException {}
 
   @Override
   public void setInitialDigest(byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3)
-      throws CryptoException {
-
-  }
+      throws CryptoException {}
 
   @Override
   public byte getAlgorithm() {
@@ -180,8 +173,8 @@ public class KMEcdsa256NoDigestSignature extends Signature {
   }
 
   @Override
-  public boolean verifyPreComputedHash(byte[] bytes, short i, short i1, byte[] bytes1, short i2,
-      short i3) throws CryptoException {
+  public boolean verifyPreComputedHash(
+      byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3) throws CryptoException {
     return false;
   }
 }

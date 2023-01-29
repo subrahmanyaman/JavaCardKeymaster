@@ -26,5 +26,4 @@ public interface KMUpgradable {
   short getBackupPrimitiveByteCount();
 
   short getBackupObjectCount();
-
 }

@@ -63,14 +63,20 @@ public interface KMAttestationCert {
    * @param masterKey
    * @return instance of KMAttestationCert.
    */
-  KMAttestationCert makeUniqueId(byte[] scratchpad, short scratchPadOff, byte[] creationTime,
-      short creationTimeOff, short creationTimeLen, byte[] attestAppId,
-      short attestAppIdOff, short attestAppIdLen, byte resetSinceIdRotation,
-      KMMasterKey masterKey);
+  KMAttestationCert makeUniqueId(
+      byte[] scratchpad,
+      short scratchPadOff,
+      byte[] creationTime,
+      short creationTimeOff,
+      short creationTimeLen,
+      byte[] attestAppId,
+      short attestAppIdOff,
+      short attestAppIdLen,
+      byte resetSinceIdRotation,
+      KMKey masterKey);
 
   /**
-   * Set start time received from creation/activation time tag. Used for certificate's valid
-   * period.
+   * Set start time received from creation/activation time tag. Used for certificate's valid period.
    *
    * @param obj This is a KMByteBlob object containing start time.
    * @param scratchpad Buffer to store intermediate results.
@@ -78,13 +84,11 @@ public interface KMAttestationCert {
    */
   KMAttestationCert notBefore(short obj, boolean derEncoded, byte[] scratchpad);
 
-
   /**
    * Set expiry time received from expiry time tag or ca certificates expiry time. Used for
    * certificate's valid period.
    *
-   * @param usageExpiryTimeObj This is a KMByteBlob containing expiry time.
-   * certificate.
+   * @param usageExpiryTimeObj This is a KMByteBlob containing expiry time. certificate.
    * @param scratchPad Buffer to store intermediate results.
    * @return instance of KMAttestationCert
    */
@@ -120,7 +124,7 @@ public interface KMAttestationCert {
    *
    * @param tag is the KMByteBlob containing KMTag.
    * @param hwEnforced is true if the tag has to be added to hw enforced list or else added to sw
-   * enforced list.
+   *     enforced list.
    * @return instance of KMAttestationCert
    */
   KMAttestationCert extensionTag(short tag, boolean hwEnforced);
@@ -157,7 +161,6 @@ public interface KMAttestationCert {
    */
   short getCertLength();
 
-
   /**
    * Build a fake signed certificate. After this method executes the certificate is ready with the
    * signature equal to 1 byte which is 0 and with rsa signature algorithm.
@@ -165,7 +168,7 @@ public interface KMAttestationCert {
   void build();
 
   /**
-   * Set the Serial number in the certificate. If no serial number is set then serial  number is 1.
+   * Set the Serial number in the certificate. If no serial number is set then serial number is 1.
    *
    * @param serialNumber
    */
@@ -180,15 +183,16 @@ public interface KMAttestationCert {
 
   /**
    * Set attestation key and mode.
+   *
    * @param attestKey KMByteBlob of the key
    * @param mode
    */
   KMAttestationCert ecAttestKey(short attestKey, byte mode);
   /**
    * Set attestation key and mode.
+   *
    * @param attestKey KMByteBlob of the key
    * @param mode
    */
   KMAttestationCert rsaAttestKey(short attestPrivExp, short attestMod, byte mode);
-
 }

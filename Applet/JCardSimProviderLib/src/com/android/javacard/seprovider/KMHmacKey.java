@@ -17,11 +17,17 @@ package com.android.javacard.seprovider;
 
 import javacard.security.HMACKey;
 
-public class KMHmacKey implements KMPreSharedKey, KMComputedHmacKey, KMRkpMacKey {
+/** This is a wrapper class for HMACKey. */
+public class KMHmacKey implements KMKey {
 
   public HMACKey hmacKey;
 
   public KMHmacKey(HMACKey key) {
     hmacKey = key;
+  }
+
+  @Override
+  public short getPublicKey(byte[] buf, short offset) {
+    return 0;
   }
 }

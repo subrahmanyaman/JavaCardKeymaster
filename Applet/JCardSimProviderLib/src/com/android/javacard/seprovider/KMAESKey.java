@@ -17,11 +17,17 @@ package com.android.javacard.seprovider;
 
 import javacard.security.AESKey;
 
-public class KMAESKey implements KMMasterKey {
+/** This is a wrapper class for AESKey. */
+public class KMAESKey implements KMKey {
 
   public AESKey aesKey;
 
   public KMAESKey(AESKey key) {
     aesKey = key;
+  }
+
+  @Override
+  public short getPublicKey(byte[] buf, short offset) {
+    return 0;
   }
 }

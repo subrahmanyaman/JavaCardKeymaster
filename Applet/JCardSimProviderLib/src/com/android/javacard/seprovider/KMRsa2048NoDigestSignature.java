@@ -38,18 +38,14 @@ public class KMRsa2048NoDigestSignature extends Signature {
   }
 
   @Override
-  public void init(Key key, byte b) throws CryptoException {
-
-  }
+  public void init(Key key, byte b) throws CryptoException {}
 
   @Override
-  public void init(Key key, byte b, byte[] bytes, short i, short i1) throws CryptoException {
-  }
+  public void init(Key key, byte b, byte[] bytes, short i, short i1) throws CryptoException {}
 
   @Override
   public void setInitialDigest(byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3)
-      throws CryptoException {
-  }
+      throws CryptoException {}
 
   @Override
   public byte getAlgorithm() {
@@ -77,8 +73,7 @@ public class KMRsa2048NoDigestSignature extends Signature {
   }
 
   @Override
-  public void update(byte[] bytes, short i, short i1) throws CryptoException {
-  }
+  public void update(byte[] bytes, short i, short i1) throws CryptoException {}
 
   @Override
   public short sign(byte[] bytes, short i, short i1, byte[] bytes1, short i2)
@@ -101,8 +96,8 @@ public class KMRsa2048NoDigestSignature extends Signature {
   }
 
   @Override
-  public boolean verifyPreComputedHash(byte[] bytes, short i, short i1, byte[] bytes1, short i2,
-      short i3) throws CryptoException {
+  public boolean verifyPreComputedHash(
+      byte[] bytes, short i, short i1, byte[] bytes1, short i2, short i3) throws CryptoException {
     return false;
   }
 
@@ -113,7 +108,7 @@ public class KMRsa2048NoDigestSignature extends Signature {
     }
     Util.arrayFillNonAtomic(inputData, (short) 0, (short) 256, (byte) 0x00);
     if (padding == KMType.PADDING_NONE) { // add zero to right
-    } else if (padding == KMType.RSA_PKCS1_1_5_SIGN) {// 0x00||0x01||PS||0x00
+    } else if (padding == KMType.RSA_PKCS1_1_5_SIGN) { // 0x00||0x01||PS||0x00
       inputData[0] = 0x00;
       inputData[1] = 0x01;
       Util.arrayFillNonAtomic(inputData, (short) 2, (short) (256 - len - 3), (byte) 0xFF);
@@ -135,7 +130,7 @@ public class KMRsa2048NoDigestSignature extends Signature {
           return false;
         }
       }
-    } else {//pkcs1 no digest
+    } else { // pkcs1 no digest
       if (len > 245) {
         KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
         return false;
@@ -144,8 +139,8 @@ public class KMRsa2048NoDigestSignature extends Signature {
     return true;
   }
 
-  private byte unsignedByteArrayCompare(byte[] a1, short offset1, byte[] a2, short offset2,
-      short length) {
+  private byte unsignedByteArrayCompare(
+      byte[] a1, short offset1, byte[] a2, short offset2, short length) {
     byte count = (byte) 0;
     short val1 = (short) 0;
     short val2 = (short) 0;
