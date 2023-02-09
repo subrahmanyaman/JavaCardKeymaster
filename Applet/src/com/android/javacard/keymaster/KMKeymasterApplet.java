@@ -1921,6 +1921,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
   private void processDeleteAllKeysCmd(APDU apdu) {
     // No arguments
+    // This function is triggered when a factory reset event occurs.
+    // Regenerate the master key to render all keys unusable.
+    kmDataStore.regenerateMasterKey();
     // Send ok
     sendResponse(apdu, KMError.OK);
   }
