@@ -1653,12 +1653,12 @@ public class KMJCardSimulator implements KMSEProvider {
     if (masterKey == null) {
       AESKey key = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, keySizeBits, false);
       masterKey = new KMAESKey(key);
-      short keyLen = (short) (keySizeBits / 8);
-      byte[] keyData = new byte[keyLen];
-      getTrueRandomNumber(keyData, (short) 0, keyLen);
-      ((KMAESKey) masterKey).aesKey.setKey(keyData, (short) 0);
     }
-    return (KMKey) masterKey;
+    short keyLen = (short) (keySizeBits / 8);
+    byte[] keyData = new byte[keyLen];
+    getTrueRandomNumber(keyData, (short) 0, keyLen);
+    ((KMAESKey) masterKey).aesKey.setKey(keyData, (short) 0);
+    return masterKey;
   }
 
   @Override
