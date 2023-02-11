@@ -8,7 +8,7 @@
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" (short)0IS,
+ * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -1153,10 +1153,11 @@ public class KMAndroidSEProvider implements KMSEProvider {
       if (masterKey == null) {
         AESKey key = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, keySizeBits, false);
         masterKey = new KMAESKey(key);
-        short keyLen = (short) (keySizeBits / 8);
-        getTrueRandomNumber(tmpArray, (short) 0, keyLen);
-        ((KMAESKey) masterKey).aesKey.setKey(tmpArray, (short) 0);
       }
+      short keyLen = (short) (keySizeBits / 8);
+      Util.arrayFillNonAtomic(tmpArray, (short) 0, keyLen, (byte) 0);
+      getTrueRandomNumber(tmpArray, (short) 0, keyLen);
+      ((KMAESKey) masterKey).aesKey.setKey(tmpArray, (short) 0);
       return (KMKey) masterKey;
     } finally {
       clean();
