@@ -1147,10 +1147,11 @@ public class KMAndroidSEProvider implements KMSEProvider {
       if (masterKey == null) {
         AESKey key = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, keySizeBits, false);
         masterKey = new KMAESKey(key);
-        short keyLen = (short) (keySizeBits / 8);
-        getTrueRandomNumber(tmpArray, (short) 0, keyLen);
-        ((KMAESKey) masterKey).aesKey.setKey(tmpArray, (short) 0);
       }
+      short keyLen = (short) (keySizeBits / 8);
+      Util.arrayFillNonAtomic(tmpArray, (short) 0, keyLen, (byte) 0);
+      getTrueRandomNumber(tmpArray, (short) 0, keyLen);
+      ((KMAESKey) masterKey).aesKey.setKey(tmpArray, (short) 0);
       return (KMKey) masterKey;
     } finally {
       clean();
