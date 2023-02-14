@@ -528,11 +528,17 @@ public class KMKeymintDataStore implements KMUpgradable {
     buf[offset] = state;
   }
 
+  // The master key should only be generated during applet installation and
+  // during a device factory reset event.
   public KMKey createMasterKey(short keySizeBits) {
     if (masterKey == null) {
       masterKey = seProvider.createMasterKey(masterKey, keySizeBits);
     }
     return (KMKey) masterKey;
+  }
+
+  public KMKey regenerateMasterKey() {
+    return seProvider.createMasterKey(masterKey, KMKeymasterApplet.MASTER_KEY_SIZE);
   }
 
   public KMKey getMasterKey() {
