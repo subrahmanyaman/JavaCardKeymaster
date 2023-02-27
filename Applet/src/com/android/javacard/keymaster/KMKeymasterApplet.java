@@ -1349,7 +1349,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   public void updateApduStatusFlags(short apduIns) {
     switch (apduIns) {
       case INS_EXPORT_KEY_CMD:
-      case INS_DELETE_KEY_CMD:
       case INS_DELETE_ALL_KEYS_CMD:
       case INS_DESTROY_ATT_IDS_CMD:
       case INS_VERIFY_AUTHORIZATION_CMD:
@@ -1367,6 +1366,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
 
       default:
         // By default the instruction is set to case 4 command instruction.
+        break;
     }
   }
 
