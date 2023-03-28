@@ -298,12 +298,12 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // will never be used by the base line code in future.
   private static final byte INS_KM_VENDOR_START_CMD = (byte) 0xCD;
   private static final byte INS_KM_VENDOR_END_CMD = (byte) 0xFF;
-  // The maximum buffer size of combined seed and nonce.
-  private static final byte HMAC_SHARED_PARAM_MAX_SIZE = 64;
   // Index in apduFlagsStatus[] to check if instruction command is case 4 type in the Apdu
   protected static final byte APDU_CASE4_COMMAND_STATUS_INDEX = 0;
   // Index in apduFlagsStatus[] to check if Apdu setIncomingAndReceive function is called
   protected static final byte APDU_INCOMING_AND_RECEIVE_STATUS_INDEX = 1;
+  // The maximum buffer size of combined seed and nonce.
+  private static final byte HMAC_SHARED_PARAM_MAX_SIZE = 64;
   // Instance of RemotelyProvisionedComponentDevice, used to redirect the rkp commands.
   protected static KMRemotelyProvisionedComponentDevice rkp;
   // Instance of Cbor encoder.
