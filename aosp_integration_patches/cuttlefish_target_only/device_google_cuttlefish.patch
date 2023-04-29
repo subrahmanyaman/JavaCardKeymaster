@@ -1,27 +1,161 @@
 diff --git a/host/commands/secure_env/Android.bp b/host/commands/secure_env/Android.bp
-index b52d27bbf..735f826ad 100644
+index 94728747e..5cd05a7b0 100644
 --- a/host/commands/secure_env/Android.bp
 +++ b/host/commands/secure_env/Android.bp
-@@ -52,6 +52,7 @@ cc_defaults {
+@@ -46,6 +46,7 @@ cc_defaults {
      ],
      cflags: [
          "-fno-rtti", // Required for libkeymaster_portable
 +	"-DSW_KM_ENFORCEMENT"
      ],
+     target: {
+         not_windows: {
+diff --git a/host/commands/secure_env/tpm_gatekeeper.cpp b/host/commands/secure_env/tpm_gatekeeper.cpp
+index ae594151e..273622023 100644
+--- a/host/commands/secure_env/tpm_gatekeeper.cpp
++++ b/host/commands/secure_env/tpm_gatekeeper.cpp
+@@ -23,6 +23,14 @@
+ #include <tss2/tss2_esys.h>
+ #include <tss2/tss2_mu.h>
+ #include <tss2/tss2_rc.h>
++#ifdef SW_KM_ENFORCEMENT
++#include <openssl/hmac.h>
++#include <keymaster/UniquePtr.h>
++#include <keymaster/km_openssl/ckdf.h>
++#include <keymaster/km_openssl/openssl_err.h>
++#include <keymaster/km_openssl/openssl_utils.h>
++#endif
++
+ 
+ #ifdef _WIN32
+ #include <sysinfoapi.h>
+@@ -34,6 +42,47 @@
+ #include "host/commands/secure_env/tpm_random_source.h"
+ 
+ namespace cuttlefish {
++namespace {
++#ifdef SW_KM_ENFORCEMENT
++using keymaster::OpenSslObjectDeleter;
++using keymaster::TranslateLastOpenSslError;
++using keymaster::UniquePtr;
++using keymaster::KeymasterKeyBlob;
++#endif
++
++#ifdef SW_KM_ENFORCEMENT
++DEFINE_OPENSSL_OBJECT_POINTER(HMAC_CTX);
++
++keymaster_error_t hmacSha256(const keymaster_key_blob_t& key, const keymaster_blob_t data_chunks[],
++                             size_t data_chunk_count, keymaster::KeymasterBlob* output) {
++    if (!output) return KM_ERROR_UNEXPECTED_NULL_POINTER;
++
++    unsigned digest_len = SHA256_DIGEST_LENGTH;
++    if (!output->Reset(digest_len)) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
++
++    HMAC_CTX_Ptr ctx(HMAC_CTX_new());
++    if (!HMAC_Init_ex(ctx.get(), key.key_material, key.key_material_size, EVP_sha256(),
++                      nullptr /* engine*/)) {
++        return TranslateLastOpenSslError();
++    }
++
++    for (size_t i = 0; i < data_chunk_count; i++) {
++        auto& chunk = data_chunks[i];
++        if (!HMAC_Update(ctx.get(), chunk.data, chunk.data_length)) {
++            return TranslateLastOpenSslError();
++        }
++    }
++
++    if (!HMAC_Final(ctx.get(), output->writable_data(), &digest_len)) {
++        return TranslateLastOpenSslError();
++    }
++
++    if (digest_len != output->data_length) return KM_ERROR_UNKNOWN_ERROR;
++
++    return KM_ERROR_OK;
++}
++#endif
++}
+ 
+ TpmGatekeeper::TpmGatekeeper(
+     TpmResourceManager& resource_manager,
+@@ -93,10 +142,23 @@ void TpmGatekeeper::GetRandom(void* random, uint32_t requested_size) const {
+ void TpmGatekeeper::ComputeSignature(
+     uint8_t* signature,
+     uint32_t signature_length,
+-    const uint8_t* key,
+-    uint32_t key_length,
++    const uint8_t* /*key*/,
++    uint32_t /*key_length*/,
+     const uint8_t* message,
+     uint32_t length) const {
++  #ifdef SW_KM_ENFORCEMENT
++  std::vector<uint8_t> prinmsg(message, message+length);
++  keymaster_blob_t data = {message, length};
++  keymaster_blob_t data_chunks[] = {data};
++  keymaster::KeymasterBlob result;
++  hmacSha256(hmac_key_, data_chunks, 1, &result);
++  
++  memcpy(
++      signature,
++      result.begin(),
++      std::min((int) result.size(), (int) signature_length));
++#else
++
+   memset(signature, 0, signature_length);
+   std::string key_unique(reinterpret_cast<const char*>(key), key_length);
+ 
+@@ -110,6 +172,7 @@ void TpmGatekeeper::ComputeSignature(
+       signature,
+       calculated_signature->buffer,
+       std::min((int) calculated_signature->size, (int) signature_length));
++#endif
  }
  
+ uint64_t TpmGatekeeper::GetMillisecondsSinceBoot() const {
+diff --git a/host/commands/secure_env/tpm_gatekeeper.h b/host/commands/secure_env/tpm_gatekeeper.h
+index 1c35bdc34..7f2603da7 100644
+--- a/host/commands/secure_env/tpm_gatekeeper.h
++++ b/host/commands/secure_env/tpm_gatekeeper.h
+@@ -17,7 +17,7 @@
+ 
+ #include "gatekeeper/gatekeeper.h"
+ #include "tss2/tss2_esys.h"
+-
++#include <keymaster/android_keymaster_messages.h>
+ #include "host/commands/secure_env/gatekeeper_storage.h"
+ #include "host/commands/secure_env/tpm_resource_manager.h"
+ 
+@@ -78,10 +78,16 @@ public:
+       uint32_t uid, gatekeeper::failure_record_t *record, bool secure) override;
+ 
+   bool IsHardwareBacked() const override;
++#ifdef SW_KM_ENFORCEMENT
++  void setComputedHmacKey(keymaster::KeymasterKeyBlob& key) { hmac_key_ = key;}
++#endif
+ private:
+   TpmResourceManager& resource_manager_;
+   GatekeeperStorage& secure_storage_;
+   GatekeeperStorage& insecure_storage_;
++#ifdef SW_KM_ENFORCEMENT
++  keymaster::KeymasterKeyBlob hmac_key_;
++#endif
+ };
+ 
+ }  // namespace cuttlefish
 diff --git a/host/commands/secure_env/tpm_keymaster_enforcement.cpp b/host/commands/secure_env/tpm_keymaster_enforcement.cpp
-index dbdb88e86..33b3b8441 100644
+index 10b31645f..a2136c295 100644
 --- a/host/commands/secure_env/tpm_keymaster_enforcement.cpp
 +++ b/host/commands/secure_env/tpm_keymaster_enforcement.cpp
-@@ -17,7 +17,14 @@
+@@ -17,11 +17,18 @@
  
  #include <android-base/endian.h>
  #include <android-base/logging.h>
--
 +#ifdef SW_KM_ENFORCEMENT
 +#include <openssl/hmac.h>
-+
+ 
+ #ifdef _WIN32
+ #include <sysinfoapi.h>
+ #endif
+ 
 +#include <keymaster/UniquePtr.h>
 +#include <keymaster/km_openssl/ckdf.h>
 +#include <keymaster/km_openssl/openssl_err.h>
@@ -30,18 +164,17 @@ index dbdb88e86..33b3b8441 100644
  #include "host/commands/secure_env/primary_key_builder.h"
  #include "host/commands/secure_env/tpm_hmac.h"
  #include "host/commands/secure_env/tpm_key_blob_maker.h"
-@@ -32,8 +39,52 @@ using keymaster::KeymasterEnforcement;
+@@ -36,8 +43,52 @@ using keymaster::KeymasterEnforcement;
  using keymaster::km_id_t;
  using keymaster::VerifyAuthorizationRequest;
  using keymaster::VerifyAuthorizationResponse;
--
 +#ifdef SW_KM_ENFORCEMENT
 +using keymaster::OpenSslObjectDeleter;
 +using keymaster::TranslateLastOpenSslError;
 +using keymaster::UniquePtr;
 +using keymaster::KeymasterKeyBlob;
 +#endif
-+
+ 
 +#ifdef SW_KM_ENFORCEMENT
 +constexpr uint8_t kFakeKeyAgreementKey[32] = {};
 +constexpr const char* kSharedHmacLabel = "KeymasterSharedMac";
@@ -84,7 +217,7 @@ index dbdb88e86..33b3b8441 100644
  inline bool operator==(const keymaster_blob_t& a, const keymaster_blob_t& b) {
    if (!a.data_length && !b.data_length) return true;
    if (!(a.data && b.data)) return a.data == b.data;
-@@ -176,6 +227,38 @@ keymaster_error_t TpmKeymasterEnforcement::GetHmacSharingParameters(
+@@ -184,6 +235,40 @@ keymaster_error_t TpmKeymasterEnforcement::GetHmacSharingParameters(
  
  keymaster_error_t TpmKeymasterEnforcement::ComputeSharedHmac(
      const HmacSharingParametersArray& hmac_array, KeymasterBlob* sharingCheck) {
@@ -118,12 +251,14 @@ index dbdb88e86..33b3b8441 100644
 +      reinterpret_cast<const uint8_t*>(kMacVerificationString),
 +      strlen(kMacVerificationString)};
 +  keymaster_blob_t data_chunks[] = {data};
++  // Pass the hmac_key to the gatekeeper
++  gatekeeper_.setComputedHmacKey(hmac_key_);
 +  return hmacSha256(hmac_key_, data_chunks, 1, sharingCheck);
 +#else
    std::set<HmacSharingParameters, CompareHmacSharingParams> sorted_hmac_inputs;
    bool found_mine = false;
    for (int i = 0; i < hmac_array.num_params; i++) {
-@@ -216,6 +299,7 @@ keymaster_error_t TpmKeymasterEnforcement::ComputeSharedHmac(
+@@ -224,6 +309,7 @@ keymaster_error_t TpmKeymasterEnforcement::ComputeSharedHmac(
    *sharingCheck = KeymasterBlob(hmac->buffer, hmac->size);
  
    return KM_ERROR_OK;
@@ -131,7 +266,50 @@ index dbdb88e86..33b3b8441 100644
  }
  
  VerifyAuthorizationResponse TpmKeymasterEnforcement::VerifyAuthorization(
-@@ -282,6 +366,16 @@ keymaster::KmErrorOr<std::array<uint8_t, 32>>
+@@ -261,11 +347,33 @@ VerifyAuthorizationResponse TpmKeymasterEnforcement::VerifyAuthorization(
+   return response;
+ }
+ 
++const std::string TIME_STAMP_MAC_LABEL = "Auth Verification";
+ keymaster_error_t TpmKeymasterEnforcement::GenerateTimestampToken(
+     keymaster::TimestampToken* token) {
+   token->timestamp = get_current_time_ms();
+   token->security_level = SecurityLevel();
+   token->mac = KeymasterBlob();
++#ifdef SW_KM_ENFORCEMENT
++  std::vector<uint8_t> token_buf_to_sign;
++  token_buf_to_sign.insert(token_buf_to_sign.end(), TIME_STAMP_MAC_LABEL.begin(), TIME_STAMP_MAC_LABEL.end());
++  // Challenge
++  uint64_t be_challenge = htobe64(token->challenge);
++  uint8_t* be_challenge_bytes = reinterpret_cast<uint8_t *>(&be_challenge);
++  token_buf_to_sign.insert(token_buf_to_sign.end(), be_challenge_bytes, be_challenge_bytes + 8);
++   // Timestamp
++  uint64_t be_timestamp = htobe64(token->timestamp);
++  uint8_t* be_timestamp_bytes = reinterpret_cast<uint8_t *>(&be_timestamp);
++  token_buf_to_sign.insert(token_buf_to_sign.end(), be_timestamp_bytes, be_timestamp_bytes + 8);
++  // 1
++  uint32_t one = 1;
++  uint64_t be_one = htobe32(one);
++  uint8_t* be_one_bytes = reinterpret_cast<uint8_t *>(&be_one);
++  token_buf_to_sign.insert(token_buf_to_sign.end(), be_one_bytes, be_one_bytes + 4);
++
++  keymaster_blob_t data = {token_buf_to_sign.data(), token_buf_to_sign.size()};
++  keymaster_blob_t data_chunks[] = {data};
++  return hmacSha256(hmac_key_, data_chunks, 1, &token->mac);
++#else
+   std::vector<uint8_t> token_buf_to_sign(token->SerializedSize(), 0);
+   token->Serialize(token_buf_to_sign.data(),
+                    token_buf_to_sign.data() + token_buf_to_sign.size());
+@@ -282,14 +390,24 @@ keymaster_error_t TpmKeymasterEnforcement::GenerateTimestampToken(
+     return KM_ERROR_UNKNOWN_ERROR;
+   }
+   token->mac = KeymasterBlob(hmac->buffer, hmac->size);
+-
+   return KM_ERROR_OK;
++  #endif
+ }
+ 
+ keymaster::KmErrorOr<std::array<uint8_t, 32>>
  TpmKeymasterEnforcement::ComputeHmac(
      const std::vector<uint8_t>& data_to_mac) const {
    std::array<uint8_t, 32> result;
@@ -148,7 +326,7 @@ index dbdb88e86..33b3b8441 100644
  
    const uint8_t* auth_token_key = nullptr;
    uint32_t auth_token_key_len = 0;
-@@ -293,6 +387,7 @@ TpmKeymasterEnforcement::ComputeHmac(
+@@ -301,6 +419,7 @@ TpmKeymasterEnforcement::ComputeHmac(
    gatekeeper_.ComputeSignature(result.data(), result.size(), auth_token_key,
                                 auth_token_key_len, data_to_mac.data(),
                                 data_to_mac.size());
@@ -171,10 +349,10 @@ index 1178932b5..6e85426e8 100644
  
  }  // namespace cuttlefish
 diff --git a/shared/device.mk b/shared/device.mk
-index 888a24f22..529d5ff54 100644
+index ea3138a62..aad4a1775 100644
 --- a/shared/device.mk
 +++ b/shared/device.mk
-@@ -78,6 +78,7 @@ PRODUCT_PRODUCT_PROPERTIES += \
+@@ -76,6 +76,7 @@ PRODUCT_PRODUCT_PROPERTIES += \
      persist.sys.fuse.passthrough.enable=true \
      persist.sys.fuse.bpf.enable=false \
      remote_provisioning.tee.rkp_only=1 \
@@ -182,16 +360,7 @@ index 888a24f22..529d5ff54 100644
  
  # Until we support adb keys on user builds, and fix logcat over serial,
  # spawn adbd by default without authorization for "adb logcat"
-@@ -102,7 +103,7 @@ PRODUCT_VENDOR_PROPERTIES += \
-     ro.hardware.keystore_desede=true \
-     ro.rebootescrow.device=/dev/block/pmem0 \
-     ro.incremental.enable=1 \
--    debug.c2.use_dmabufheaps=1
-+    debug.c2.use_dmabufheaps=1 \
- 
- LOCAL_BT_PROPERTIES ?= \
-  vendor.ser.bt-uart?=/dev/hvc5 \
-@@ -473,7 +474,7 @@ PRODUCT_PACKAGES += \
+@@ -492,7 +493,7 @@ PRODUCT_PACKAGES += \
  # KeyMint HAL
  #
  ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),)
@@ -200,25 +369,25 @@ index 888a24f22..529d5ff54 100644
  endif
  
  ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),android.hardware.security.keymint-service.rust)
-@@ -482,6 +483,9 @@ ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),android.hardware.security.keymint-service
+@@ -501,6 +502,9 @@ ifeq ($(LOCAL_KEYMINT_PRODUCT_PACKAGE),android.hardware.security.keymint-service
      $(call soong_config_set,secure_env,keymint_impl,rust)
  endif
  
 +PRODUCT_PACKAGES += \
-+    android.hardware.security.keymint-service.strongbox \
++    android.hardware.security.keymint3-service.strongbox \
 +
  PRODUCT_PACKAGES += \
      $(LOCAL_KEYMINT_PRODUCT_PACKAGE) \
-     RemoteProvisioner
+ 
 diff --git a/shared/sepolicy/vendor/file_contexts b/shared/sepolicy/vendor/file_contexts
-index f7f55261c..d1d7a7f21 100644
+index b4f56c47d..95f065297 100644
 --- a/shared/sepolicy/vendor/file_contexts
 +++ b/shared/sepolicy/vendor/file_contexts
-@@ -94,6 +94,7 @@
+@@ -95,6 +95,7 @@
  /vendor/bin/hw/android\.hardware\.identity-service\.remote  u:object_r:hal_identity_remote_exec:s0
  /vendor/bin/hw/android\.hardware\.security\.keymint-service\.remote  u:object_r:hal_keymint_remote_exec:s0
  /vendor/bin/hw/android\.hardware\.security\.keymint-service\.rust  u:object_r:hal_keymint_remote_exec:s0
-+/vendor/bin/hw/android\.hardware\.security\.keymint-service\.strongbox  u:object_r:hal_keymint_strongbox_exec:s0
++/vendor/bin/hw/android\.hardware\.security\.keymint3-service\.strongbox  u:object_r:hal_keymint_strongbox_exec:s0
  /vendor/bin/hw/android\.hardware\.keymaster@4\.1-service.remote  u:object_r:hal_keymaster_remote_exec:s0
  /vendor/bin/hw/android\.hardware\.gatekeeper-service.remote  u:object_r:hal_gatekeeper_remote_exec:s0
  /vendor/bin/hw/android\.hardware\.confirmationui-service.cuttlefish  u:object_r:hal_confirmationui_cuttlefish_exec:s0
