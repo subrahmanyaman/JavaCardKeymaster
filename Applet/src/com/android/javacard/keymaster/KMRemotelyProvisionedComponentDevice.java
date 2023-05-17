@@ -134,7 +134,7 @@ public class KMRemotelyProvisionedComponentDevice {
   private static final byte VENDOR_PATCH_LEVEL_ID = 0x03;
   // Configurable flag to denote if UDS certificate chain is supported in the
   // RKP server.
-  private static final boolean IS_UDS_SUPPORTED_IN_RKP_SERVER = false;
+  private static final boolean IS_UDS_SUPPORTED_IN_RKP_SERVER = true;
   // Denotes COSE Integer lengths less than or equal to 23.
   private static final byte TINY_PAYLOAD = 0x17;
   // Denotes COSE Integer with short lengths.
@@ -150,10 +150,7 @@ public class KMRemotelyProvisionedComponentDevice {
   private static final byte MORE_DATA = 0x01;
   // Flag to denote no response is available to the clients.
   private static final byte NO_DATA = 0x00;
-  // Below are the response processing states. As the protected data response is huge it is
-  // sent back incrementally and the clients are responsible to call get response multiple times
-  // based on MORE_DATA or NO_DATA flags. BCC - Boot Certificate Chain.
-  // ACC - Additional Certificate Chain.
+  // Below are the response processing states.
   private static final byte START_PROCESSING = 0x00;
   private static final byte PROCESSING_DICE_CERTS_IN_PROGRESS = 0x02;
   private static final byte PROCESSING_DICE_CERTS_COMPLETE = 0x04;
@@ -343,24 +340,17 @@ public class KMRemotelyProvisionedComponentDevice {
     // Initialize ECDSA operation
     initECDSAOperation();
 
-    // Calculate the version Length including header
     short versionLength = encoder.getEncodedLength(versionPtr);
-    // Calculate the CertificateType including header
     short certTypeLen = encoder.getEncodedLength(certTypePtr);
-    // Calculate the challenge length
     short challengeLen = (short) KMByteBlob.cast(challengeByteBlob).length();
     if (challengeLen < 16 || challengeLen > 64) {
       KMException.throwIt(KMError.INVALID_INPUT_LENGTH);
     }
-    // Calculate the challenge byte header length
     short challengeHeaderLen = encoder.getEncodedBytesLength(challengeLen);
-
-    // Calculate the device info length
     short deviceInfoLen = encoder.getEncodedLength(deviceInfo);
 
     // Calculate the keysToSign length
     // keysToSignLen = coseKeysArrayHeaderLen + totalCoseKeysLen
-    // Calculate the coseKeysArrayHeaderLen below
     short coseKeysArrHeaderLen = getHeaderLen(coseKeysCount);
     short keysToSignLen = (short) (coseKeysArrHeaderLen + totalCoseKeysLen);
 
@@ -479,7 +469,6 @@ public class KMRemotelyProvisionedComponentDevice {
       arr = KMKeymasterApplet.receiveIncoming(apdu, arr);
       // Re-purpose the apdu buffer as scratch pad.
       byte[] scratchPad = apdu.getBuffer();
-      // Create DeviceInfo
       short deviceInfo = createDeviceInfo(scratchPad);
       short versionPtr = KMInteger.uint_16(CSR_PAYLOAD_CDDL_SCHEMA_VERSION);
       short certTypePtr =
@@ -566,7 +555,7 @@ public class KMRemotelyProvisionedComponentDevice {
       short length =
           KMKeymasterApplet.encodeToApduBuffer(
               coseKey, scratchPad, (short) 0, KMKeymasterApplet.MAX_COSE_BUF_SIZE);
-      // Do ecSign update with input as encoded CoseKey.
+      // Do ECDSA update with input as encoded CoseKey.
       ((KMOperation) operation[0]).update(scratchPad, (short) 0, length);
       short encodedCoseKey = KMByteBlob.instance(scratchPad, (short) 0, length);
 
@@ -612,7 +601,7 @@ public class KMRemotelyProvisionedComponentDevice {
    *   5) Update the phase of the generateCSR function to FINISH.
    * Response:
    *   OK
-   *   protectedHeader - CoseEncrypt protected header
+   *   protectedHeader - SignedData protected header
    *   Signature of SignedDataSigStruct
    *   Version - The AuthenticatedRequest CDDL Schema version.
    *   Flag to represent there is more data to retrieve.
@@ -632,7 +621,6 @@ public class KMRemotelyProvisionedComponentDevice {
       short len =
           ((KMOperation) operation[0])
               .sign(repository.getHeap(), (short) empty, (short) 0, scratchPad, (short) 0);
-      // release operation
       releaseOperation();
       short signatureData = KMByteBlob.instance(scratchPad, (short) 0, len);
       len = KMAsn1Parser.instance().decodeEcdsa256Signature(signatureData, scratchPad, (short) 0);
@@ -802,10 +790,10 @@ public class KMRemotelyProvisionedComponentDevice {
         processFinishSendData(apdu);
         break;
       case KMKeymasterApplet.INS_GET_UDS_CERTS_CMD:
-        processGetUdsCerts(apdu); // Acc
+        processGetUdsCerts(apdu);
         break;
       case KMKeymasterApplet.INS_GET_DICE_CERT_CHAIN_CMD:
-        processGetDiceCertChain(apdu); // Bcc
+        processGetDiceCertChain(apdu);
         break;
       default:
         ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -938,16 +926,8 @@ public class KMRemotelyProvisionedComponentDevice {
     data[dataEntryIndex] = state;
   }
 
-  /**
-   * DeviceInfo is a CBOR Map structure described by the following CDDL.
-   *
-   * <p>DeviceInfo = { "brand" : tstr, "manufacturer" : tstr, "product" : tstr, "model" : tstr,
-   * "device" : tstr, "vb_state" : "green" / "yellow" / "orange", // Taken from the AVB values
-   * "bootloader_state" : "locked" / "unlocked", // Taken from the AVB values "vbmeta_digest": bstr,
-   * // Taken from the AVB values ? "os_version" : tstr, // Same as android.os.Build.VERSION.release
-   * "system_patch_level" : uint, // YYYYMMDD "boot_patch_level" : uint, //YYYYMMDD
-   * "vendor_patch_level" : uint, // YYYYMMDD "security_level" : "tee" / "strongbox" "fused": 1 / 0,
-   * }
+  /*
+   * Create DeviceInfo structure as specified in the RKPV3.0 specification.
    */
   private short createDeviceInfo(byte[] scratchpad) {
     // Device Info Key Value pairs.
@@ -1007,8 +987,7 @@ public class KMRemotelyProvisionedComponentDevice {
         metaOffset,
         SECURITY_LEVEL,
         KMTextString.instance(DI_SECURITY_LEVEL, (short) 0, (short) DI_SECURITY_LEVEL.length));
-    updateItem(
-        rkpTmpVariables, metaOffset, FUSED, KMInteger.uint_8((byte) storeDataInst.secureBootMode));
+    updateItem(rkpTmpVariables, metaOffset, FUSED, KMInteger.uint_8(storeDataInst.secureBootMode));
     // Create device info map.
     short map = KMMap.instance(rkpTmpVariables[1]);
     short mapIndex = 0;
@@ -1142,6 +1121,7 @@ public class KMRemotelyProvisionedComponentDevice {
     }
     return value;
   }
+  // ----------------------------------------------------------------------------
 
   // ----------------------------------------------------------------------------
   private void initECDSAOperation() {

@@ -20,7 +20,7 @@ import javacard.security.KeyPair;
 import org.globalplatform.upgrade.Element;
 
 /** This is a wrapper class for KeyPair. */
-public class KMECDeviceUniqueKey implements KMKey {
+public class KMECDeviceUniqueKeyPair implements KMKey {
 
   public KeyPair ecKeyPair;
 
@@ -30,19 +30,19 @@ public class KMECDeviceUniqueKey implements KMKey {
     return publicKey.getW(buf, offset);
   }
 
-  public KMECDeviceUniqueKey(KeyPair ecPair) {
+  public KMECDeviceUniqueKeyPair(KeyPair ecPair) {
     ecKeyPair = ecPair;
   }
 
-  public static void onSave(Element element, KMECDeviceUniqueKey kmKey) {
+  public static void onSave(Element element, KMECDeviceUniqueKeyPair kmKey) {
     element.write(kmKey.ecKeyPair);
   }
 
-  public static KMECDeviceUniqueKey onRestore(KeyPair ecKey) {
+  public static KMECDeviceUniqueKeyPair onRestore(KeyPair ecKey) {
     if (ecKey == null) {
       return null;
     }
-    return new KMECDeviceUniqueKey(ecKey);
+    return new KMECDeviceUniqueKeyPair(ecKey);
   }
 
   public static short getBackupPrimitiveByteCount() {

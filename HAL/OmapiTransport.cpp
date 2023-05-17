@@ -37,6 +37,7 @@ constexpr const char omapiServiceName[] = "android.se.omapi.ISecureElementServic
 class SEListener : public ::aidl::android::se::omapi::BnSecureElementListener {};
 
 keymaster_error_t OmapiTransport::initialize() {
+
     LOG(DEBUG) << "Initialize the secure element connection";
 
     // Get OMAPI vendor stable service handler
@@ -133,6 +134,7 @@ keymaster_error_t OmapiTransport::initialize() {
 bool OmapiTransport::internalTransmitApdu(
     std::shared_ptr<aidl::android::se::omapi::ISecureElementReader> reader,
     std::vector<uint8_t> apdu, std::vector<uint8_t>& transmitResponse) {
+
     LOG(DEBUG) << "internalTransmitApdu: trasmitting data to secure element";
     if (reader == nullptr) {
         LOG(ERROR) << "eSE reader is null";
@@ -211,6 +213,7 @@ bool OmapiTransport::internalTransmitApdu(
 }
 
 keymaster_error_t OmapiTransport::openConnection() {
+
     // if already conection setup done, no need to initialise it again.
     if (isConnected()) {
         return KM_ERROR_OK;
@@ -219,6 +222,7 @@ keymaster_error_t OmapiTransport::openConnection() {
 }
 
 keymaster_error_t OmapiTransport::sendData(const vector<uint8_t>& inData, vector<uint8_t>& output) {
+
     if (!isConnected()) {
         // Try to initialize connection to eSE
         LOG(INFO) << "Failed to send data, try to initialize connection SE connection";

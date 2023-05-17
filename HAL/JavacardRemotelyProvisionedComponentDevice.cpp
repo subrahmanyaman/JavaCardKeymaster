@@ -266,7 +266,7 @@ ScopedAStatus JavacardRemotelyProvisionedComponentDevice::generateCertificateReq
     uint32_t respFlag;
     DeviceInfo deviceInfo;
     Array coseKeys;
-    std::vector<uint8_t> coseEncryptProtectedHeader;
+    std::vector<uint8_t> protectedHeader;
     cppbor::Map coseEncryptUnProtectedHeader;
     std::vector<uint8_t> signature;
     std::vector<uint8_t> diceCertChain;
@@ -280,7 +280,7 @@ ScopedAStatus JavacardRemotelyProvisionedComponentDevice::generateCertificateReq
     ret = updateMacedKey(keysToSign, coseKeys);
     if (!ret.isOk()) return ret;
 
-    ret = finishSendData(coseEncryptProtectedHeader, signature, version, respFlag);
+    ret = finishSendData(protectedHeader, signature, version, respFlag);
     if (!ret.isOk()) return ret;
 
     ret = getUdsCertsChain(udsCertChain);
@@ -302,7 +302,7 @@ ScopedAStatus JavacardRemotelyProvisionedComponentDevice::generateCertificateReq
                                .encode();
 
     auto signedData = cppbor::Array()
-                          .add(std::move(coseEncryptProtectedHeader))
+                          .add(std::move(protectedHeader))
                           .add(cppbor::Map() /* unprotected parameters */)
                           .add(std::move(signDataPayload))
                           .add(std::move(signature));

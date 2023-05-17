@@ -17,6 +17,7 @@
 #define LOG_TAG "javacard.strongbox-service"
 
 #include <aidl/android/hardware/security/keymint/SecurityLevel.h>
+
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <android/binder_manager.h>
@@ -80,8 +81,8 @@ std::shared_ptr<ITransport> getTransportInstance() {
 int main() {
     ABinderProcess_setThreadPoolMaxThreadCount(0);
     // Javacard Secure Element
-    std::shared_ptr<JavacardSecureElement> card = std::make_shared<JavacardSecureElement>(
-        getTransportInstance(), getOsVersion(), getOsPatchlevel(), getVendorPatchlevel());
+    std::shared_ptr<JavacardSecureElement> card =
+        std::make_shared<JavacardSecureElement>(getTransportInstance());
     // Add Keymint Service
     addService<JavacardKeyMintDevice>(card);
     // Add Shared Secret Service

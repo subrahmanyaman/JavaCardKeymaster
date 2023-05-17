@@ -40,12 +40,14 @@ import com.android.javacard.keymaster.KMKeymintDataStore;
 import com.android.javacard.keymaster.KMOperationState;
 import com.android.javacard.keymaster.KMRepository;
 import com.android.javacard.keymaster.KMType;
+import com.android.javacard.keymaster.KMUtils;
 import com.android.javacard.keymaster.KMVerificationToken;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import com.android.javacard.seprovider.KMSEProvider;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -61,7 +63,11 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Random;
 import javacard.framework.AID;
 import javacard.framework.Util;
@@ -1619,6 +1625,43 @@ public class KMFunctionalTest {
         KMProvision.provisionAttestIds(simulator, encoder, decoder)));
     cleanUp();
   }
+
+  @Test
+  public void testConvertToDate() {
+    init();
+    byte[] scratchpad = new byte[256];
+    SimpleDateFormat formatter;
+    try {
+      // From '1970-01-01T23:59:59Z' to '9999-12-31T23:59:59Z' every 12 hours.
+      for (long millis = 86399000L; millis <= 253402300799000L; millis += 43200000L) {
+        byte[] timeMillis = BigInteger.valueOf(millis).toByteArray();
+        short time = KMInteger.instance((short) 8);
+        Util.arrayCopyNonAtomic(timeMillis, (short) 0,
+            KMInteger.cast(time).getBuffer(),
+            (short) (KMInteger.cast(time).getStartOff() + 8 - timeMillis.length),
+            (short) timeMillis.length);
+        short timeFormat = KMUtils.convertToDate(time, scratchpad);
+        if (millis < 2524608000000L) { // '2050-01-01T00:00:00Z'
+          formatter = new SimpleDateFormat("yyMMddHHmmss'Z'");
+          formatter.set2DigitYearStart(new Date(0));
+        } else {
+          formatter = new SimpleDateFormat("yyyyMMddHHmmss'Z'");
+        }
+        String dateStr = new String(KMByteBlob.cast(timeFormat).getBuffer(),
+            KMByteBlob.cast(timeFormat).getStartOff(),
+            KMByteBlob.cast(timeFormat).length());
+        Date date = formatter.parse(dateStr);
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        Assert.assertEquals(calendar.getTimeInMillis(), millis);
+        KMRepository.instance().clean();
+      }
+    } catch (ParseException e) {
+      Assert.fail("Parse Exception");
+    }
+    cleanUp();
+  }
+
 
   //------------------------------------------------------------------------------------------------
   // Helper functions

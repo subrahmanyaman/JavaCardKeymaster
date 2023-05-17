@@ -300,12 +300,12 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
   // will never be used by the base line code in future.
   private static final byte INS_KM_VENDOR_START_CMD = (byte) 0xCD;
   private static final byte INS_KM_VENDOR_END_CMD = (byte) 0xFF;
-  // The maximum buffer size of combined seed and nonce.
-  private static final byte HMAC_SHARED_PARAM_MAX_SIZE = 64;
   // Index in apduFlagsStatus[] to check if instruction command is case 4 type in the Apdu
   protected static final byte APDU_CASE4_COMMAND_STATUS_INDEX = 0;
   // Index in apduFlagsStatus[] to check if Apdu setIncomingAndReceive function is called
   protected static final byte APDU_INCOMING_AND_RECEIVE_STATUS_INDEX = 1;
+  // The maximum buffer size of combined seed and nonce.
+  private static final byte HMAC_SHARED_PARAM_MAX_SIZE = 64;
   // Instance of RemotelyProvisionedComponentDevice, used to redirect the rkp commands.
   protected static KMRemotelyProvisionedComponentDevice rkp;
   // Instance of Cbor encoder.
@@ -1363,7 +1363,6 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case INS_GET_DICE_CERT_CHAIN_CMD:
         apduStatusFlags[APDU_CASE4_COMMAND_STATUS_INDEX] = 0;
         break;
-
       default:
         // By default the instruction is set to case 4 command instruction.
         break;
@@ -1661,6 +1660,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       case INS_GET_HMAC_SHARING_PARAM_CMD:
       case INS_COMPUTE_SHARED_HMAC_CMD:
       case INS_EARLY_BOOT_ENDED_CMD:
+      case INS_DELETE_ALL_KEYS_CMD:
       case INS_INIT_STRONGBOX_CMD:
       case INS_GET_ROT_CHALLENGE_CMD:
       case INS_SEND_ROT_DATA_CMD:
@@ -2655,9 +2655,8 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         // Return CANNOT_ATTEST_IDS if Attestation IDs are not provisioned or
         // Attestation IDs are deleted.
         if (storedAttIdLen == 0) {
-          /* Ignore the SECOND_IMEI tag if the previous Applet's KeyMint version is less than 3.0 and
-           * no SECOND_IMEI is provisioned.
-           */
+          // Ignore the SECOND_IMEI tag if the previous Applet's KeyMint version is less than
+          // 3.0 and no SECOND_IMEI is provisioned.
           if (!(kmDataStore.ignoreSecondImei
               && attTags[index] == KMType.ATTESTATION_ID_SECOND_IMEI)) {
             KMException.throwIt(KMError.CANNOT_ATTEST_IDS);

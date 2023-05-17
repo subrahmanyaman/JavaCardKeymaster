@@ -29,10 +29,6 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final byte DATA_INDEX_ENTRY_LENGTH = 0;
   public static final byte DATA_INDEX_ENTRY_OFFSET = 2;
   public static final short DATA_MEM_SIZE = 300;
-
-  // Old Data table offsets
-  private static final byte OLD_PROVISIONED_STATUS_OFFSET = 18;
-
   // Data table offsets
   public static final byte HMAC_NONCE = 0;
   public static final byte BOOT_OS_VERSION = 1;
@@ -56,11 +52,6 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final byte AUTH_TAG_LENGTH = 16;
   public static final byte AUTH_TAG_COUNTER_SIZE = 4;
   public static final byte AUTH_TAG_ENTRY_SIZE = (AUTH_TAG_LENGTH + AUTH_TAG_COUNTER_SIZE + 1);
-  private static final byte SHARED_SECRET_KEY_SIZE = 32;
-  private static final byte DEVICE_STATUS_FLAG_SIZE = 1;
-  private static final short UDS_CERT_CHAIN_MAX_SIZE = 2500; // First 2 bytes for length.
-  private static final short DICE_CERT_CHAIN_MAX_SIZE = 512;
-
   // Device boot states. Applet starts executing the
   // core commands once all the states are set. The commands
   // that are allowed irrespective of these states are:
@@ -72,7 +63,15 @@ public class KMKeymintDataStore implements KMUpgradable {
   public static final byte SET_BOOT_PARAMS_SUCCESS = 0x01;
   public static final byte SET_SYSTEM_PROPERTIES_SUCCESS = 0x02;
   public static final byte NEGOTIATED_SHARED_SECRET_SUCCESS = 0x04;
-
+  // Old Data table offsets
+  private static final byte OLD_PROVISIONED_STATUS_OFFSET = 18;
+  private static final byte SHARED_SECRET_KEY_SIZE = 32;
+  private static final byte DEVICE_STATUS_FLAG_SIZE = 1;
+  private static final short UDS_CERT_CHAIN_MAX_SIZE = 2500; // First 2 bytes for length.
+  private static final short DICE_CERT_CHAIN_MAX_SIZE = 512;
+  private static KMKeymintDataStore kmDataStore;
+  // Secure Boot Mode
+  public byte secureBootMode;
   // Data - originally was in repository
   private byte[] attIdBrand;
   private byte[] attIdDevice;
@@ -91,8 +90,7 @@ public class KMKeymintDataStore implements KMUpgradable {
   private short bootState;
   // Challenge for Root of trust
   private byte[] challenge;
-  // Secure Boot Mode
-  public byte secureBootMode;
+
   /*
    * Applets upgrading to KeyMint3.0 may not have the second imei provisioned.
    * So this flag is used to ignore the SECOND_IMEI tag if the previous Applet's
@@ -112,11 +110,6 @@ public class KMKeymintDataStore implements KMUpgradable {
   private KMKey rkpMacKey;
   private byte[] oemRootPublicKey;
   private short provisionStatus;
-  private static KMKeymintDataStore kmDataStore;
-
-  public static KMKeymintDataStore instance() {
-    return kmDataStore;
-  }
 
   public KMKeymintDataStore(KMSEProvider provider, KMRepository repo) {
     seProvider = provider;
@@ -132,6 +125,10 @@ public class KMKeymintDataStore implements KMUpgradable {
     setDeviceLockPasswordOnly(false);
     setDeviceLock(false);
     kmDataStore = this;
+  }
+
+  public static KMKeymintDataStore instance() {
+    return kmDataStore;
   }
 
   private void initDataTable() {
@@ -930,7 +927,13 @@ public class KMKeymintDataStore implements KMUpgradable {
       // have to update the secureBootMode with the correct input.
       secureBootMode = 0;
       provisionStatus |= KMKeymasterApplet.PROVISION_STATUS_SECURE_BOOT_MODE;
+      // Applet package Versions till 2 had CoseSign1 for additionalCertificateChain.
+      // From package version 3, the additionalCertificateChain is in X.509 format.
+      // So Unreference the old address and allocate new persistent memory.
+      udsCertChain = new byte[UDS_CERT_CHAIN_MAX_SIZE];
       JCSystem.commitTransaction();
+      // Request for ObjectDeletion for unreferenced address of additionalCertChain.
+      JCSystem.requestObjectDeletion();
       return;
     }
     handleUpgrade(element, oldVersion);
@@ -973,7 +976,6 @@ public class KMKeymintDataStore implements KMUpgradable {
   }
 
   private void handleUpgrade(Element element, short oldVersion) {
-
     // Read Primitives
     provisionStatus = element.readShort();
     if (oldVersion >= KM_APPLET_PACKAGE_VERSION_3) {
@@ -1026,12 +1028,18 @@ public class KMKeymintDataStore implements KMUpgradable {
               | KMKeymasterApplet.PROVISION_STATUS_SECURE_BOOT_MODE;
     }
     JCSystem.beginTransaction();
-    // While upgrading Secure Boot Mode flag from 1.0 to 3.0, implementations
+    // While upgrading Secure Boot Mode flag from 1.0 to 4.0, implementations
     // have to update the secureBootMode with the correct input.
     secureBootMode = 0;
     provisionStatus = pStatus;
+    // Applet package Versions till 2 had CoseSign1 for additionalCertificateChain.
+    // From package version 3, the additionalCertificateChain is in X.509 format.
+    // So Unreference the old address and allocate new persistent memory.
+    udsCertChain = new byte[UDS_CERT_CHAIN_MAX_SIZE];
     JCSystem.commitTransaction();
     repository.reclaimMemory((short) 2);
+    // Request object deletion for unreferenced address for additionalCertChain
+    JCSystem.requestObjectDeletion();
   }
 
   @Override
