@@ -3011,8 +3011,7 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
         KMException.throwIt(KMError.KEY_USER_NOT_AUTHENTICATED);
       }
       short len = op.getAuthType(scratchPad, (short) 0);
-      if (!authTokenMatches(op.getUserSecureId(),
-          scratchPad, (short) 0, len, scratchPad, len)) {
+      if (!authTokenMatches(op.getUserSecureId(), scratchPad, (short) 0, len, scratchPad, len)) {
         KMException.throwIt(KMError.KEY_USER_NOT_AUTHENTICATED);
       }
     }
@@ -3976,25 +3975,31 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       }
     }
     return false;
-  }  
-  
-  public boolean hwAuthTypeMatches(byte[] buf, short off, short len, byte[] scratchPad, short scratchOff) {
-    // data[HW_TOKEN]
-    if (len != 1 && len != 4) {
-      KMException.throwIt(KMError.UNKNOWN_ERROR);
-    }
-    Util.arrayFillNonAtomic(scratchPad, scratchOff, (short) 8, (byte) 0);
-    short enumPtr = KMHardwareAuthToken.cast(data[HW_TOKEN]).getHwAuthenticatorType();
-    KMEnum.cast(enumPtr).value(scratchPad, scratchOff);
-    Util.arrayCopyNonAtomic(buf, off, scratchPad, (short) (scratchOff + 4 + 4 - len), len);
-    // TODO Do we need to change logic here. AND Operation on all 4 bytes ??
-    short lsbByte = (short) (scratchOff + 3);
-    short otherLsbByte = (short) (scratchOff + 7);
-    return (0 != (scratchPad[lsbByte] & scratchPad[otherLsbByte]));
   }
 
+  public boolean hwAuthTypeMatches(
+      byte[] buf, short off, short len, byte[] scratchPad, short scratchOff) {
+    Util.arrayFillNonAtomic(scratchPad, scratchOff, (short) (2 * KMInteger.UINT_32), (byte) 0);
+    short enumPtr = KMHardwareAuthToken.cast(data[HW_TOKEN]).getHwAuthenticatorType();
+    if (KMInteger.UINT_32 != KMEnum.cast(enumPtr).value(scratchPad, scratchOff)) {
+      return false;
+    }
+    Util.arrayCopyNonAtomic(
+        buf, off, scratchPad, (short) (scratchOff + 2 * KMInteger.UINT_32 - len), len);
+    short highShort = Util.getShort(scratchPad, scratchOff);
+    short lowShort = Util.getShort(scratchPad, (short) (scratchOff + 2));
+    short otherHighShort = Util.getShort(scratchPad, (short) (scratchOff + KMInteger.UINT_32));
+    short otherLowShort = Util.getShort(scratchPad, (short) (scratchOff + KMInteger.UINT_32 + 2));
+    return (0 != (lowShort & otherLowShort) || 0 != (highShort & otherHighShort));
+  }
 
-  private boolean authTokenMatches(short userSecureIdsPtr, byte[] buf, short off, short len, byte[] scratchPad, short scratchOff) {
+  private boolean authTokenMatches(
+      short userSecureIdsPtr,
+      byte[] buf,
+      short off,
+      short len,
+      byte[] scratchPad,
+      short scratchOff) {
     if (data[HW_TOKEN] == KMType.INVALID_VALUE) {
       return false;
     }
@@ -4021,7 +4026,9 @@ public class KMKeymasterApplet extends Applet implements AppletEvent, ExtendedLe
       }
       // authenticator type must be provided.
       if (KMType.INVALID_VALUE
-          == (authType = KMKeyParameters.findTag(KMType.ENUM_TAG, KMType.USER_AUTH_TYPE, data[HW_PARAMETERS]))) {
+          == (authType =
+              KMKeyParameters.findTag(
+                  KMType.ENUM_TAG, KMType.USER_AUTH_TYPE, data[HW_PARAMETERS]))) {
         // Authentication required, but no auth type found.
         KMException.throwIt(KMError.KEY_USER_NOT_AUTHENTICATED);
       }

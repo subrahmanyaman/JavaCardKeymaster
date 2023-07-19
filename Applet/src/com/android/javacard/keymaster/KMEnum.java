@@ -73,7 +73,7 @@ public class KMEnum extends KMType {
     if (!validateEnum(enumType, NO_VALUE)) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
-    short ptr = KMType.instance(ENUM_TYPE, (short) 2 /* TAG_KEY */ );
+    short ptr = KMType.instance(ENUM_TYPE, (short) 2 /* TAG_KEY */);
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE), enumType);
     return ptr;
   }
@@ -82,21 +82,22 @@ public class KMEnum extends KMType {
     if (!validateEnum(enumType, val)) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
-    short ptr = KMType.instance(ENUM_TYPE, (short) (2  /* TAG_KEY */  + 1 /* Byte value */ ));
+    short ptr = KMType.instance(ENUM_TYPE, (short) (2 /* TAG_KEY */ + 1 /* Byte value */));
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE), enumType);
     heap[(short) (ptr + TLV_HEADER_SIZE + 2)] = val;
     return ptr;
   }
-  
+
   public static short instance(short key, byte[] num, short srcOff, short length) {
     if (!validateEnum(key, num, srcOff, length)) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
-    short ptr = KMType.instance(ENUM_TYPE, (short) (2 /* TAG_KEY */  + KMInteger.UINT_32));
+    short ptr = KMType.instance(ENUM_TYPE, (short) (2 /* TAG_KEY */ + KMInteger.UINT_32));
     Util.setShort(heap, (short) (ptr + TLV_HEADER_SIZE), key);
     short destValOff = (short) (ptr + TLV_HEADER_SIZE + 2);
     Util.arrayFillNonAtomic(heap, destValOff, KMInteger.UINT_32, (byte) 0);
-    Util.arrayCopyNonAtomic(num, srcOff, heap, (short) (destValOff + KMInteger.UINT_32 - length), length);
+    Util.arrayCopyNonAtomic(
+        num, srcOff, heap, (short) (destValOff + KMInteger.UINT_32 - length), length);
     return ptr;
   }
 
@@ -190,17 +191,13 @@ public class KMEnum extends KMType {
     }
     switch (key) {
       case KMType.USER_AUTH_TYPE:
-        for (short i = 0; i < KMInteger.UINT_32; ++i) {
-          // HardwareAuthenticatorType::ANY
-          if (buf[(short) (off+i)] != (byte) 0xFF) {
-            return false;
-          }
-        }
-        break;
+        // HardwareAuthenticatorType::ANY - 0xFFFFFFFF
+        short highShort = Util.getShort(buf, off);
+        short lowShort = Util.getShort(buf, (short) (off + 2));
+        return ((short) 0xFFFF == (short) (highShort & lowShort));
 
       default:
         return false;
     }
-    return true;
   }
 }
