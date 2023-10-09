@@ -338,7 +338,9 @@ public interface KMSEProvider {
   /**
    * This is a oneshot operation that verifies the signature using hmac algorithm.
    *
-   * @param hmacKey is the Hmac key.
+   * @param keyBuf is the buffer with hmac key.
+   * @param keyStart is the start of the buffer.
+   * @param keyLength is the length of the buffer which will be in bytes from 8 to 64.
    * @param data is the buffer containing data.
    * @param dataStart is the start of the data.
    * @param dataLength is the length of the data.
