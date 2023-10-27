@@ -295,8 +295,7 @@ public class KMTestUtils {
               KMInteger.uint_8(KMCose.COSE_ECCURVE_256),
               xPtr,
               yPtr,
-              KMType.INVALID_VALUE,
-              false);
+              KMType.INVALID_VALUE);
       byte[] scratchpad = new byte[200];
       short coseKeyEncodedLen = encoder.encode(coseKey, scratchpad, (short) 0, (short) 200);
       short payload = KMByteBlob.instance(scratchpad, (short) 0, coseKeyEncodedLen);
@@ -675,7 +674,7 @@ public class KMTestUtils {
     short privPtr = KMByteBlob.instance(priv, privKeyOff, privKeyLen);
     short[] scratchpad = new short[20];
     short coseKey = KMCose.constructCoseKey(scratchpad, keyType, keyId, keyAlg, curve, xPtr,
-        yPtr, privPtr, false);
+        yPtr, privPtr);
     KMCoseKey.cast(coseKey).canonicalize();
     return coseKey;
   }

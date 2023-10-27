@@ -17,7 +17,6 @@
 package com.android.javacard.test;
 
 import com.android.javacard.keymaster.KMArray;
-import com.android.javacard.keymaster.KMAsn1Parser;
 import com.android.javacard.keymaster.KMBoolTag;
 import com.android.javacard.keymaster.KMByteBlob;
 import com.android.javacard.keymaster.KMByteTag;
@@ -44,10 +43,17 @@ import com.android.javacard.keymaster.KMUtils;
 import com.android.javacard.keymaster.KMVerificationToken;
 import com.android.javacard.seprovider.KMJCardSimulator;
 import com.android.javacard.seprovider.KMSEProvider;
+import com.licel.jcardsim.bouncycastle.asn1.ASN1InputStream;
+import com.licel.jcardsim.bouncycastle.asn1.ASN1OctetString;
+import com.licel.jcardsim.bouncycastle.asn1.ASN1Sequence;
+import com.licel.jcardsim.bouncycastle.asn1.DERObject;
+import com.licel.jcardsim.bouncycastle.asn1.DEROctetString;
+import com.licel.jcardsim.bouncycastle.asn1.DERTaggedObject;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -55,6 +61,10 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SignatureException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateParsingException;
+import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
@@ -65,10 +75,15 @@ import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import javacard.framework.AID;
 import javacard.framework.Util;
 import javacard.security.ECPublicKey;
@@ -332,6 +347,13 @@ public class KMFunctionalTest {
       (byte) 0x22, (byte) 0xe6, (byte) 0x00, (byte) 0x61, (byte) 0x54, (byte) 0x86
   };
   public static byte[] CSR_CHALLENGE = {0x56, 0x78, 0x65, 0x23, (byte) 0xFE, 0x32};
+
+  public static byte[] ATTEST_KEY_ISSUER =
+      {
+          0x30, 0x1f, 0x31, 0x1d, 0x30, 0x1b, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x14,
+          0x41, 0x6e, 0x64, 0x72, 0x6f, 0x69, 0x64, 0x20, 0x4b, 0x65, 0x79, 0x73, 0x74,
+          0x6f, 0x72, 0x65, 0x20, 0x4b, 0x65, 0x79
+      };
 
   private CardSimulator simulator;
   private KMEncoder encoder;
@@ -1662,6 +1684,93 @@ public class KMFunctionalTest {
     cleanUp();
   }
 
+  @Test
+  public void testAttestationIds() {
+    init();
+    long undefinedExpirationTime = 253402300799000L;
+    short attestKeyParams = new KeyParamCborBuilder()
+        .add(KMType.PURPOSE, new byte[]{KMType.ATTEST_KEY})
+        .add(KMType.CERTIFICATE_NOT_BEFORE, 0L)
+        .add(KMType.CERTIFICATE_NOT_AFTER, undefinedExpirationTime)
+        .add(KMType.ALGORITHM, KMType.RSA)
+        .add(KMType.KEYSIZE, 2048)
+        .add(KMType.RSA_PUBLIC_EXPONENT, 65537L)
+        .add(KMType.RESET_SINCE_ID_ROTATION)
+        .add(KMType.NO_AUTH_REQUIRED)
+        .build();
+    short generateKeyInputApdu = generateKeyNoAttestCmd(attestKeyParams);
+    CommandAPDU apdu = KMTestUtils.encodeApdu(encoder, (byte) INS_GENERATE_KEY_CMD,
+        generateKeyInputApdu);
+    ResponseAPDU responseAPDU = simulator.transmitCommand(apdu);
+    short resp = parseGenerateKeyResponse(responseAPDU);
+    short keyBlobPtr = KMArray.cast(resp).get((short) 1);
+    byte[] attestKeyBlob = new byte[KMByteBlob.cast(keyBlobPtr).length()];
+    Util.arrayCopyNonAtomic(KMByteBlob.cast(keyBlobPtr).getBuffer(),
+        KMByteBlob.cast(keyBlobPtr).getStartOff(),
+        attestKeyBlob, (short) 0, (short) attestKeyBlob.length);
+
+    byte[] challenge = {0x02, 0x03, 0x04};
+    byte[] attAppId = {0x02, 0x03, 0x04, 0x05};
+    SortedMap<Short, byte[]> orderedAttestIds = new TreeMap<>() {
+      {
+        put(KMType.ATTESTATION_ID_BRAND, KMProvision.BRAND);
+        put(KMType.ATTESTATION_ID_DEVICE, KMProvision.DEVICE);
+        put(KMType.ATTESTATION_ID_PRODUCT, KMProvision.PRODUCT);
+        put(KMType.ATTESTATION_ID_SERIAL, KMProvision.SERIAL);
+        put(KMType.ATTESTATION_ID_IMEI, KMProvision.IMEI);
+        put(KMType.ATTESTATION_ID_MEID, KMProvision.MEID);
+        put(KMType.ATTESTATION_ID_MANUFACTURER, KMProvision.MANUFACTURER);
+        put(KMType.ATTESTATION_ID_MODEL, KMProvision.MODEL);
+        put(KMType.ATTESTATION_ID_SECOND_IMEI, KMProvision.SECOND_IMEI);
+      }
+    };
+
+    KeyParamCborBuilder builder = new KeyParamCborBuilder()
+        .add(KMType.PURPOSE, new byte[]{KMType.ATTEST_KEY})
+        .add(KMType.DIGEST, new byte[]{KMType.SHA2_256})
+        .add(KMType.PADDING, new byte[]{KMType.PADDING_NONE})
+        .add(KMType.APPLICATION_ID, new byte[]{0x01, 0x02, 0x03})
+        .add(KMType.APPLICATION_DATA, new byte[]{0x01, 0x02, 0x06})
+        .add(KMType.ATTESTATION_CHALLENGE, challenge)
+        .add(KMType.ATTESTATION_APPLICATION_ID, attAppId)
+        .add(KMType.CERTIFICATE_NOT_BEFORE, 0L)
+        .add(KMType.CERTIFICATE_NOT_AFTER, undefinedExpirationTime)
+        .add(KMType.ALGORITHM, KMType.RSA)
+        .add(KMType.KEYSIZE, 2048)
+        .add(KMType.RSA_PUBLIC_EXPONENT, 65537L)
+        .add(KMType.NO_AUTH_REQUIRED);
+    for (Map.Entry<Short, byte[]> entry : orderedAttestIds.entrySet()) {
+      builder.add(entry.getKey(), entry.getValue());
+    }
+    short keyParams = builder.build();
+    short attestKeyBlobPtr = KMByteBlob.instance(attestKeyBlob, (short) 0,
+        (short) attestKeyBlob.length);
+    short attestKeyIssuer = KMByteBlob.instance(ATTEST_KEY_ISSUER, (short) 0,
+        (short) ATTEST_KEY_ISSUER.length);
+    generateKeyInputApdu = generateKeyCmd(keyParams, attestKeyBlobPtr,
+        KMTestUtils.getEmptyKeyParams(), attestKeyIssuer);
+    apdu = KMTestUtils.encodeApdu(encoder, (byte) INS_GENERATE_KEY_CMD, generateKeyInputApdu);
+    KMRepository.instance().clean();
+    responseAPDU = simulator.transmitCommand(apdu);
+    resp = parseGenerateKeyResponse(responseAPDU);
+    short certPtr = KMArray.cast(resp).get((short) 3);
+    certPtr = KMArray.cast(certPtr).get((short) 0);
+    byte[] encodedCert = new byte[KMByteBlob.cast(certPtr).length()];
+    Util.arrayCopyNonAtomic(KMByteBlob.cast(certPtr).getBuffer(),
+        KMByteBlob.cast(certPtr).getStartOff(),
+        encodedCert, (short) 0, (short) encodedCert.length);
+    CertificateFactory cf = null;
+    try {
+      cf = CertificateFactory.getInstance("X.509");
+      KMTestUtils.print(encodedCert, (short) 0, (short) encodedCert.length);
+      ByteArrayInputStream bais = new ByteArrayInputStream(encodedCert);
+      X509Certificate cert = (X509Certificate) cf.generateCertificate(bais);
+      validateDeviceAttestationIds(cert, orderedAttestIds);
+    } catch (CertificateException e) {
+      throw new RuntimeException(e);
+    }
+    cleanUp();
+  }
 
   //------------------------------------------------------------------------------------------------
   // Helper functions
@@ -2012,6 +2121,17 @@ public class KMFunctionalTest {
     arg.add((short) 1, emptyBlob);
     arg.add((short) 2, KMTestUtils.getEmptyKeyParams());
     arg.add((short) 3, emptyBlob);
+    return arrPtr;
+  }
+
+  public short generateKeyCmd(short keyParams, short attestKeyBlob, short attestKeyParams, short issuer) {
+    short emptyBlob = KMByteBlob.instance((short) 0);
+    short arrPtr = KMArray.instance((short) 4);
+    KMArray arg = KMArray.cast(arrPtr);
+    arg.add((short) 0, keyParams);
+    arg.add((short) 1, attestKeyBlob);
+    arg.add((short) 2, attestKeyParams);
+    arg.add((short) 3, issuer);
     return arrPtr;
   }
 
@@ -2983,7 +3103,7 @@ public class KMFunctionalTest {
     short inLen = inputlen;
     if (padding == KMType.PADDING_NONE) {
       alg = Cipher.ALG_RSA_NOPAD;
-      // Length cannot be greater then key size according to JcardSim
+      // Length cannot be greater than key size according to JcardSim
       if (inLen >= 256) {
         return 0;
       }
@@ -3017,5 +3137,197 @@ public class KMFunctionalTest {
     Cipher rsaCipher = Cipher.getInstance(alg, false);
     rsaCipher.init(rsaPubKey, Cipher.MODE_ENCRYPT);
     return rsaCipher.doFinal(tmp, inputOff, inLen, output, outputOff);
+  }
+
+  private void validateDeviceAttestationIds(X509Certificate cert, Map<Short, byte[]> orderedAttestIds) {
+    short teeEnforcedIndex = 7;
+    try {
+      byte[] attestationRecord = cert.getExtensionValue("1.3.6.1.4.1.11129.2.1.17");
+      DERObject primitive = getAsn1EncodableFromBytes(attestationRecord);
+      ASN1OctetString string = DEROctetString.getInstance(primitive);
+      primitive = getAsn1EncodableFromBytes(string.getOctets());
+      ASN1Sequence sequence = ASN1Sequence.getInstance(primitive);
+      ASN1Sequence teeEnforcedSequence = ASN1Sequence.getInstance(
+          sequence.getObjectAt(teeEnforcedIndex));
+      int startIndex = 0;
+      int authListSize = teeEnforcedSequence.size();
+      for (Map.Entry<Short, byte[]> entry : orderedAttestIds.entrySet()) {
+        boolean found = false;
+        for (int i = startIndex; i < authListSize; i++) {
+          DERTaggedObject taggedObject = (DERTaggedObject) teeEnforcedSequence.getObjectAt(i);
+          if (taggedObject.getTagNo() == entry.getKey()) {
+            byte[] attestIdValue = ((DEROctetString) taggedObject.getObject()).getOctets();
+            Assert.assertArrayEquals(entry.getValue(), attestIdValue);
+            found = true;
+            startIndex = i+1;
+            break;
+          }
+        }
+        if (!found) {
+          Assert.fail("Attestation ID: " + entry.getKey() + " not found.");
+        }
+      }
+    } catch (CertificateParsingException e) {
+      throw new RuntimeException(e);
+    }
+    // try {
+    //   byte[] attestationRecord = cert.getExtensionValue("1.3.6.1.4.1.11129.2.1.17");
+    //   ASN1Primitive primitive = getAsn1EncodableFromBytes(attestationRecord);
+    //   ASN1OctetString string = DEROctetString.getInstance(primitive);
+    //   ASN1Primitive primitive1 = getAsn1EncodableFromBytes(string.getOctets());
+    //   ASN1Sequence sequence = ASN1Sequence.getInstance(primitive1);
+    //   ASN1Sequence teeEnforcedSequence = ASN1Sequence.getInstance(
+    //       sequence.getObjectAt(teeEnforcedIndex));
+    //   int startIndex = 0;
+    //   int authListSize = teeEnforcedSequence.size();
+    //   for (Map.Entry<Short, byte[]> entry : orderedAttestIds.entrySet()) {
+    //     boolean found = false;
+    //     for (int i = startIndex; i < authListSize; i++) {
+    //       DLTaggedObject taggedObject = (DLTaggedObject) teeEnforcedSequence.getObjectAt(i);
+    //       if (taggedObject.getTagNo() == entry.getKey()) {
+    //         byte[] attestIdValue = ((DEROctetString) taggedObject.getBaseObject()).getOctets();
+    //         Assert.assertArrayEquals(entry.getValue(), attestIdValue);
+    //         found = true;
+    //         startIndex = i+1;
+    //         break;
+    //       }
+    //     }
+    //     if (!found) {
+    //       Assert.fail("Attestation ID: " + entry.getKey() + " not found.");
+    //     }
+    //   }
+    // } catch (CertificateParsingException e) {
+    //   throw new RuntimeException(e);
+    // }
+  }
+
+  private static DERObject getAsn1EncodableFromBytes(byte[] bytes)
+      throws CertificateParsingException {
+    try (ASN1InputStream asn1InputStream = new ASN1InputStream(bytes)) {
+      return asn1InputStream.readObject();
+    } catch (IOException e) {
+      throw new CertificateParsingException("Failed to parse Encodable", e);
+    }
+  }
+
+  public static class KeyParamCborBuilder {
+    List<Short> keyParams;
+
+    public KeyParamCborBuilder() {
+      keyParams = new ArrayList<>();
+    }
+
+    public KeyParamCborBuilder add(int key, byte[] value) {
+      switch (key) {
+        case KMType.PURPOSE:
+        case KMType.DIGEST:
+        case KMType.PADDING:
+          short byteBlob = KMByteBlob.instance((short) value.length);
+          for (int i = 0; i < value.length; i++) {
+            KMByteBlob.cast(byteBlob).add((short) i, value[i]);
+          }
+          short enumArrayTag = KMEnumArrayTag.instance((short) key, byteBlob);
+          keyParams.add(enumArrayTag);
+          break;
+        case KMType.APPLICATION_ID:
+        case KMType.APPLICATION_DATA:
+        case KMType.ATTESTATION_CHALLENGE:
+        case KMType.ATTESTATION_APPLICATION_ID:
+        case KMType.ATTESTATION_ID_BRAND:
+        case KMType.ATTESTATION_ID_PRODUCT:
+        case KMType.ATTESTATION_ID_MODEL:
+        case KMType.ATTESTATION_ID_DEVICE:
+        case KMType.ATTESTATION_ID_MANUFACTURER:
+        case KMType.ATTESTATION_ID_IMEI:
+        case KMType.ATTESTATION_ID_MEID:
+        case KMType.ATTESTATION_ID_SERIAL:
+        case KMType.ATTESTATION_ID_SECOND_IMEI:
+
+          short byteTag = KMByteTag.instance((short) key,
+              KMByteBlob.instance(value, (short) 0, (short) value.length));
+          keyParams.add(byteTag);
+          break;
+        default:
+          Assert.fail("Unknown TAG");
+      }
+      return this;
+    }
+
+    public KeyParamCborBuilder add(int key, int value) {
+      byte[] intVal = new byte[4];
+      Util.setShort(intVal, (short) 0, (short) ((value >> 16) & 0xFFFF));
+      Util.setShort(intVal, (short) 2, (short) ((value) & 0xFFFF));
+      short kmIntVal = KMInteger.uint_32(intVal, (short) 0);
+      switch (key) {
+        case KMType.KEYSIZE:
+        case KMType.MAX_USES_PER_BOOT:
+          short integerTag = KMIntegerTag
+              .instance(KMType.UINT_TAG, (short) key, kmIntVal);
+          keyParams.add(integerTag);
+          break;
+        default:
+          Assert.fail("Unknown TAG");
+      }
+      return this;
+    }
+
+    public KeyParamCborBuilder add(int key, long value) {
+      byte[] longVal = new byte[8];
+      Util.setShort(longVal, (short) 0, (short) ((value >> 48) & 0xFFFF));
+      Util.setShort(longVal, (short) 2, (short) ((value >> 32) & 0xFFFF));
+      Util.setShort(longVal, (short) 4, (short) ((value >> 16) & 0xFFFF));
+      Util.setShort(longVal, (short) 6, (short) ((value) & 0xFFFF));
+      short kmLongVal = KMInteger.uint_64(longVal, (short) 0);
+      short longTag = KMType.INVALID_VALUE;
+      switch (key) {
+        case KMType.RSA_PUBLIC_EXPONENT:
+          longTag = KMIntegerTag
+              .instance(KMType.ULONG_TAG, (short) key, kmLongVal);
+          break;
+        case KMType.CERTIFICATE_NOT_BEFORE:
+        case KMType.CERTIFICATE_NOT_AFTER:
+          longTag = KMIntegerTag.instance(KMType.DATE_TAG, (short) key, kmLongVal);
+          break;
+        default:
+          Assert.fail("Unknown TAG");
+      }
+      keyParams.add(longTag);
+      return this;
+    }
+
+    public KeyParamCborBuilder add(int key, byte value) {
+      switch (key) {
+        case KMType.ALGORITHM:
+          short enumTag = KMEnumTag.instance((short) key, value);
+          keyParams.add(enumTag);
+          break;
+        default:
+          Assert.fail("Unknown TAG");
+      }
+      return this;
+    }
+
+    public KeyParamCborBuilder add(int key) {
+      switch (key) {
+        case KMType.NO_AUTH_REQUIRED:
+        case KMType.INCLUDE_UNIQUE_ID:
+        case KMType.RESET_SINCE_ID_ROTATION:
+          short boolTag = KMBoolTag.instance((short) key);
+          keyParams.add(boolTag);
+          break;
+        default:
+          Assert.fail("Unknown TAG");
+      }
+      return this;
+    }
+
+    short build() {
+      short arrPtr = KMArray.instance((short) keyParams.size());
+      short index = 0;
+      for (short val : keyParams) {
+        KMArray.cast(arrPtr).add(index++, val);
+      }
+      return KMKeyParameters.instance(arrPtr);
+    }
   }
 }
