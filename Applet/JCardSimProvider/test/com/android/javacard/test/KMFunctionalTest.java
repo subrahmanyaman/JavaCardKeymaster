@@ -3170,35 +3170,6 @@ public class KMFunctionalTest {
     } catch (CertificateParsingException e) {
       throw new RuntimeException(e);
     }
-    // try {
-    //   byte[] attestationRecord = cert.getExtensionValue("1.3.6.1.4.1.11129.2.1.17");
-    //   ASN1Primitive primitive = getAsn1EncodableFromBytes(attestationRecord);
-    //   ASN1OctetString string = DEROctetString.getInstance(primitive);
-    //   ASN1Primitive primitive1 = getAsn1EncodableFromBytes(string.getOctets());
-    //   ASN1Sequence sequence = ASN1Sequence.getInstance(primitive1);
-    //   ASN1Sequence teeEnforcedSequence = ASN1Sequence.getInstance(
-    //       sequence.getObjectAt(teeEnforcedIndex));
-    //   int startIndex = 0;
-    //   int authListSize = teeEnforcedSequence.size();
-    //   for (Map.Entry<Short, byte[]> entry : orderedAttestIds.entrySet()) {
-    //     boolean found = false;
-    //     for (int i = startIndex; i < authListSize; i++) {
-    //       DLTaggedObject taggedObject = (DLTaggedObject) teeEnforcedSequence.getObjectAt(i);
-    //       if (taggedObject.getTagNo() == entry.getKey()) {
-    //         byte[] attestIdValue = ((DEROctetString) taggedObject.getBaseObject()).getOctets();
-    //         Assert.assertArrayEquals(entry.getValue(), attestIdValue);
-    //         found = true;
-    //         startIndex = i+1;
-    //         break;
-    //       }
-    //     }
-    //     if (!found) {
-    //       Assert.fail("Attestation ID: " + entry.getKey() + " not found.");
-    //     }
-    //   }
-    // } catch (CertificateParsingException e) {
-    //   throw new RuntimeException(e);
-    // }
   }
 
   private static DERObject getAsn1EncodableFromBytes(byte[] bytes)
