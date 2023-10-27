@@ -1759,15 +1759,14 @@ public class KMFunctionalTest {
     Util.arrayCopyNonAtomic(KMByteBlob.cast(certPtr).getBuffer(),
         KMByteBlob.cast(certPtr).getStartOff(),
         encodedCert, (short) 0, (short) encodedCert.length);
-    CertificateFactory cf = null;
     try {
-      cf = CertificateFactory.getInstance("X.509");
+      CertificateFactory cf = CertificateFactory.getInstance("X.509");
       KMTestUtils.print(encodedCert, (short) 0, (short) encodedCert.length);
       ByteArrayInputStream bais = new ByteArrayInputStream(encodedCert);
       X509Certificate cert = (X509Certificate) cf.generateCertificate(bais);
       validateDeviceAttestationIds(cert, orderedAttestIds);
     } catch (CertificateException e) {
-      throw new RuntimeException(e);
+      Assert.fail("Certificate Exception");
     }
     cleanUp();
   }
@@ -3168,7 +3167,7 @@ public class KMFunctionalTest {
         }
       }
     } catch (CertificateParsingException e) {
-      throw new RuntimeException(e);
+      Assert.fail("Certificate Parsing Exception");
     }
   }
 
