@@ -65,6 +65,27 @@ public class KMProvision {
   private static final byte INS_GET_ROT_DATA_CMD = KEYMINT_CMD_APDU_START + 46; // 0x4E
   private static final byte INS_SEND_ROT_DATA_CMD = KEYMINT_CMD_APDU_START + 47; // 0x4F
 
+  // Attestation IDS
+  public static final byte[] BRAND = {0x67, 0x65, 0x6e, 0x65, 0x72, 0x69, 0x63}; // generic
+  public static final byte[] DEVICE = {0x76, 0x73, 0x6f, 0x63, 0x5f, 0x78, 0x38, 0x36, 0x5f, 0x36, 0x34}; // vsoc_x86_64
+  public static final byte[] PRODUCT =
+      {0x61, 0x6f, 0x73, 0x70, 0x5f, 0x63, 0x66, 0x5f, 0x78, 0x38, 0x36, 0x5f, 0x36, 0x34,
+          0x5f, 0x70, 0x68, 0x6f, 0x6e, 0x65}; // aosp_cf_x86_64_phone
+  public static final byte[] SERIAL =
+      {0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39}; //123456789
+  public static final byte[] IMEI =
+      {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30};
+  public static final byte[] SECOND_IMEI =
+      {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31};
+  public static final byte[] MEID =
+      {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30};
+  public static final byte[] MANUFACTURER =
+      {0x47, 0x6f, 0x6f, 0x67, 0x6c, 0x65}; // Google
+
+  public static final byte[] MODEL =
+      {0x43, 0x75, 0x74, 0x74, 0x6c, 0x65, 0x66, 0x69, 0x73, 0x68, 0x20, 0x78, 0x38, 0x36, 0x5f,
+          0x36, 0x34, 0x20, 0x70, 0x68, 0x6f, 0x6e, 0x65}; // Cuttlefish x86_64 phone
+
   private static final byte[] kEcPrivKey = {
       (byte) 0x21, (byte) 0xe0, (byte) 0x86, (byte) 0x43, (byte) 0x2a,
       (byte) 0x15, (byte) 0x19, (byte) 0x84, (byte) 0x59, (byte) 0xcf,
@@ -509,35 +530,34 @@ public class KMProvision {
       KMDecoder decoder) {
     short arrPtr = KMArray.instance((short) 9);
 
-    byte[] buf = "Attestation Id".getBytes();
 
     KMArray.cast(arrPtr).add((short) 0,
         KMByteTag.instance(KMType.ATTESTATION_ID_BRAND,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(BRAND, (short) 0, (short) BRAND.length)));
     KMArray.cast(arrPtr).add((short) 1,
         KMByteTag.instance(KMType.ATTESTATION_ID_PRODUCT,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(PRODUCT, (short) 0, (short) PRODUCT.length)));
     KMArray.cast(arrPtr).add((short) 2,
         KMByteTag.instance(KMType.ATTESTATION_ID_DEVICE,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(DEVICE, (short) 0, (short) DEVICE.length)));
     KMArray.cast(arrPtr).add((short) 3,
         KMByteTag.instance(KMType.ATTESTATION_ID_MODEL,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(MODEL, (short) 0, (short) MODEL.length)));
     KMArray.cast(arrPtr).add((short) 4,
         KMByteTag.instance(KMType.ATTESTATION_ID_IMEI,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(IMEI, (short) 0, (short) IMEI.length)));
     KMArray.cast(arrPtr).add((short) 5,
             KMByteTag.instance(KMType.ATTESTATION_ID_SECOND_IMEI,
-                KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+                KMByteBlob.instance(SECOND_IMEI, (short) 0, (short) SECOND_IMEI.length)));
     KMArray.cast(arrPtr).add((short) 6,
         KMByteTag.instance(KMType.ATTESTATION_ID_MEID,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(MEID, (short) 0, (short) MEID.length)));
     KMArray.cast(arrPtr).add((short) 7,
         KMByteTag.instance(KMType.ATTESTATION_ID_MANUFACTURER,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(MANUFACTURER, (short) 0, (short) MANUFACTURER.length)));
     KMArray.cast(arrPtr).add((short) 8,
         KMByteTag.instance(KMType.ATTESTATION_ID_SERIAL,
-            KMByteBlob.instance(buf, (short) 0, (short) buf.length)));
+            KMByteBlob.instance(SERIAL, (short) 0, (short) SERIAL.length)));
     short keyParams = KMKeyParameters.instance(arrPtr);
     short outerArrPtr = KMArray.instance((short) 1);
     KMArray.cast(outerArrPtr).add((short) 0, keyParams);
